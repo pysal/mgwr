@@ -12,9 +12,9 @@ The gwr module currently features
 - gwr model estimation via iteratively weighted least squares for Gaussian,
   Poisson, and binomial probability models.
 - gwr bandwidth selection via golden section search
-- gwr-specific model diagnostics, including multiple hypothesis testing
+- gwr-specific model diagnostics, including a multiple hypothesis testing
   correction
-- gwr-based out-of-sample spatial prediction
+- gwr-based spatial prediction
 
 Future Work
 -----------
