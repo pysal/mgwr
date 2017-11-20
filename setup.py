@@ -8,7 +8,7 @@ except ImportError:
 setup(name='gwr', #name of package
       version='1.0.0',
       description='geographically weighted regression', #short <80chr description
-      url='https://github.com/pysal/gwr', #github repo
+      url='https://github.com/TaylorOshan/gwr', #github repo
       maintainer='Taylor M. Oshan', 
       maintainer_email='tayoshan@gmail.com', 
       test_suite = 'nose.collector',
