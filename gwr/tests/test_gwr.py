@@ -25,10 +25,6 @@ class TestGWRGaussian(unittest.TestCase):
         self.BS_NN = pysal.open(pysal.examples.get_path('georgia_BS_NN_listwise.csv'))
         self.GS_F = pysal.open(pysal.examples.get_path('georgia_GS_F_listwise.csv'))
         self.GS_NN = pysal.open(pysal.examples.get_path('georgia_GS_NN_listwise.csv'))
-        self.XB = pk.load(open(pysal.examples.get_path('XB.p'), 'rb',
-        encoding='latin1'))
-        self.err = pk.load(open(pysal.examples.get_path('err.p'), 'rb',
-            encoding='latin1'))
 
     def test_BS_F(self):
         est_Int = self.BS_F.by_col(' est_Intercept')

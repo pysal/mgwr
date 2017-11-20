@@ -19,10 +19,6 @@ class TestSelBW(unittest.TestCase):
         pov = np.array(data.by_col('PctPov')).reshape((-1,1)) 
         black = np.array(data.by_col('PctBlack')).reshape((-1,1))
         self.X = np.hstack([rural, pov, black])
-        self.XB = pk.load(open(pysal.examples.get_path('XB.p'), 'rb',
-        encoding='latin1'))
-        self.err = pk.load(open(pysal.examples.get_path('err.p'), 'rb',
-            encoding='latin1'))
   
     def test_golden_fixed_AICc(self):
         bw1 = 211027.34
