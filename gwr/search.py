@@ -52,9 +52,9 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False):
             b = np.round(b)
             d = np.round(d)
 
-        score_a = function(a)
+        #score_a = function(a)
         score_b = function(b)
-        score_c = function(c)
+        #score_c = function(c)
         score_d = function(d)
 
         if score_b <= score_d:
