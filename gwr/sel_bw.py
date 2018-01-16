@@ -195,9 +195,8 @@ class Sel_BW(object):
             else:
                 raise TypeError('Unsupported kernel function ', self.kernel)
 
-        function = lambda bw: getDiag[criterion](
-                GWR(self.coords, self.y, self.x_loc, bw, family=self.family,
-                    kernel=self.kernel, fixed=self.fixed, offset=self.offset).fit())
+        function = lambda bw: GWR(self.coords, self.y, self.X_loc, bw, family=self.family,
+                    kernel=self.kernel, fixed=self.fixed, offset=self.offset).fit(final=False)[self.criterion]
 
         if ktype % 2 == 0:
             int_score = True
@@ -210,9 +209,9 @@ class Sel_BW(object):
         return self.bw[0]
 
     def _bw(self):
-        gwr_func = lambda bw: getDiag[self.criterion](
-                GWR(self.coords, self.y, self.X_loc, bw, family=self.family,
-                    kernel=self.kernel, fixed=self.fixed, constant=self.constant).fit())
+        #gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant).fit())
+        gwr_func = lambda bw: GWR(self.coords, self.y, self.X_loc, bw, family=self.family,
+                        kernel=self.kernel, fixed=self.fixed, constant=self.constant,offset=self.offset).fit(final=False)[self.criterion]
         if self.search == 'golden_section':
             a,c = self._init_section(self.X_glob, self.X_loc, self.coords,
                     self.constant)
