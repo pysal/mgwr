@@ -284,6 +284,7 @@ class GWR(GLM):
                 trS = 0 #trace of S
                 RSS = 0
                 dev = 0
+                CV_temp = 0
                 n = self.n
                 for i in range(n):
                     nonzero_i = np.nonzero(self.W[i]) #local neighborhood
@@ -296,17 +297,17 @@ class GWR(GLM):
                     hat = np.dot(X_new[current_i],temp[:,current_i])[0][0]*rslt[3][current_i][0][0]
                     yhat = rslt[1][current_i][0][0]
                     err = Y_new[current_i][0][0]-yhat
+                    CV_temp += (err/(1-hat))**2
                     RSS += err*err
                     trS += hat
                     dev += self.family.resid_dev(Y_new[current_i][0][0], yhat)**2
-                
-                ll = -np.log(RSS)*n/2 - (1+np.log(np.pi/n*2))*n/2 #log likelihhd
-                
+            
                 if isinstance(self.family, Gaussian):
+                    ll = -np.log(RSS)*n/2 - (1+np.log(np.pi/n*2))*n/2 #log likelihood
                     aic = -2*ll + 2.0 * (trS + 1)
                     aicc = -2.0*ll + 2.0*n*(trS + 1.0)/(n - trS - 2.0)
                     bic = -2*ll + (trS+1) * np.log(n)
-                    cv = RSS/(n-trS)**2
+                    cv = CV_temp/n
                 elif isinstance(self.family, (Poisson, Binomial)):
                     aic = dev + 2.0 * trS
                     aicc = aic + 2.0 * trS * (trS + 1.0)/(n - trS - 1.0)
