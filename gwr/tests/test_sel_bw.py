@@ -13,7 +13,7 @@ from ..sel_bw import Sel_BW
 class TestSelBW(unittest.TestCase):
     def setUp(self):
         data = pysal.open(pysal.examples.get_path('GData_utm.csv'))
-        self.coords = zip(data.by_col('X'), data.by_col('Y'))
+        self.coords = list(zip(data.by_col('X'), data.by_col('Y')))
         self.y = np.array(data.by_col('PctBach')).reshape((-1,1))
         rural  = np.array(data.by_col('PctRural')).reshape((-1,1))
         pov = np.array(data.by_col('PctPov')).reshape((-1,1)) 
