@@ -15,7 +15,7 @@ from spglm.family import Gaussian, Poisson, Binomial
 class TestGWRGaussian(unittest.TestCase):
     def setUp(self):
         data = pysal.open(pysal.examples.get_path('GData_utm.csv'))
-        self.coords = zip(data.by_col('X'), data.by_col('Y'))
+        self.coords = list(zip(data.by_col('X'), data.by_col('Y')))
         self.y = np.array(data.by_col('PctBach')).reshape((-1,1))
         rural  = np.array(data.by_col('PctRural')).reshape((-1,1))
         pov = np.array(data.by_col('PctPov')).reshape((-1,1)) 
@@ -308,7 +308,7 @@ class TestGWRGaussian(unittest.TestCase):
 class TestGWRPoisson(unittest.TestCase):
     def setUp(self):
         data = pysal.open(pysal.examples.get_path('Tokyomortality.csv'), mode='Ur')
-        self.coords = zip(data.by_col('X_CENTROID'), data.by_col('Y_CENTROID'))
+        self.coords = list(zip(data.by_col('X_CENTROID'), data.by_col('Y_CENTROID')))
         self.y = np.array(data.by_col('db2564')).reshape((-1,1))
         self.off = np.array(data.by_col('eb2564')).reshape((-1,1))
         OCC  = np.array(data.by_col('OCC_TEC')).reshape((-1,1))
@@ -577,7 +577,7 @@ class TestGWRPoisson(unittest.TestCase):
 class TestGWRBinomial(unittest.TestCase):
     def setUp(self):
         data = pysal.open(pysal.examples.get_path('landslides.csv'))
-        self.coords = zip(data.by_col('X'), data.by_col('Y'))
+        self.coords = list(zip(data.by_col('X'), data.by_col('Y')))
         self.y = np.array(data.by_col('Landslid')).reshape((-1,1))
         ELEV  = np.array(data.by_col('Elev')).reshape((-1,1))
         SLOPE = np.array(data.by_col('Slope')).reshape((-1,1)) 

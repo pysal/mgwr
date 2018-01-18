@@ -16,7 +16,7 @@ class TestKernels(unittest.TestCase):
         y = np.arange(5,0, -1)
         np.random.shuffle(x)
         np.random.shuffle(y)
-        self.coords = np.array(zip(x, y))
+        self.coords = np.array(list(zip(x, y)))
         self.fix_gauss_kern = np.array([
         [ 1.        ,  0.38889556,  0.48567179,  0.48567179,  0.89483932],
         [ 0.38889556,  1.        ,  0.89483932,  0.64118039,  0.48567179],
