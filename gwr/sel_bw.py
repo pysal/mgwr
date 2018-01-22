@@ -192,8 +192,6 @@ class Sel_BW(object):
             else:
                 raise TypeError('Unsupported kernel function ', self.kernel)
 
-        #function = lambda bw: _fast_fit(bw)[self.criterion]
-
         if ktype % 2 == 0:
             int_score = True
         else:
@@ -203,7 +201,8 @@ class Sel_BW(object):
         self._bw()
 
         return self.bw[0]
-    
+            
+    #hold it for allowing lat-lons in next PR
     #_haversine formula to calculate distance
     def _haversine(lat1, lon1, lat2, lon2):
         R = 6371400 # Earth radius in meters
