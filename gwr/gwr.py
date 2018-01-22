@@ -222,7 +222,7 @@ class GWR(GLM):
 
         return W
 
-    def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls',final = True):
+    def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls'):
         """
         Method that fits a model with a particular estimation routine.
 
@@ -247,76 +247,36 @@ class GWR(GLM):
         self.fit_params['max_iter'] = max_iter
         self.fit_params['solve']= solve
         if solve.lower() == 'iwls':
-            if final:
-                m = self.W.shape[0]
-                params = np.zeros((m, self.k))
-                predy = np.zeros((m, 1))
-                v = np.zeros((m, 1))
-                w = np.zeros((m, 1))
-                z = np.zeros((m, self.n))
-                S = np.zeros((m, self.n))
-                R = np.zeros((m, self.n))
-                CCT = np.zeros((m, self.k))
-                #f = np.zeros((n, n))
-                p = np.zeros((m, 1))
-                for i in range(m):
-                    wi = self.W[i].reshape((-1,1))
-                    rslt = iwls(self.y, self.X, self.family, self.offset, None,
-                                ini_params, tol, max_iter, wi=wi)
-                    params[i,:] = rslt[0].T
-                    predy[i] = rslt[1][i]
-                    v[i] = rslt[2][i]
-                    w[i] = rslt[3][i]
-                    z[i] = rslt[4].flatten()
-                    R[i] = np.dot(self.X[i], rslt[5])
-                    ri = np.dot(self.X[i], rslt[5])
-                    S[i] = ri*np.reshape(rslt[4].flatten(), (1,-1))
-                    #dont need unless f is explicitly passed for
-                    #prediction of non-sampled points
-                    #cf = rslt[5] - np.dot(rslt[5], f)
-                    #CCT[i] = np.diag(np.dot(cf, cf.T/rslt[3]))
-                    CCT[i] = np.diag(np.dot(rslt[5], rslt[5].T))
-                S = S * (1.0/z)
-                return GWRResults(self, params, predy, S, CCT, w)
-        
-            #Minimum calculation in bandwidth searching
-            else:
-                trS = 0 #trace of S
-                RSS = 0
-                dev = 0
-                CV_temp = 0
-                n = self.n
-                for i in range(n):
-                    nonzero_i = np.nonzero(self.W[i]) #local neighborhood
-                    wi = self.W[i,nonzero_i].reshape((-1,1))
-                    X_new = self.X[nonzero_i]
-                    Y_new = self.y[nonzero_i]
-                    rslt = iwls(Y_new, X_new, self.family, self.offset[nonzero_i], None, ini_params, tol, max_iter, wi=wi)
-                    temp = rslt[5]
-                    current_i = np.where(wi==1)[0]
-                    hat = np.dot(X_new[current_i],temp[:,current_i])[0][0]*rslt[3][current_i][0][0]
-                    yhat = rslt[1][current_i][0][0]
-                    err = Y_new[current_i][0][0]-yhat
-                    CV_temp += (err/(1-hat))**2
-                    RSS += err*err
-                    trS += hat
-                    dev += self.family.resid_dev(Y_new[current_i][0][0], yhat)**2
-            
-                if isinstance(self.family, Gaussian):
-                    ll = -np.log(RSS)*n/2 - (1+np.log(np.pi/n*2))*n/2 #log likelihood
-                    aic = -2*ll + 2.0 * (trS + 1)
-                    aicc = -2.0*ll + 2.0*n*(trS + 1.0)/(n - trS - 2.0)
-                    bic = -2*ll + (trS+1) * np.log(n)
-                    cv = CV_temp/n
-                elif isinstance(self.family, (Poisson, Binomial)):
-                    aic = dev + 2.0 * trS
-                    aicc = aic + 2.0 * trS * (trS + 1.0)/(n - trS - 1.0)
-                    bic = dev + trS * np.log(n)
-                    cv = None
-                
-                return {'AICc': aicc,'AIC':aic, 'BIC': bic,'CV': cv}
-    
-    
+            m = self.W.shape[0]
+            params = np.zeros((m, self.k))
+            predy = np.zeros((m, 1))
+            v = np.zeros((m, 1))
+            w = np.zeros((m, 1))
+            z = np.zeros((m, self.n))
+            S = np.zeros((m, self.n))
+            R = np.zeros((m, self.n))
+            CCT = np.zeros((m, self.k))
+            #f = np.zeros((n, n))
+            p = np.zeros((m, 1))
+            for i in range(m):
+                wi = self.W[i].reshape((-1,1))
+                rslt = iwls(self.y, self.X, self.family, self.offset, None,
+                ini_params, tol, max_iter, wi=wi)
+                params[i,:] = rslt[0].T
+                predy[i] = rslt[1][i]
+                v[i] = rslt[2][i]
+                w[i] = rslt[3][i]
+                z[i] = rslt[4].flatten()
+                R[i] = np.dot(self.X[i], rslt[5])
+                ri = np.dot(self.X[i], rslt[5])
+                S[i] = ri*np.reshape(rslt[4].flatten(), (1,-1))
+                #dont need unless f is explicitly passed for
+                #prediction of non-sampled points
+                #cf = rslt[5] - np.dot(rslt[5], f)
+                #CCT[i] = np.diag(np.dot(cf, cf.T/rslt[3]))
+                CCT[i] = np.diag(np.dot(rslt[5], rslt[5].T))
+            S = S * (1.0/z)
+        return GWRResults(self, params, predy, S, CCT, w)
 
     def predict(self, points, P, exog_scale=None, exog_resid=None, fit_params={}):
         """

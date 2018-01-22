@@ -7,21 +7,17 @@ GWR Bandwidth selection class
 __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
 import numpy as np
-from scipy.spatial.distance import pdist, squareform
-from pysal.common import KDTree
-import pysal.spreg.user_output as USER
+from scipy.spatial.distance import cdist,pdist,squareform
+#from pysal.common import KDTree
+#import pysal.spreg.user_output as USER
 from spglm.family import Gaussian, Poisson, Binomial
+from spglm.iwls import iwls
 from .kernels import *
 from .search import golden_section, equal_interval
-from .gwr import GWR
-from .diagnostics import get_AICc, get_AIC, get_BIC, get_CV
 
-#function for each type of kernel
-kernels = {1: fix_gauss, 2: adapt_gauss, 3: fix_bisquare, 4:
-        adapt_bisquare, 5: fix_exp, 6:adapt_exp}
-
-#function to compute given diagnostic
-getDiag = {'AICc': get_AICc,'AIC':get_AIC, 'BIC': get_BIC, 'CV': get_CV}
+#kernel types where fk = fixed kernels and ak = adaptive kernels
+fk = {'gaussian': fix_gauss, 'bisquare': fix_bisquare, 'exponential': fix_exp}
+ak = {'gaussian': adapt_gauss, 'bisquare': adapt_bisquare, 'exponential': adapt_exp}
 
 class Sel_BW(object):
     """
@@ -52,7 +48,6 @@ class Sel_BW(object):
     constant       : boolean
                      True to include intercept (default) in model and False to exclude
                      intercept.
-
 
     Attributes
     ----------
@@ -141,7 +136,9 @@ class Sel_BW(object):
             self.offset = np.ones((len(y), 1))
         else:
             self.offset = offset * 1.0
+        
         self.constant = constant
+        self._build_dMat()
 
     def search(self, search='golden_section', criterion='AICc', bw_min=0.0,
             bw_max=0.0, interval=0.0, tol=1.0e-6, max_iter=200):
@@ -195,8 +192,7 @@ class Sel_BW(object):
             else:
                 raise TypeError('Unsupported kernel function ', self.kernel)
 
-        function = lambda bw: GWR(self.coords, self.y, self.X_loc, bw, family=self.family,
-                    kernel=self.kernel, fixed=self.fixed, offset=self.offset).fit(final=False)[self.criterion]
+        #function = lambda bw: _fast_fit(bw)[self.criterion]
 
         if ktype % 2 == 0:
             int_score = True
@@ -207,23 +203,115 @@ class Sel_BW(object):
         self._bw()
 
         return self.bw[0]
+    
+    #_haversine formula to calculate distance
+    def _haversine(lat1, lon1, lat2, lon2):
+        R = 6371400 # Earth radius in meters
+        dLat = radians(lat2 - lat1)
+        dLon = radians(lon2 - lon1)
+        lat1 = radians(lat1)
+        lat2 = radians(lat2)
+        a = sin(dLat/2)**2 + cos(lat1)*cos(lat2)*sin(dLon/2)**2
+        c = 2*asin(sqrt(a))
+        return R * c
+    
+    #return distance matrix NxM from lat-lons
+    def _cdist_sph(coords1,coords2):
+        n = len(coords1)
+        m = len(coords2)
+        mat = np.zeros((n,m))
+        for i in range(n):
+            for j in range(m):
+                mat[i][j] = _haversine(coords1[i][1], coords1[i][0], coords2[j][1], coords2[j][0])
+        return mat
+    
+    
+    def _build_dMat(self):
+        if self.fixed:
+            self.dmat = cdist(self.coords,self.coords)
+            self.sorted_dmat = None
+        else:
+            self.dmat = cdist(self.coords,self.coords)
+            self.sorted_dmat = np.sort(self.dmat)
+
+    #return the spatial kernel
+    def _build_kernel_fast(self, bw, points=None):
+        if self.fixed:
+            try:
+                W = fk[self.kernel](self.coords, bw, points, self.dmat,self.sorted_dmat)
+            except:
+                raise TypeError('Unsupported kernel function  ', self.kernel)
+        else:
+            try:
+                W = ak[self.kernel](self.coords, bw, points, self.dmat,self.sorted_dmat)
+            except:
+                raise TypeError('Unsupported kernel function  ', self.kernel)
+
+        return W
+
+    def _fast_fit(self, bw,ini_params=None, tol=1.0e-5, max_iter=20,constant=True):
+        W = self._build_kernel_fast(bw)
+        trS = 0 #trace of S
+        RSS = 0
+        dev = 0
+        CV_score = 0
+        n = self.y.shape[0]
+        for i in range(n):
+            nonzero_i = np.nonzero(W[i]) #local neighborhood
+            wi = W[i,nonzero_i].reshape((-1,1))
+            X_new = self.X_loc[nonzero_i]
+            Y_new = self.y[nonzero_i]
+            current_i = np.where(nonzero_i[0]==i)[0][0]
+            if constant:
+                ones = np.ones(X_new.shape[0]).reshape((-1,1))
+                X_new = np.hstack([ones,X_new])
+            #Using OLS for Gaussian
+            if isinstance(self.family, Gaussian):
+                X_new = X_new * np.sqrt(wi)
+                Y_new = Y_new * np.sqrt(wi)
+                inv_xtx_xt = np.dot(np.linalg.inv(np.dot(X_new.T,X_new)),X_new.T)
+                hat = np.dot(X_new[current_i],inv_xtx_xt[:,current_i])
+                yhat = np.sum(np.dot(X_new,inv_xtx_xt[:,current_i]).reshape(-1,1)*Y_new)
+                err = Y_new[current_i][0]-yhat
+                RSS += err*err
+                trS += hat
+                CV_score += (err/(1-hat))**2
+            #Using IWLS for GLMs
+            elif isinstance(self.family, (Poisson, Binomial)):
+                rslt = iwls(Y_new, X_new, self.family, self.offset[nonzero_i], None, ini_params, tol, max_iter, wi=wi)
+                xtx_inv_xt = rslt[5]
+                current_i = np.where(wi==1)[0]
+                hat = np.dot(X_new[current_i],xtx_inv_xt[:,current_i])[0][0]*rslt[3][current_i][0][0]
+                yhat = rslt[1][current_i][0][0]
+                err = Y_new[current_i][0][0]-yhat
+                trS += hat
+                dev += self.family.resid_dev(Y_new[current_i][0][0], yhat)**2
+        
+        if isinstance(self.family, Gaussian):
+            ll = -np.log(RSS)*n/2 - (1+np.log(np.pi/n*2))*n/2 #log likelihood
+            aic = -2*ll + 2.0 * (trS + 1)
+            aicc = -2.0*ll + 2.0*n*(trS + 1.0)/(n - trS - 2.0)
+            bic = -2*ll + (trS+1) * np.log(n)
+            cv = CV_score/n
+        elif isinstance(self.family, (Poisson, Binomial)):
+            aic = dev + 2.0 * trS
+            aicc = aic + 2.0 * trS * (trS + 1.0)/(n - trS - 1.0)
+            bic = dev + trS * np.log(n)
+            cv = None
+
+        return {'AICc': aicc,'AIC':aic, 'BIC': bic,'CV': cv}
+
 
     def _bw(self):
-        #gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant).fit())
-        gwr_func = lambda bw: GWR(self.coords, self.y, self.X_loc, bw, family=self.family,
-                        kernel=self.kernel, fixed=self.fixed, constant=self.constant,offset=self.offset).fit(final=False)[self.criterion]
+        gwr_func = lambda bw: self._fast_fit(bw,constant=self.constant)[self.criterion]
         if self.search == 'golden_section':
-            a,c = self._init_section(self.X_glob, self.X_loc, self.coords,
-                    self.constant)
+            a,c = self._init_section(self.X_glob, self.X_loc, self.coords,self.constant)
             delta = 0.38197 #1 - (np.sqrt(5.0)-1.0)/2.0
-            self.bw = golden_section(a, c, delta, gwr_func, self.tol,
-                    self.max_iter, self.int_score)
+            self.bw = golden_section(a, c, delta, gwr_func, self.tol,self.max_iter, self.int_score)
         elif self.search == 'interval':
-            self.bw = equal_interval(self.bw_min, self.bw_max, self.interval,
-                    gwr_func, self.int_score)
+            self.bw = equal_interval(self.bw_min, self.bw_max, self.interval,gwr_func, self.int_score)
         else:
             raise TypeError('Unsupported computational search method ', search)
-
 
     def _init_section(self, X_glob, X_loc, coords, constant):
         if len(X_glob) > 0:
