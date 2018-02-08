@@ -11,7 +11,7 @@ from scipy.spatial.distance import cdist,pdist,squareform
 #from pysal.common import KDTree
 #import pysal.spreg.user_output as USER
 from spglm.family import Gaussian, Poisson, Binomial
-from spglm.iwls import iwls
+from spglm.iwls import iwls,_compute_betas_gwr
 from .kernels import *
 from .search import golden_section, equal_interval
 
@@ -202,29 +202,7 @@ class Sel_BW(object):
 
         return self.bw[0]
             
-    #hold it for allowing lat-lons in next PR
-    #_haversine formula to calculate distance
-    def _haversine(lat1, lon1, lat2, lon2):
-        R = 6371400 # Earth radius in meters
-        dLat = radians(lat2 - lat1)
-        dLon = radians(lon2 - lon1)
-        lat1 = radians(lat1)
-        lat2 = radians(lat2)
-        a = sin(dLat/2)**2 + cos(lat1)*cos(lat2)*sin(dLon/2)**2
-        c = 2*asin(sqrt(a))
-        return R * c
-    
-    #return distance matrix NxM from lat-lons
-    def _cdist_sph(coords1,coords2):
-        n = len(coords1)
-        m = len(coords2)
-        mat = np.zeros((n,m))
-        for i in range(n):
-            for j in range(m):
-                mat[i][j] = _haversine(coords1[i][1], coords1[i][0], coords2[j][1], coords2[j][0])
-        return mat
-    
-    
+
     def _build_dMat(self):
         if self.fixed:
             self.dmat = cdist(self.coords,self.coords)
@@ -264,23 +242,23 @@ class Sel_BW(object):
             if constant:
                 ones = np.ones(X_new.shape[0]).reshape((-1,1))
                 X_new = np.hstack([ones,X_new])
+            
             #Using OLS for Gaussian
             if isinstance(self.family, Gaussian):
-                X_new = X_new * np.sqrt(wi)
-                Y_new = Y_new * np.sqrt(wi)
-                inv_xtx_xt = np.dot(np.linalg.inv(np.dot(X_new.T,X_new)),X_new.T)
+                betas, inv_xtx_xt = _compute_betas_gwr(Y_new,X_new,wi)
                 hat = np.dot(X_new[current_i],inv_xtx_xt[:,current_i])
-                yhat = np.sum(np.dot(X_new,inv_xtx_xt[:,current_i]).reshape(-1,1)*Y_new)
+                yhat = np.dot(X_new[current_i],betas)[0]
                 err = Y_new[current_i][0]-yhat
                 RSS += err*err
                 trS += hat
                 CV_score += (err/(1-hat))**2
+            
             #Using IWLS for GLMs
             elif isinstance(self.family, (Poisson, Binomial)):
                 rslt = iwls(Y_new, X_new, self.family, self.offset[nonzero_i], None, ini_params, tol, max_iter, wi=wi)
-                xtx_inv_xt = rslt[5]
+                inv_xtx_xt = rslt[5]
                 current_i = np.where(wi==1)[0]
-                hat = np.dot(X_new[current_i],xtx_inv_xt[:,current_i])[0][0]*rslt[3][current_i][0][0]
+                hat = np.dot(X_new[current_i],inv_xtx_xt[:,current_i])[0][0]*rslt[3][current_i][0][0]
                 yhat = rslt[1][current_i][0][0]
                 err = Y_new[current_i][0][0]-yhat
                 trS += hat
