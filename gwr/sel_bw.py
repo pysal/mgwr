@@ -243,7 +243,7 @@ class Sel_BW(object):
                 ones = np.ones(X_new.shape[0]).reshape((-1,1))
                 X_new = np.hstack([ones,X_new])
             
-            #Using OLS for Gaussian
+            #Using iwls._compute_betas_gwr for Gaussian
             if isinstance(self.family, Gaussian):
                 betas, inv_xtx_xt = _compute_betas_gwr(Y_new,X_new,wi)
                 hat = np.dot(X_new[current_i],inv_xtx_xt[:,current_i])
@@ -253,16 +253,15 @@ class Sel_BW(object):
                 trS += hat
                 CV_score += (err/(1-hat))**2
             
-            #Using IWLS for GLMs
+            #Using ilws for GLMs
             elif isinstance(self.family, (Poisson, Binomial)):
                 rslt = iwls(Y_new, X_new, self.family, self.offset[nonzero_i], None, ini_params, tol, max_iter, wi=wi)
                 inv_xtx_xt = rslt[5]
-                current_i = np.where(wi==1)[0]
-                hat = np.dot(X_new[current_i],inv_xtx_xt[:,current_i])[0][0]*rslt[3][current_i][0][0]
-                yhat = rslt[1][current_i][0][0]
-                err = Y_new[current_i][0][0]-yhat
+                hat = np.dot(X_new[current_i],inv_xtx_xt[:,current_i])*rslt[3][current_i][0]
+                yhat = rslt[1][current_i][0]
+                err = Y_new[current_i][0]-yhat
                 trS += hat
-                dev += self.family.resid_dev(Y_new[current_i][0][0], yhat)**2
+                dev += self.family.resid_dev(Y_new[current_i][0], yhat)**2
         
         if isinstance(self.family, Gaussian):
             ll = -np.log(RSS)*n/2 - (1+np.log(np.pi/n*2))*n/2 #log likelihood
