@@ -5,6 +5,7 @@ __author__ = "Taylor Oshan"
 import numpy as np
 from copy import deepcopy
 import copy
+from collections import namedtuple
 
 def golden_section(a, c, delta, function, tol, max_iter, int_score=False):
     """
@@ -143,6 +144,9 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False):
 
     return opt_val, opt_score, output
 
+MGWR_BW_Result = namedtuple('MGWR_BW_RESULT', ['bws_','bw_trace', 'kernel_values', 'scores',
+                                               'partial_predictions','model_residuals_',
+                                               'partial_residuals_', 'objective_functions'])
 
 def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         gwr_func, bw_func, sel_func):
@@ -167,15 +171,16 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
     VALs = []
     FUNCs = []
     try:
-        from tqdm import tqdm
+        from tqdm import tqdm #if they have it, let users have a progress bar
     except ImportError:
-        def tqdm(x):
+        def tqdm(x): #otherwise, just passthrough the range
             return x
     for iters in tqdm(range(1, max_iter+1)):
         new_XB = np.zeros_like(X)
         bws = []
         vals = []
         funcs = []
+        current_partial_residuals = []
         ests = np.zeros_like(X)
         f_XB = XB.copy()
         f_err = err.copy()
@@ -194,6 +199,7 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
             bws.append(copy.deepcopy(bw))
             ests[:,i] = est
             vals.append(bw_class.bw[1])
+            current_partial_residuals.append(err.copy())
 
         predy = np.sum(np.multiply(ests, X), axis=1).reshape((-1,1))
         num = np.sum((new_XB - XB)**2)/n
@@ -210,9 +216,9 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         BWs.append(copy.deepcopy(bws))
         VALs.append(copy.deepcopy(vals))
         FUNCs.append(copy.deepcopy(funcs))
-
         if delta < tol:
             break
 
     opt_bws = BWs[-1]
-    return opt_bws, np.array(BWs), np.array(VALs), np.array(scores), f_XB, f_err, FUNCs
+    return MGWR_BW_Result(opt_bws, np.array(BWs), np.array(VALs), 
+                          np.array(scores), f_XB, f_err, current_partial_residuals, FUNCs)
