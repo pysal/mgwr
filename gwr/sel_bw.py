@@ -13,11 +13,13 @@ from scipy.spatial.distance import cdist,pdist,squareform
 from spglm.family import Gaussian, Poisson, Binomial
 from spglm.iwls import iwls,_compute_betas_gwr
 from .kernels import *
+from .gwr import GWR
 from .search import golden_section, equal_interval
+from .diagnostics import get_AICc, get_AIC, get_BIC, get_CV
 
-#kernel types where fk = fixed kernels and ak = adaptive kernels
-fk = {'gaussian': fix_gauss, 'bisquare': fix_bisquare, 'exponential': fix_exp}
-ak = {'gaussian': adapt_gauss, 'bisquare': adapt_bisquare, 'exponential': adapt_exp}
+kernels = {1: fix_gauss, 2: adapt_gauss, 3: fix_bisquare, 4:
+    adapt_bisquare, 5: fix_exp, 6:adapt_exp}
+getDiag = {'AICc': get_AICc,'AIC':get_AIC, 'BIC': get_BIC, 'CV': get_CV}
 
 class Sel_BW(object):
     """
@@ -226,60 +228,8 @@ class Sel_BW(object):
 
         return W
 
-    def _fast_fit(self, bw,ini_params=None, tol=1.0e-5, max_iter=20,constant=True):
-        W = self._build_kernel_fast(bw)
-        trS = 0 #trace of S
-        RSS = 0
-        dev = 0
-        CV_score = 0
-        n = self.y.shape[0]
-        for i in range(n):
-            nonzero_i = np.nonzero(W[i]) #local neighborhood
-            wi = W[i,nonzero_i].reshape((-1,1))
-            X_new = self.X_loc[nonzero_i]
-            Y_new = self.y[nonzero_i]
-            current_i = np.where(nonzero_i[0]==i)[0][0]
-            if constant:
-                ones = np.ones(X_new.shape[0]).reshape((-1,1))
-                X_new = np.hstack([ones,X_new])
-            
-            #Using iwls._compute_betas_gwr for Gaussian
-            if isinstance(self.family, Gaussian):
-                betas, inv_xtx_xt = _compute_betas_gwr(Y_new,X_new,wi)
-                hat = np.dot(X_new[current_i],inv_xtx_xt[:,current_i])
-                yhat = np.dot(X_new[current_i],betas)[0]
-                err = Y_new[current_i][0]-yhat
-                RSS += err*err
-                trS += hat
-                CV_score += (err/(1-hat))**2
-            
-            #Using ilws for GLMs
-            elif isinstance(self.family, (Poisson, Binomial)):
-                rslt = iwls(Y_new, X_new, self.family, self.offset[nonzero_i], None, ini_params, tol, max_iter, wi=wi)
-                inv_xtx_xt = rslt[5]
-                hat = np.dot(X_new[current_i],inv_xtx_xt[:,current_i])*rslt[3][current_i][0]
-                yhat = rslt[1][current_i][0]
-                err = Y_new[current_i][0]-yhat
-                trS += hat
-                dev += self.family.resid_dev(Y_new[current_i][0], yhat)**2
-        
-        if isinstance(self.family, Gaussian):
-            ll = -np.log(RSS)*n/2 - (1+np.log(np.pi/n*2))*n/2 #log likelihood
-            aic = -2*ll + 2.0 * (trS + 1)
-            aicc = -2.0*ll + 2.0*n*(trS + 1.0)/(n - trS - 2.0)
-            bic = -2*ll + (trS+1) * np.log(n)
-            cv = CV_score/n
-        elif isinstance(self.family, (Poisson, Binomial)):
-            aic = dev + 2.0 * trS
-            aicc = aic + 2.0 * trS * (trS + 1.0)/(n - trS - 1.0)
-            bic = dev + trS * np.log(n)
-            cv = None
-
-        return {'AICc': aicc,'AIC':aic, 'BIC': bic,'CV': cv}
-
-
     def _bw(self):
-        gwr_func = lambda bw: self._fast_fit(bw,constant=self.constant)[self.criterion]
+        gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant).fit())
         if self.search == 'golden_section':
             a,c = self._init_section(self.X_glob, self.X_loc, self.coords,self.constant)
             delta = 0.38197 #1 - (np.sqrt(5.0)-1.0)/2.0
