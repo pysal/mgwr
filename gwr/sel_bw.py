@@ -166,7 +166,7 @@ class Sel_BW(object):
         bw             : scalar or array
                          optimal bandwidth value
         """
-        self.search = search
+        self.search_method = search
         self.criterion = criterion
         self.bw_min = bw_min
         self.bw_max = bw_max
@@ -219,13 +219,16 @@ class Sel_BW(object):
 
         self._optimized_function = gwr_func
 
-        if self.search == 'golden_section':
-            a,c = self._init_section(self.X_glob, self.X_loc, self.coords,self.constant)
+        if self.search_method == 'golden_section':
+            a,c = self._init_section(self.X_glob, self.X_loc, self.coords,
+                    self.constant)
             delta = 0.38197 #1 - (np.sqrt(5.0)-1.0)/2.0
-            self.bw = golden_section(a, c, delta, gwr_func, self.tol,self.max_iter, self.int_score)
-        elif self.search == 'interval':
-            self.bw = equal_interval(self.bw_min, self.bw_max, self.interval,gwr_func, self.int_score)
-        elif self.search == 'scipy':
+            self.bw = golden_section(a, c, delta, gwr_func, self.tol,
+                    self.max_iter, self.int_score)
+        elif self.search_method == 'interval':
+            self.bw = equal_interval(self.bw_min, self.bw_max, self.interval,
+                    gwr_func, self.int_score)
+        elif self.search_method == 'scipy':
             if self.bw_min == self.bw_max == 0:
                 self.bw_min, self.bw_max = self._init_section(self.X_glob, self.X_loc, self.coords, self.constant)
             elif self.bw_min == self.bw_max:
