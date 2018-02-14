@@ -847,6 +847,14 @@ class GWRResults(GLMResults):
         raise NotImplementedError('Not implemented for GWR')
 
     @cache_readonly
+    def R2(self):
+        if isinstance(self.family, Gaussian):
+            RSS = np.sum((self.y.reshape((-1,1)) - np.mean(y))**2)
+            TSS = np.sum((self.y.reshape((-1,1)) -
+                self.predy.reshape((-1,1)))**2)
+            return 1 - (RSS / TSS)
+
+    @cache_readonly
     def aic(self):
         return get_AIC(self)
 
