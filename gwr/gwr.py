@@ -849,8 +849,8 @@ class GWRResults(GLMResults):
     @cache_readonly
     def R2(self):
         if isinstance(self.family, Gaussian):
-            RSS = np.sum((self.y.reshape((-1,1)) - np.mean(y))**2)
-            TSS = np.sum((self.y.reshape((-1,1)) -
+            TSS = np.sum((self.y.reshape((-1,1)) - np.mean(self.y.reshape((-1,1))))**2)
+            RSS = np.sum((self.y.reshape((-1,1)) -
                 self.predy.reshape((-1,1)))**2)
             return 1 - (RSS / TSS)
 
