@@ -54,11 +54,6 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False):
         if int_score:
             b = np.round(b)
             d = np.round(d)
-
-        #score_a = function(a)
-        #score_b = function(b)
-        #score_c = function(c)
-        #score_d = function(d)
         
         if b in dict:
             score_b = dict[b]
