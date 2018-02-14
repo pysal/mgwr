@@ -213,23 +213,9 @@ class Sel_BW(object):
             self.dmat = cdist(self.coords,self.coords)
             self.sorted_dmat = np.sort(self.dmat)
 
-    #return the spatial kernel
-    def _build_kernel_fast(self, bw, points=None):
-        if self.fixed:
-            try:
-                W = fk[self.kernel](self.coords, bw, points, self.dmat,self.sorted_dmat)
-            except:
-                raise TypeError('Unsupported kernel function  ', self.kernel)
-        else:
-            try:
-                W = ak[self.kernel](self.coords, bw, points, self.dmat,self.sorted_dmat)
-            except:
-                raise TypeError('Unsupported kernel function  ', self.kernel)
-
-        return W
 
     def _bw(self):
-        gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant).fit())
+        gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant,dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit())
         if self.search == 'golden_section':
             a,c = self._init_section(self.X_glob, self.X_loc, self.coords,self.constant)
             delta = 0.38197 #1 - (np.sqrt(5.0)-1.0)/2.0

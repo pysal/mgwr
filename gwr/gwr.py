@@ -186,7 +186,7 @@ class GWR(GLM):
 
     """
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
-            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True):
+            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True,dmat=None,sorted_dmat=None):
         """
         Initialize class
         """
@@ -202,21 +202,25 @@ class GWR(GLM):
         else:
             self.offset = offset * 1.0
         self.fit_params = {}
-        self.W = self._build_W(fixed, kernel, coords, bw)
+        
         self.points = None
         self.exog_scale = None
         self.exog_resid = None
         self.P = None
+        self.dmat = dmat
+        self.sorted_dmat = sorted_dmat
+        self.W = self._build_W(fixed, kernel, coords, bw)
+
 
     def _build_W(self, fixed, kernel, coords, bw, points=None):
         if fixed:
             try:
-                W = fk[kernel](coords, bw, points)
+                W = fk[kernel](coords, bw, points, self.dmat, self.sorted_dmat)
             except:
                 raise TypeError('Unsupported kernel function  ', kernel)
         else:
             try:
-                W = ak[kernel](coords, bw, points)
+                 W = ak[kernel](coords, bw, points, self.dmat, self.sorted_dmat)
             except:
                 raise TypeError('Unsupported kernel function  ', kernel)
 
