@@ -12,32 +12,32 @@ from scipy.spatial.distance import cdist
 #adaptive specifications should be parameterized with nn-1 to match original gwr
 #implementation. That is, pysal counts self neighbors with knn automatically.
 
-def fix_gauss(coords, bw, points=None):
+def fix_gauss(coords, bw, points=None, dmat=None,sorted_dmat=None):
     w = _Kernel(coords, function='gwr_gaussian', bandwidth=bw,
-            truncate=False, points=points)
+            truncate=False, points=points, dmat=dmat,sorted_dmat=sorted_dmat)
     return w.kernel
 
-def adapt_gauss(coords, nn, points=None):
+def adapt_gauss(coords, nn, points=None, dmat=None,sorted_dmat=None):
     w = _Kernel(coords, fixed=False, k=nn-1, function='gwr_gaussian',
-            truncate=False, points=points)
+            truncate=False, points=points, dmat=dmat,sorted_dmat=sorted_dmat)
     return w.kernel
 
-def fix_bisquare(coords, bw, points=None):
-    w = _Kernel(coords, function='bisquare', bandwidth=bw, points=points)
+def fix_bisquare(coords, bw, points=None, dmat=None,sorted_dmat=None):
+    w = _Kernel(coords, function='bisquare', bandwidth=bw, points=points, dmat=dmat,sorted_dmat=sorted_dmat)
     return w.kernel
 
-def adapt_bisquare(coords, nn, points=None):
-    w = _Kernel(coords, fixed=False, k=nn-1, function='bisquare', points=points)
+def adapt_bisquare(coords, nn, points=None, dmat=None,sorted_dmat=None):
+    w = _Kernel(coords, fixed=False, k=nn-1, function='bisquare', points=points, dmat=dmat,sorted_dmat=sorted_dmat)
     return w.kernel
 
-def fix_exp(coords, bw, points=None):
+def fix_exp(coords, bw, points=None, dmat=None,sorted_dmat=None):
     w = _Kernel(coords, function='exponential', bandwidth=bw,
-            truncate=False, points=points)
+            truncate=False, points=points, dmat=dmat,sorted_dmat=sorted_dmat)
     return w.kernel
 
-def adapt_exp(coords, nn, points=None):
+def adapt_exp(coords, nn, points=None, dmat=None,sorted_dmat=None):
     w = _Kernel(coords, fixed=False, k=nn-1, function='exponential',
-            truncate=False, points=points)
+            truncate=False, points=points, dmat=dmat,sorted_dmat=sorted_dmat)
     return w.kernel
 
 #Customized Kernel class user for GWR because the default PySAL kernel class
@@ -51,7 +51,9 @@ class _Kernel(object):
     """
     def __init__(self, data, bandwidth=None, fixed=True, k=None,
                  function='triangular', eps=1.0000001, ids=None, truncate=True,
-                 points=None): #Added truncate flag
+                 points=None, dmat=None,sorted_dmat=None): #Added truncate flag
+        
+
         if issubclass(type(data), scipy.spatial.KDTree):
             self.data = data.data
             data = self.data
@@ -61,11 +63,22 @@ class _Kernel(object):
             self.k = int(k) + 1
         else:
             self.k = k
-        if points is None:
-            self.dmat = cdist(self.data, self.data)
+        
+        self.searching = True
+        
+        if dmat is None:
+            self.searching = False
+        
+        if self.searching:
+            self.dmat = dmat
+            self.sorted_dmat = sorted_dmat
         else:
-            self.points = points
-            self.dmat = cdist(self.points, self.data)
+            if points is None:
+                self.dmat = cdist(self.data, self.data)
+            else:
+                self.points = points
+                self.dmat = cdist(self.points, self.data)
+
         self.function = function.lower()
         self.fixed = fixed
         self.eps = eps
@@ -80,16 +93,22 @@ class _Kernel(object):
         else:
             self._set_bw()
         self.kernel = self._kernel_funcs(self.dmat/self.bandwidth)
-
         if self.trunc:
             mask = np.repeat(self.bandwidth, len(self.data), axis=1)
             self.kernel[(self.dmat >= mask)] = 0
-
+                
     def _set_bw(self):
-        if self.k is not None:
-            dmat = np.sort(self.dmat)[:,:self.k]
+        if self.searching:
+            if self.k is not None:
+                dmat = self.sorted_dmat[:,:self.k]
+            else:
+                dmat = self.dmat
         else:
-            dmat = self.dmat
+            if self.k is not None:
+                dmat = np.sort(self.dmat)[:,:self.k]
+            else:
+                dmat = self.dmat
+        
         if self.fixed:
             # use max knn distance as bandwidth
             bandwidth = dmat.max() * self.eps
@@ -99,7 +118,6 @@ class _Kernel(object):
             # use local max knn distance
             self.bandwidth = dmat.max(axis=1) * self.eps
             self.bandwidth.shape = (self.bandwidth.size, 1)
-
 
     def _kernel_funcs(self, zs):
         # functions follow Anselin and Rey (2010) table 5.4

@@ -48,16 +48,24 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False):
     diff = 1.0e9
     iters  = 0
     output = []
+    dict = {}
     while np.abs(diff) > tol and iters < max_iter:
         iters += 1
         if int_score:
             b = np.round(b)
             d = np.round(d)
-
-        #score_a = function(a)
-        score_b = function(b)
-        #score_c = function(c)
-        score_d = function(d)
+        
+        if b in dict:
+            score_b = dict[b]
+        else:
+            score_b = function(b)
+            dict[b] = score_b
+        
+        if d in dict:
+            score_d = dict[d]
+        else:
+            score_d = function(d)
+            dict[d] = score_d
 
 
         if score_b <= score_d:
