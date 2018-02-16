@@ -8,8 +8,7 @@ __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
 import numpy as np
 from scipy.spatial.distance import cdist,pdist,squareform
-#from pysal.common import KDTree
-#import pysal.spreg.user_output as USER
+from scipy.optimize import minimize_scalar
 from spglm.family import Gaussian, Poisson, Binomial
 from spglm.iwls import iwls,_compute_betas_gwr
 from .kernels import *
@@ -167,7 +166,7 @@ class Sel_BW(object):
         bw             : scalar or array
                          optimal bandwidth value
         """
-        self.search = search
+        self.search_method = search
         self.criterion = criterion
         self.bw_min = bw_min
         self.bw_max = bw_max
@@ -198,7 +197,7 @@ class Sel_BW(object):
             int_score = True
         else:
             int_score = False
-        self.int_score = int_score
+        self.int_score = int_score #isn't this just self.fixed?
 
         self._bw()
 
@@ -215,13 +214,27 @@ class Sel_BW(object):
 
 
     def _bw(self):
+
         gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant,dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit())
-        if self.search == 'golden_section':
-            a,c = self._init_section(self.X_glob, self.X_loc, self.coords,self.constant)
+
+        self._optimized_function = gwr_func
+
+        if self.search_method == 'golden_section':
+            a,c = self._init_section(self.X_glob, self.X_loc, self.coords,
+                    self.constant)
             delta = 0.38197 #1 - (np.sqrt(5.0)-1.0)/2.0
-            self.bw = golden_section(a, c, delta, gwr_func, self.tol,self.max_iter, self.int_score)
-        elif self.search == 'interval':
-            self.bw = equal_interval(self.bw_min, self.bw_max, self.interval,gwr_func, self.int_score)
+            self.bw = golden_section(a, c, delta, gwr_func, self.tol,
+                    self.max_iter, self.int_score)
+        elif self.search_method == 'interval':
+            self.bw = equal_interval(self.bw_min, self.bw_max, self.interval,
+                    gwr_func, self.int_score)
+        elif self.search_method == 'scipy':
+            if self.bw_min == self.bw_max == 0:
+                self.bw_min, self.bw_max = self._init_section(self.X_glob, self.X_loc, self.coords, self.constant)
+            elif self.bw_min == self.bw_max:
+                raise Exception("Minimum bandwidth and maximum bandwidth must be distinct for scipy solver.")
+            self._optimize_result = minimize_scalar(gwr_func, bounds=(self.bw_min,self.bw_max), method='bounded')
+            self.bw = [np.round(self._optimize_result.x) if not self.fixed else self._optimize_result.x]
         else:
             raise TypeError('Unsupported computational search method ', search)
 
@@ -244,13 +257,9 @@ class Sel_BW(object):
             a = 40 + 2 * n_vars
             c = n
         else:
-            nn = 40 + 2 * n_vars
-            sq_dists = squareform(pdist(coords))
-            sort_dists = np.sort(sq_dists, axis=1)
-            min_dists = sort_dists[:,nn-1]
-            max_dists = sort_dists[:,-1]
-            a = np.min(min_dists)/2.0
-            c = np.max(max_dists)/2.0
+            sq_dists = pdist(coords)
+            a = np.min(sq_dists)/2.0
+            c = np.max(sq_dists)*2.0
 
         if a < self.bw_min:
             a = self.bw_min
