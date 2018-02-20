@@ -122,7 +122,7 @@ class Sel_BW(object):
 
     """
     def __init__(self, coords, y, X_loc, X_glob=None, family=Gaussian(),
-            offset=None, kernel='bisquare', fixed=False, constant=True):
+            offset=None, kernel='bisquare', fixed=False, constant=True,Ziqi=True):
         self.coords = coords
         self.y = y
         self.X_loc = X_loc
@@ -139,6 +139,7 @@ class Sel_BW(object):
             self.offset = offset * 1.0
         
         self.constant = constant
+        self.Ziqi = Ziqi
         self._build_dMat()
 
     def search(self, search='golden_section', criterion='AICc', bw_min=0.0,
@@ -214,9 +215,14 @@ class Sel_BW(object):
 
 
     def _bw(self):
-
-        gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant,dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit())
-
+        if self.Ziqi:
+            print("Using Ziqi's fast_search fit")
+            gwr_func = lambda bw: GWR(self.coords, self.y, self.X_loc, bw, family=self.family,kernel=self.kernel, fixed=self.fixed, constant=self.constant,offset=self.offset)._fast_search()[self.criterion]
+        
+        else:
+            print ("Using current fit func")
+            gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant,dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit())
+        
         self._optimized_function = gwr_func
 
         if self.search_method == 'golden_section':

@@ -12,7 +12,7 @@ from scipy.stats import t
 import pysal.spreg.user_output as USER
 from spglm.family import Gaussian, Binomial, Poisson
 from spglm.glm import GLM, GLMResults
-from spglm.iwls import iwls
+from spglm.iwls import iwls,_compute_betas_gwr
 from spglm.utils import cache_readonly
 from .diagnostics import get_AIC, get_AICc, get_BIC
 from .kernels import *
@@ -186,7 +186,7 @@ class GWR(GLM):
 
     """
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
-            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True,dmat=None,sorted_dmat=None):
+            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True, dmat=None,sorted_dmat=None):
         """
         Initialize class
         """
@@ -281,6 +281,57 @@ class GWR(GLM):
                 CCT[i] = np.diag(np.dot(rslt[5], rslt[5].T))
             S = S * (1.0/z)
         return GWRResults(self, params, predy, S, CCT, w)
+            
+    def _fast_search(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls'):
+        trS = 0 #trace of S
+        RSS = 0
+        dev = 0
+        CV_score = 0
+        n = self.n
+        for i in range(n):
+            if not self.fixed:
+                nonzero_i = np.nonzero(self.W[i]) #local neighborhood
+                wi = self.W[i,nonzero_i].reshape((-1,1))
+                X_new = self.X[nonzero_i]
+                Y_new = self.y[nonzero_i]
+            else:
+                wi = self.W[i].reshape((-1,1))
+                X_new = self.X
+                Y_new = self.y
+            
+            current_i = np.where(wi==1)[0][0]
+            
+            if isinstance(self.family, Gaussian):
+                betas, inv_xtx_xt = _compute_betas_gwr(Y_new,X_new,wi)
+                hat = np.dot(X_new[current_i],inv_xtx_xt[:,current_i])
+                yhat = np.dot(X_new[current_i],betas)[0]
+                err = Y_new[current_i][0]-yhat
+                RSS += err*err
+                trS += hat
+                CV_score += (err/(1-hat))**2
+                
+            elif isinstance(self.family, (Poisson, Binomial)):
+                rslt = iwls(Y_new, X_new, self.family, self.offset[nonzero_i], None, ini_params, tol, max_iter, wi=wi)
+                inv_xtx_xt = rslt[5]
+                hat = np.dot(X_new[current_i],inv_xtx_xt[:,current_i])*rslt[3][current_i][0]
+                yhat = rslt[1][current_i][0]
+                err = Y_new[current_i][0]-yhat
+                trS += hat
+                dev += self.family.resid_dev(Y_new[current_i][0], yhat)**2
+
+        if isinstance(self.family, Gaussian):
+            ll = -np.log(RSS)*n/2 - (1+np.log(np.pi/n*2))*n/2 #log likelihood
+            aic = -2*ll + 2.0 * (trS + 1)
+            aicc = -2.0*ll + 2.0*n*(trS + 1.0)/(n - trS - 2.0)
+            bic = -2*ll + (trS+1) * np.log(n)
+            cv = CV_score/n
+        elif isinstance(self.family, (Poisson, Binomial)):
+            aic = dev + 2.0 * trS
+            aicc = aic + 2.0 * trS * (trS + 1.0)/(n - trS - 1.0)
+            bic = dev + trS * np.log(n)
+            cv = None
+
+        return {'AICc': aicc,'AIC':aic, 'BIC': bic,'CV': cv}
 
     def predict(self, points, P, exog_scale=None, exog_resid=None, fit_params={}):
         """
