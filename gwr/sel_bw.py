@@ -122,7 +122,7 @@ class Sel_BW(object):
 
     """
     def __init__(self, coords, y, X_loc, X_glob=None, family=Gaussian(),
-            offset=None, kernel='bisquare', fixed=False, constant=True,Ziqi=True):
+            offset=None, kernel='bisquare', fixed=False, constant=True):
         self.coords = coords
         self.y = y
         self.X_loc = X_loc
@@ -139,7 +139,6 @@ class Sel_BW(object):
             self.offset = offset * 1.0
         
         self.constant = constant
-        self.Ziqi = Ziqi
         self._build_dMat()
 
     def search(self, search='golden_section', criterion='AICc', bw_min=0.0,
