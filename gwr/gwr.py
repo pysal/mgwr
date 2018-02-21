@@ -332,7 +332,7 @@ class GWR(GLM):
             aic = dev + 2.0 * trS
             aicc = aic + 2.0 * trS * (trS + 1.0)/(n - trS - 1.0)
             bic = dev + trS * np.log(n)
-            cv = CV_score/n
+            cv = None
 
         return {'AICc': aicc,'AIC':aic, 'BIC': bic,'CV': cv}
 
