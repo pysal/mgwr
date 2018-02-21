@@ -289,20 +289,21 @@ class GWR(GLM):
         CV_score = 0
         n = self.n
         for i in range(n):
-            if not self.fixed: #Adaptive, taking out none-zero weights observations
+            if self.kernel == 'bisquare': #Truncated kernel, taking out none-zero weights observations
                 nonzero_i = np.nonzero(self.W[i])
                 wi = self.W[i,nonzero_i].reshape((-1,1))
                 X_new = self.X[nonzero_i]
                 Y_new = self.y[nonzero_i]
                 offset_new = self.offset[nonzero_i]
-            else: #Fixed
+                current_i = np.where(wi==1)[0][0] #index of current regression point
+            
+            else: #non-truncated kernel
                 wi = self.W[i].reshape((-1,1))
                 X_new = self.X
                 Y_new = self.y
                 offset_new = self.offset
-            
-            current_i = np.where(wi==1)[0][0] #index of current regression point
-            
+                current_i = i
+                    
             if isinstance(self.family, Gaussian):
                 betas, inv_xtx_xt = _compute_betas_gwr(Y_new,X_new,wi)
                 hat = np.dot(X_new[current_i],inv_xtx_xt[:,current_i]) #influ
@@ -331,7 +332,7 @@ class GWR(GLM):
             aic = dev + 2.0 * trS
             aicc = aic + 2.0 * trS * (trS + 1.0)/(n - trS - 1.0)
             bic = dev + trS * np.log(n)
-            cv = None
+            cv = CV_score/n
 
         return {'AICc': aicc,'AIC':aic, 'BIC': bic,'CV': cv}
 

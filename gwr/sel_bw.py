@@ -215,13 +215,10 @@ class Sel_BW(object):
 
 
     def _bw(self):
-        if self.Ziqi:
-            print("Using Ziqi's fast_search fit")
-            gwr_func = lambda bw: GWR(self.coords, self.y, self.X_loc, bw, family=self.family,kernel=self.kernel, fixed=self.fixed, constant=self.constant,offset=self.offset)._fast_search()[self.criterion]
-        
-        else:
-            print ("Using current fit func")
-            gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant,dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit())
+
+        gwr_func = lambda bw: GWR(self.coords, self.y, self.X_loc, bw, family=self.family,kernel=self.kernel, fixed=self.fixed, constant=self.constant,offset=self.offset)._fast_search()[self.criterion]
+
+        #gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant,dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit())
         
         self._optimized_function = gwr_func
 
