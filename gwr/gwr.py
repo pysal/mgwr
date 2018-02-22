@@ -260,8 +260,7 @@ class GWR(GLM):
             CCT = np.zeros((m, self.k))
             for i in range(m):
                 wi = self.W[i].reshape((-1,1))
-                rslt = iwls(self.y, self.X, self.family, self.offset, None,
-                            ini_params, tol, max_iter, wi=wi)
+                rslt = iwls(self.y, self.X, self.family, self.offset, None, ini_params, tol, max_iter, wi=wi)
                 params[i,:] = rslt[0].T
                 predy[i] = rslt[1][i]
                 w[i] = rslt[3][i]
@@ -839,7 +838,8 @@ class GWRResults(GLMResults):
     def R2(self):
         if isinstance(self.family, Gaussian):
             TSS = np.sum((self.y.reshape((-1,1)) - np.mean(self.y.reshape((-1,1))))**2)
-            RSS = np.sum((self.y.reshape((-1,1)) - self.predy.reshape((-1,1)))**2)
+            RSS = np.sum((self.y.reshape((-1,1)) -
+                self.predy.reshape((-1,1)))**2)
             return 1 - (RSS / TSS)
         else:
             raise NotImplementedError('Only available for Gaussian GWR')
