@@ -264,8 +264,7 @@ class GWR(GLM):
                 params[i,:] = rslt[0].T
                 predy[i] = rslt[1][i]
                 w[i] = rslt[3][i]
-                inv_xtx_xt = rslt[5]
-                S[i] = np.dot(self.X[i],inv_xtx_xt)
+                S[i] = np.dot(self.X[i],rslt[5])
                 #dont need unless f is explicitly passed for
                 #prediction of non-sampled points
                 #cf = rslt[5] - np.dot(rslt[5], f)
