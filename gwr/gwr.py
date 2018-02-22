@@ -879,6 +879,52 @@ class GWRResults(GLMResults):
         raise NotImplementedError('Not implemented for GWR')
 
     @cache_readonly
+    def local_collinearity(self):
+        x = gwr.X
+        w = gwr.W 
+        nvar = x.shape[1]
+        nrow = len(w)
+        if nvar > 3:
+            corr_mat = np.ndarray((nrow, int(sp.special.factorial(nvar-1))))
+        else:
+            corr_mat = np.ndarray((nrow, nvar))
+        if gwr.model.constant:
+            vifs_mat = np.ndarray((nrow, nvar-1))
+        else: 
+            vifs_mat = np.ndarray((nrow, nvar))
+        vdp_idx = np.ndarray((nrow, nvar))
+        vdp_pi = np.ndarray((nrow, nvar, nvar))
+
+        for i in range(nrow):
+            wi = w[i]
+            sw = np.sum(wi)
+            wi = wi/sw
+            tag = 0
+            for j in range(nvar-1):
+                for k in range(j+1, nvar):
+                    corr_mat[i, tag] = corr(np.cov(x[:,j], x[:, k], aweights=wi))[0][1]
+                    tag = tag + 1
+            if gwr.model.constant:
+                corr_mati = corr(np.cov(x[:,1:].T, aweights=wi))
+                vifs_mat[i,] = np.diag(np.linalg.solve(corr_mati, np.identity((nvar-1))))
+
+            else:
+                corr_mati = corr(np.cov(x.T, aweights=wi))
+                vifs_mat[i,] = np.diag(np.linalg.solve(corr_mati, np.identity((nvar))))
+            xw = x * wi.reshape((nrow,1))
+            sxw = np.sqrt(np.sum(xw**2, axis=0))
+            sxw = np.transpose(xw.T / sxw.reshape((nvar,1))) 
+            svdx = np.linalg.svd(sxw)    
+            vdp_idx[i,] = svdx[1][0]/svdx[1]
+            phi = np.dot(svdx[2].T, np.diag(1/svdx[1]))
+            phi = np.transpose(phi**2)
+            pi_ij = phi / np.sum(phi, axis=0)
+            vdp_pi[i,:,:] = pi_ij
+        local_CN = vdp_idx[:, nvar-1]
+        VDP = vdp_pi[:,nvar-1,:]
+        return corr_mat, vifs_mat, local_CN, VDP
+    
+    @cache_readonly
     def predictions(self):
         P = self.model.P
         if P is None:
