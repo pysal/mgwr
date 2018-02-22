@@ -266,6 +266,10 @@ class GWR(GLM):
                 w[i] = rslt[3][i]
                 inv_xtx_xt = rslt[5]
                 S[i] = np.dot(self.X,inv_xtx_xt)[i]
+                #dont need unless f is explicitly passed for
+                #prediction of non-sampled points
+                #cf = rslt[5] - np.dot(rslt[5], f)
+                #CCT[i] = np.diag(np.dot(cf, cf.T/rslt[3]))
                 CCT[i] = np.diag(np.dot(rslt[5], rslt[5].T))
     
         return GWRResults(self, params, predy, S, CCT, w)
