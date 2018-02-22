@@ -2,6 +2,7 @@
 GWR is tested against results from GWR4
 """
 
+import os
 import pysal
 import numpy as np
 import libpysal
@@ -96,10 +97,14 @@ class TestGWRGaussian(unittest.TestCase):
         localR2 = np.array(self.BS_NN.by_col(' localR2')).reshape((-1,1))
         inf = np.array(self.BS_NN.by_col(' influence')).reshape((-1,1))
         cooksD = np.array(self.BS_NN.by_col(' CooksD')).reshape((-1,1))
-        corr1 = np.array(pysal.open('local_corr.csv'))
-        vif1 = np.array(pysal.open('local_vif.csv'))
-        cn1 = np.array(pysal.open('local_cn.csv')).flatten()
-        vdp1 = np.array(pysal.open('local_vdp.csv'), dtype=np.float64)
+        local_corr = os.path.join(os.path.dirname(__file__),'local_corr.csv')
+        corr1 = np.array(pysal.open(local_corr))
+        local_vif = os.path.join(os.path.dirname(__file__),'local_vif.csv')
+        vif1 = np.array(pysal.open(local_vif))
+        local_cn = os.path.join(os.path.dirname(__file__),'local_cn.csv')
+        cn1 = np.array(pysal.open(local_cn)).flatten()
+        local_vdp = os.path.join(os.path.dirname(__file__),'local_vdp.csv')
+        vdp1 = np.array(pysal.open(local_vdp), dtype=np.float64)
 
         model = GWR(self.coords, self.y, self.X, bw=90.000, fixed=False)
         rslt = model.fit()
