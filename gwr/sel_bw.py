@@ -215,8 +215,6 @@ class Sel_BW(object):
 
     def _bw(self):
 
-#gwr_func = lambda bw: GWR(self.coords, self.y, self.X_loc, bw, family=self.family,kernel=self.kernel, fixed=self.fixed, constant=self.constant,offset=self.offset)._fast_search()[self.criterion]
-
         gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant,dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit())
         
         self._optimized_function = gwr_func

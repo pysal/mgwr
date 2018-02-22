@@ -12,7 +12,7 @@ from scipy.stats import t
 import pysal.spreg.user_output as USER
 from spglm.family import Gaussian, Binomial, Poisson
 from spglm.glm import GLM, GLMResults
-from spglm.iwls import iwls,_compute_betas_gwr
+from spglm.iwls import iwls
 from spglm.utils import cache_readonly
 from .diagnostics import get_AIC, get_AICc, get_BIC
 from .kernels import *
