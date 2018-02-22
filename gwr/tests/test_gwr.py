@@ -53,7 +53,7 @@ class TestGWRGaussian(unittest.TestCase):
         AIC = get_AIC(rslt)
         BIC = get_BIC(rslt)
         CV = get_CV(rslt)
-        
+
         self.assertAlmostEquals(np.floor(AICc), 894.0)
         self.assertAlmostEquals(np.floor(AIC), 890.0)
         self.assertAlmostEquals(np.floor(BIC), 944.0)
@@ -110,8 +110,10 @@ class TestGWRGaussian(unittest.TestCase):
         CV = get_CV(rslt)
         
         corr2, vif2, cn2, vdp2 = rslt.local_collinearity
-        print vdp2
 
+        R2 = rslt.R2
+
+        self.assertAlmostEquals(np.around(R2, 4), 0.5924)
         self.assertAlmostEquals(np.floor(AICc), 896.0)
         self.assertAlmostEquals(np.floor(AIC), 892.0)
         self.assertAlmostEquals(np.floor(BIC), 941.0)
