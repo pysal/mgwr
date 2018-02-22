@@ -45,7 +45,7 @@ class TestGWRGaussian(unittest.TestCase):
         localR2 = np.array(self.BS_F.by_col(' localR2')).reshape((-1,1))
         inf = np.array(self.BS_F.by_col(' influence')).reshape((-1,1))
         cooksD = np.array(self.BS_F.by_col(' CooksD')).reshape((-1,1))
-        
+
         model = GWR(self.coords, self.y, self.X, bw=209267.689, fixed=True)
         rslt = model.fit()
         
@@ -96,6 +96,10 @@ class TestGWRGaussian(unittest.TestCase):
         localR2 = np.array(self.BS_NN.by_col(' localR2')).reshape((-1,1))
         inf = np.array(self.BS_NN.by_col(' influence')).reshape((-1,1))
         cooksD = np.array(self.BS_NN.by_col(' CooksD')).reshape((-1,1))
+        corr1 = np.array(pysal.open('local_corr.csv'))
+        vif1 = np.array(pysal.open('local_vif.csv'))
+        cn1 = np.array(pysal.open('local_cn.csv')).flatten()
+        vdp1 = np.array(pysal.open('local_vdp.csv'), dtype=np.float64)
 
         model = GWR(self.coords, self.y, self.X, bw=90.000, fixed=False)
         rslt = model.fit()
@@ -105,10 +109,17 @@ class TestGWRGaussian(unittest.TestCase):
         BIC = get_BIC(rslt)
         CV = get_CV(rslt)
         
+        corr2, vif2, cn2, vdp2 = rslt.local_collinearity
+        print vdp2
+
         self.assertAlmostEquals(np.floor(AICc), 896.0)
         self.assertAlmostEquals(np.floor(AIC), 892.0)
         self.assertAlmostEquals(np.floor(BIC), 941.0)
         self.assertAlmostEquals(np.around(CV, 2), 19.19)
+        np.testing.assert_allclose(corr1, corr2, rtol=1e-04)
+        np.testing.assert_allclose(vif1, vif2, rtol=1e-04)
+        np.testing.assert_allclose(cn1, cn2, rtol=1e-04)
+        np.testing.assert_allclose(vdp1, vdp2, rtol=1e-04)
         np.testing.assert_allclose(est_Int, rslt.params[:,0], rtol=1e-04)
         np.testing.assert_allclose(se_Int, rslt.bse[:,0], rtol=1e-04)
         np.testing.assert_allclose(t_Int, rslt.tvalues[:,0], rtol=1e-04)
