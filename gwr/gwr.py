@@ -9,6 +9,7 @@ __author__ = "Taylor Oshan Tayoshan@gmail.com"
 import numpy as np
 import numpy.linalg as la
 from scipy.stats import t
+from scipy.special import factorial
 import pysal.spreg.user_output as USER
 from spglm.family import Gaussian, Binomial, Poisson
 from spglm.glm import GLM, GLMResults
@@ -885,7 +886,7 @@ class GWRResults(GLMResults):
         nvar = x.shape[1]
         nrow = len(w)
         if nvar > 3:
-            corr_mat = np.ndarray((nrow, int(sp.special.factorial(nvar-1))))
+            corr_mat = np.ndarray((nrow, int(factorial(nvar-1))))
         else:
             corr_mat = np.ndarray((nrow, nvar))
         if self.model.constant:
