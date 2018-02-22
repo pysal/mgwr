@@ -225,7 +225,8 @@ class GWR(GLM):
                 raise TypeError('Unsupported kernel function  ', kernel)
 
         return W
-
+    
+    
     def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls'):
         """
         Method that fits a model with a particular estimation routine.
@@ -254,87 +255,20 @@ class GWR(GLM):
             m = self.W.shape[0]
             params = np.zeros((m, self.k))
             predy = np.zeros((m, 1))
-            v = np.zeros((m, 1))
-            w = np.zeros((m, 1))
-            z = np.zeros((m, self.n))
+            w = np.ones((m, 1))
             S = np.zeros((m, self.n))
-            R = np.zeros((m, self.n))
             CCT = np.zeros((m, self.k))
-            #f = np.zeros((n, n))
-            p = np.zeros((m, 1))
             for i in range(m):
                 wi = self.W[i].reshape((-1,1))
-                rslt = iwls(self.y, self.X, self.family, self.offset, None,
-                ini_params, tol, max_iter, wi=wi)
+                rslt = iwls(self.y, self.X, self.family, self.offset, None, ini_params, tol, max_iter, wi=wi)
                 params[i,:] = rslt[0].T
                 predy[i] = rslt[1][i]
-                v[i] = rslt[2][i]
                 w[i] = rslt[3][i]
-                z[i] = rslt[4].flatten()
-                R[i] = np.dot(self.X[i], rslt[5])
-                ri = np.dot(self.X[i], rslt[5])
-                S[i] = ri*np.reshape(rslt[4].flatten(), (1,-1))
-                #dont need unless f is explicitly passed for
-                #prediction of non-sampled points
-                #cf = rslt[5] - np.dot(rslt[5], f)
-                #CCT[i] = np.diag(np.dot(cf, cf.T/rslt[3]))
-                CCT[i] = np.diag(np.dot(rslt[5], rslt[5].T))
-            S = S * (1.0/z)
-        return GWRResults(self, params, predy, S, CCT, w)
-            
-    def _fast_search(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls'):
-        trS = 0 #trace of S
-        RSS = 0
-        dev = 0
-        CV_score = 0
-        n = self.n
-        for i in range(n):
-            if self.kernel == 'bisquare': #Truncated kernel, taking out none-zero weights observations
-                nonzero_i = np.nonzero(self.W[i])
-                wi = self.W[i,nonzero_i].reshape((-1,1))
-                X_new = self.X[nonzero_i]
-                Y_new = self.y[nonzero_i]
-                offset_new = self.offset[nonzero_i]
-                current_i = np.where(wi==1)[0][0] #index of current regression point
-            
-            else: #non-truncated kernel
-                wi = self.W[i].reshape((-1,1))
-                X_new = self.X
-                Y_new = self.y
-                offset_new = self.offset
-                current_i = i
-                    
-            if isinstance(self.family, Gaussian):
-                betas, inv_xtx_xt = _compute_betas_gwr(Y_new,X_new,wi)
-                hat = np.dot(X_new[current_i],inv_xtx_xt[:,current_i]) #influ
-                yhat = np.dot(X_new[current_i],betas)[0] #yhat
-                err = Y_new[current_i][0]-yhat #residual
-                RSS += err*err
-                trS += hat
-                CV_score += (err/(1-hat))**2
-                
-            elif isinstance(self.family, (Poisson, Binomial)):
-                rslt = iwls(Y_new, X_new, self.family, offset_new, None, ini_params, tol, max_iter, wi=wi)
                 inv_xtx_xt = rslt[5]
-                hat = np.dot(X_new[current_i],inv_xtx_xt[:,current_i])*rslt[3][current_i][0]
-                yhat = rslt[1][current_i][0]
-                err = Y_new[current_i][0]-yhat
-                trS += hat
-                dev += self.family.resid_dev(Y_new[current_i][0], yhat)**2
-
-        if isinstance(self.family, Gaussian):
-            ll = -np.log(RSS)*n/2 - (1+np.log(np.pi/n*2))*n/2 #log likelihood
-            aic = -2*ll + 2.0 * (trS + 1)
-            aicc = -2.0*ll + 2.0*n*(trS + 1.0)/(n - trS - 2.0)
-            bic = -2*ll + (trS+1) * np.log(n)
-            cv = CV_score/n
-        elif isinstance(self.family, (Poisson, Binomial)):
-            aic = dev + 2.0 * trS
-            aicc = aic + 2.0 * trS * (trS + 1.0)/(n - trS - 1.0)
-            bic = dev + trS * np.log(n)
-            cv = None
-
-        return {'AICc': aicc,'AIC':aic, 'BIC': bic,'CV': cv}
+                S[i] = np.dot(self.X,inv_xtx_xt)[i]
+                CCT[i] = np.diag(np.dot(rslt[5], rslt[5].T))
+    
+        return GWRResults(self, params, predy, S, CCT, w)
 
     def predict(self, points, P, exog_scale=None, exog_resid=None, fit_params={}):
         """
