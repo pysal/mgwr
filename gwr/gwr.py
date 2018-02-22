@@ -255,7 +255,7 @@ class GWR(GLM):
             m = self.W.shape[0]
             params = np.zeros((m, self.k))
             predy = np.zeros((m, 1))
-            w = np.ones((m, 1))
+            w = np.zeros((m, 1))
             S = np.zeros((m, self.n))
             CCT = np.zeros((m, self.k))
             for i in range(m):
