@@ -15,7 +15,7 @@ from spglm.family import Gaussian, Binomial, Poisson
 from spglm.glm import GLM, GLMResults
 from spglm.iwls import iwls
 from spglm.utils import cache_readonly
-from .diagnostics import get_AIC, get_AICc, get_BIC
+from .diagnostics import get_AIC, get_AICc, get_BIC, corr
 from .kernels import *
 
 #kernel types where fk = fixed kernels and ak = adaptive kernels
