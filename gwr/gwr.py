@@ -880,15 +880,15 @@ class GWRResults(GLMResults):
 
     @cache_readonly
     def local_collinearity(self):
-        x = gwr.X
-        w = gwr.W 
+        x = self.X
+        w = self.W 
         nvar = x.shape[1]
         nrow = len(w)
         if nvar > 3:
             corr_mat = np.ndarray((nrow, int(sp.special.factorial(nvar-1))))
         else:
             corr_mat = np.ndarray((nrow, nvar))
-        if gwr.model.constant:
+        if self.model.constant:
             vifs_mat = np.ndarray((nrow, nvar-1))
         else: 
             vifs_mat = np.ndarray((nrow, nvar))
@@ -904,7 +904,7 @@ class GWRResults(GLMResults):
                 for k in range(j+1, nvar):
                     corr_mat[i, tag] = corr(np.cov(x[:,j], x[:, k], aweights=wi))[0][1]
                     tag = tag + 1
-            if gwr.model.constant:
+            if self.model.constant:
                 corr_mati = corr(np.cov(x[:,1:].T, aweights=wi))
                 vifs_mat[i,] = np.diag(np.linalg.solve(corr_mati, np.identity((nvar-1))))
 
