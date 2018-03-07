@@ -917,7 +917,7 @@ class GWRResults(GLMResults):
         else:
             ncor = (((nvar)**2 + (nvar)) / 2) - nvar
             jk = list(combo(range(nvar), 2))
-        corr_mat = np.ndarray((nrow, ncor))
+        corr_mat = np.ndarray((nrow, int(ncor)))
         if self.model.constant:
             vifs_mat = np.ndarray((nrow, nvar-1))
         else: 
