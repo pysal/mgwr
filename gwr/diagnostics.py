@@ -81,9 +81,6 @@ def get_CV(gwr):
 
 def corr(cov):
     sd = np.diag(np.sqrt(np.diag(cov)))
-    try:
-        invsd = np.linalg.inv(sd)
-        cors = np.dot(np.dot(invsd, cov), invsd)
-    except:
-        cors = np.zeros((sd.shape))
+    invsd = np.linalg.inv(sd)
+    cors = np.dot(np.dot(invsd, cov), invsd)
     return cors

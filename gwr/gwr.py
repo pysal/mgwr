@@ -953,7 +953,7 @@ class GWRResults(GLMResults):
             pi_ij = phi / np.sum(phi, axis=0)
             vdp_pi[i,:,:] = pi_ij
         
-        local_CN = vdp_idx[:, nvar-1]
+        local_CN = vdp_idx[:, nvar-1].reshape((-1,1))
         VDP = vdp_pi[:,nvar-1,:]
         
         return corr_mat, vifs_mat, local_CN, VDP
