@@ -102,7 +102,7 @@ class TestGWRGaussian(unittest.TestCase):
         local_vif = os.path.join(os.path.dirname(__file__),'local_vif.csv')
         vif1 = np.array(pysal.open(local_vif))
         local_cn = os.path.join(os.path.dirname(__file__),'local_cn.csv')
-        cn1 = np.array(pysal.open(local_cn)).flatten()
+        cn1 = np.array(pysal.open(local_cn))
         local_vdp = os.path.join(os.path.dirname(__file__),'local_vdp.csv')
         vdp1 = np.array(pysal.open(local_vdp), dtype=np.float64)
 
