@@ -2,6 +2,7 @@
 GWR is tested against results from GWR4
 """
 
+import os
 import pysal
 import numpy as np
 import libpysal
@@ -45,7 +46,7 @@ class TestGWRGaussian(unittest.TestCase):
         localR2 = np.array(self.BS_F.by_col(' localR2')).reshape((-1,1))
         inf = np.array(self.BS_F.by_col(' influence')).reshape((-1,1))
         cooksD = np.array(self.BS_F.by_col(' CooksD')).reshape((-1,1))
-        
+
         model = GWR(self.coords, self.y, self.X, bw=209267.689, fixed=True)
         rslt = model.fit()
         
@@ -96,6 +97,14 @@ class TestGWRGaussian(unittest.TestCase):
         localR2 = np.array(self.BS_NN.by_col(' localR2')).reshape((-1,1))
         inf = np.array(self.BS_NN.by_col(' influence')).reshape((-1,1))
         cooksD = np.array(self.BS_NN.by_col(' CooksD')).reshape((-1,1))
+        local_corr = os.path.join(os.path.dirname(__file__),'local_corr.csv')
+        corr1 = np.array(pysal.open(local_corr))
+        local_vif = os.path.join(os.path.dirname(__file__),'local_vif.csv')
+        vif1 = np.array(pysal.open(local_vif))
+        local_cn = os.path.join(os.path.dirname(__file__),'local_cn.csv')
+        cn1 = np.array(pysal.open(local_cn))
+        local_vdp = os.path.join(os.path.dirname(__file__),'local_vdp.csv')
+        vdp1 = np.array(pysal.open(local_vdp), dtype=np.float64)
 
         model = GWR(self.coords, self.y, self.X, bw=90.000, fixed=False)
         rslt = model.fit()
@@ -104,6 +113,9 @@ class TestGWRGaussian(unittest.TestCase):
         AIC = get_AIC(rslt)
         BIC = get_BIC(rslt)
         CV = get_CV(rslt)
+        
+        corr2, vif2, cn2, vdp2 = rslt.local_collinearity
+
         R2 = rslt.R2
 
         self.assertAlmostEquals(np.around(R2, 4), 0.5924)
@@ -111,6 +123,10 @@ class TestGWRGaussian(unittest.TestCase):
         self.assertAlmostEquals(np.floor(AIC), 892.0)
         self.assertAlmostEquals(np.floor(BIC), 941.0)
         self.assertAlmostEquals(np.around(CV, 2), 19.19)
+        np.testing.assert_allclose(corr1, corr2, rtol=1e-04)
+        np.testing.assert_allclose(vif1, vif2, rtol=1e-04)
+        np.testing.assert_allclose(cn1, cn2, rtol=1e-04)
+        np.testing.assert_allclose(vdp1, vdp2, rtol=1e-04)
         np.testing.assert_allclose(est_Int, rslt.params[:,0], rtol=1e-04)
         np.testing.assert_allclose(se_Int, rslt.bse[:,0], rtol=1e-04)
         np.testing.assert_allclose(t_Int, rslt.tvalues[:,0], rtol=1e-04)
