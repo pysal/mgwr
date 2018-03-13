@@ -1,7 +1,6 @@
 """
 Main GWR classes
 
-#Offset does not yet do anyhting and needs to be implemented
 """
 
 __author__ = "Taylor Oshan Tayoshan@gmail.com"
