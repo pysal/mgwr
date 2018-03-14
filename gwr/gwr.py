@@ -1094,7 +1094,8 @@ class MGWR(GWR):
 
     """
     def __init__(self, coords, y, X, bws, XB, err, family=Gaussian(), offset=None,
-           sigma2_v1=False, kernel='bisquare', fixed=False, constant=True):
+           sigma2_v1=False, kernel='bisquare', fixed=False, constant=True,
+           dmat=None, sorted_dmat=None):
         """
         Initialize class
         """
@@ -1110,6 +1111,8 @@ class MGWR(GWR):
         self.kernel = kernel
         self.fixed = fixed
         self.constant = constant
+        self.dmat = dmat
+        self.sorted_dmat = sorted_dmat
         if constant:
           self.X = USER.check_constant(self.X)
 

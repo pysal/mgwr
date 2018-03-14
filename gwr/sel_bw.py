@@ -70,7 +70,7 @@ class Sel_BW(object):
                      type of kernel used and wether fixed or adaptive
     criterion      : string
                      bw selection criterion: 'AICc', 'AIC', 'BIC', 'CV'
-    search         : string
+    search_method  : string
                      bw search method: 'golden', 'interval'
     bw_min         : float
                      min value used in bandwidth search
@@ -123,7 +123,7 @@ class Sel_BW(object):
 
     #Interval AICc - fixed bisquare
     >>>  sel = Sel_BW(coords, y, X, fixed=True).
-    >>>  bw = sel.search(search='interval', bw_min=211001.0, bw_max=211035.0, interval=2) 
+    >>>  bw = sel.search(search_method='interval', bw_min=211001.0, bw_max=211035.0, interval=2) 
     >>> print bw
     211025.0
 
@@ -149,7 +149,7 @@ class Sel_BW(object):
         self.constant = constant
         self._build_dMat()
 
-    def search(self, search='golden_section', criterion='AICc', bw_min=0.0,
+    def search(self, search_method='golden_section', criterion='AICc', bw_min=0.0,
             bw_max=0.0, interval=0.0, tol=1.0e-6, max_iter=200, init_multi=True,
             tol_multi=1.0e-5, rss_score=False, max_iter_multi=200):
         """
@@ -157,7 +157,7 @@ class Sel_BW(object):
         ----------
         criterion      : string
                          bw selection criterion: 'AICc', 'AIC', 'BIC', 'CV'
-        search         : string
+        search_method  : string
                          bw search method: 'golden', 'interval'
         bw_min         : float
                          min value used in bandwidth search
@@ -192,7 +192,7 @@ class Sel_BW(object):
                          matches the ordering of the covariates (columns) of the
                          designs matrix, X
         """
-        self.search_method = search
+        self.search_method = search_method
         self.criterion = criterion
         self.bw_min = bw_min
         self.bw_max = bw_max
@@ -271,7 +271,8 @@ class Sel_BW(object):
             self._optimize_result = minimize_scalar(gwr_func, bounds=(self.bw_min, self.bw_max), method='bounded')
             self.bw = [self._optimize_result.x, self._optimize_result.fun, []]
         else:
-            raise TypeError('Unsupported computational search method ', search)
+            raise TypeError('Unsupported computational search method ',
+                    self.search_method)
 
     def _mbw(self):
         y = self.y
@@ -285,7 +286,7 @@ class Sel_BW(object):
         kernel = self.kernel
         fixed = self.fixed
         coords = self.coords
-        search = self.search
+        search_method = self.search_method
         criterion = self.criterion
         bw_min = self.bw_min
         bw_max = self.bw_max
@@ -297,7 +298,7 @@ class Sel_BW(object):
         def bw_func(y,X):
             return Sel_BW(coords, y,X,X_glob=[], family=family, kernel=kernel, fixed=fixed, offset=offset, constant=False)
         def sel_func(bw_func):
-            return bw_func.search(search=search, criterion=criterion, bw_min=bw_min, 
+            return bw_func.search(search_method=search_method, criterion=criterion, bw_min=bw_min, 
                            bw_max=bw_max, interval=interval, tol=tol, max_iter=max_iter)
         self.bw = multi_bw(self.init_multi, y, X, n, k, family,
                 self.tol_multi, self.max_iter_multi, self.rss_score, gwr_func,

@@ -8,7 +8,7 @@ import numpy as np
 import libpysal
 import unittest
 import pickle as pk
-from ..gwr import GWR
+from ..gwr import GWR, MGWR
 from ..sel_bw import Sel_BW
 from ..diagnostics import get_AICc, get_AIC, get_BIC, get_CV
 from spglm.family import Gaussian, Poisson, Binomial
@@ -26,6 +26,12 @@ class TestGWRGaussian(unittest.TestCase):
         self.BS_NN = pysal.open(pysal.examples.get_path('georgia_BS_NN_listwise.csv'))
         self.GS_F = pysal.open(pysal.examples.get_path('georgia_GS_F_listwise.csv'))
         self.GS_NN = pysal.open(pysal.examples.get_path('georgia_GS_NN_listwise.csv'))
+        MGWR_path = os.path.join(os.path.dirname(__file__),'FB.p')
+        self.MGWR = pk.load(open(MGWR_path, 'r'))
+        XB_path = os.path.join(os.path.dirname(__file__),'XB.p')
+        self.XB = pk.load(open(XB_path, 'r'))
+        err_path = os.path.join(os.path.dirname(__file__),'err.p')
+        self.err = pk.load(open(err_path, 'r'))
 
     def test_BS_F(self):
         est_Int = self.BS_F.by_col(' est_Intercept')
@@ -249,6 +255,16 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(localR2, rslt.localR2, rtol=1e-05)
         np.testing.assert_allclose(inf, rslt.influ, rtol=1e-04)
         np.testing.assert_allclose(cooksD, rslt.cooksD, rtol=1e-00)
+    
+    def test_MGWR(self):
+        model = MGWR(self.coords, self.y, self.X, [157.0, 65.0, 52.0],
+                XB=self.XB, err=self.err, constant=False)
+        rslt = model.fit()
+
+        np.testing.assert_allclose(rslt.predy, self.MGWR['predy'], atol=1e-07)
+        np.testing.assert_allclose(rslt.params, self.MGWR['params'], atol=1e-07)
+        np.testing.assert_allclose(rslt.resid_response, self.MGWR['u'], atol=1e-05)
+        np.testing.assert_almost_equal(rslt.resid_ss, 6339.3497144025841)
     
     def test_Prediction(self):
         coords =np.array(self.coords)
