@@ -5,16 +5,17 @@
 
 __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
-from .kernels import *
-from .search import golden_section, equal_interval, multi_bw
-from .gwr import GWR
-from pysal.contrib.glm.family import Gaussian, Poisson, Binomial
 import pysal.spreg.user_output as USER
-from .diagnostics import get_AICc, get_AIC, get_BIC, get_CV
-from scipy.spatial.distance import pdist, squareform
-from scipy.optimize import minimize_scalar
-from functools import partial
 import numpy as np
+from scipy.spatial.distance import cdist,pdist,squareform
+from scipy.optimize import minimize_scalar
+from spglm.family import Gaussian, Poisson, Binomial
+from spglm.iwls import iwls,_compute_betas_gwr
+from .kernels import *
+from .gwr import GWR
+from .search import golden_section, equal_interval, multi_bw
+from .diagnostics import get_AICc, get_AIC, get_BIC, get_CV
+from functools import partial
 
 kernels = {1: fix_gauss, 2: adapt_gauss, 3: fix_bisquare, 4:
         adapt_bisquare, 5: fix_exp, 6:adapt_exp}
@@ -52,7 +53,6 @@ class Sel_BW(object):
     constant       : boolean
                      True to include intercept (default) in model and False to exclude
                      intercept.
-
 
     Attributes
     ----------
@@ -145,8 +145,9 @@ class Sel_BW(object):
         else:
             self.offset = offset * 1.0
         self.multi = multi
-        self.constant = constant
         self._functions = []
+        self.constant = constant
+        self._build_dMat()
 
     def search(self, search='golden_section', criterion='AICc', bw_min=0.0,
             bw_max=0.0, interval=0.0, tol=1.0e-6, max_iter=200, init_multi=True,
@@ -191,7 +192,7 @@ class Sel_BW(object):
                          matches the ordering of the covariates (columns) of the
                          designs matrix, X
         """
-        self.search = search
+        self.search_method = search
         self.criterion = criterion
         self.bw_min = bw_min
         self.bw_max = bw_max
@@ -223,15 +224,11 @@ class Sel_BW(object):
             else:
                 raise TypeError('Unsupported kernel function ', self.kernel)
 
-        def function(bw):
-            return getDiag[criterion](GWR(self.coords, self.y, self.x_loc, bw, family=self.family,
-                                          kernel=self.kernel, fixed=self.fixed, offset=self.offset).fit())
-
         if ktype % 2 == 0:
             int_score = True
         else:
             int_score = False
-        self.int_score = int_score
+        self.int_score = int_score #isn't this just self.fixed?
 
         if self.multi:
             self._mbw()
@@ -241,20 +238,30 @@ class Sel_BW(object):
             self._bw()
 
         return self.bw[0]
+            
+
+    def _build_dMat(self):
+        if self.fixed:
+            self.dmat = cdist(self.coords,self.coords)
+            self.sorted_dmat = None
+        else:
+            self.dmat = cdist(self.coords,self.coords)
+            self.sorted_dmat = np.sort(self.dmat)
+
 
     def _bw(self):
-        def gwr_func(bw):
-            return getDiag[self.criterion](
-                    GWR(self.coords, self.y, self.X_loc, bw, family=self.family,
-                        kernel=self.kernel, fixed=self.fixed, constant=self.constant).fit())
-        self._functions.append(gwr_func)
-        if self.search == 'golden_section':
+
+        gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant,dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit())
+
+        self._optimized_function = gwr_func
+
+        if self.search_method == 'golden_section':
             a,c = self._init_section(self.X_glob, self.X_loc, self.coords,
                     self.constant)
             delta = 0.38197 #1 - (np.sqrt(5.0)-1.0)/2.0
             self.bw = golden_section(a, c, delta, gwr_func, self.tol,
                     self.max_iter, self.int_score)
-        elif self.search == 'interval':
+        elif self.search_method == 'interval':
             self.bw = equal_interval(self.bw_min, self.bw_max, self.interval,
                     gwr_func, self.int_score)
         elif self.search == 'scipy':

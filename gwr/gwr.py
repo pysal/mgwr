@@ -1,19 +1,19 @@
 #Main GWR classes
 
-#Offset does not yet do anyhting and needs to be implemented
-
 __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
 import numpy as np
 import numpy.linalg as la
 from scipy.stats import t
-from .kernels import *
-from .diagnostics import get_AIC, get_AICc, get_BIC
+from scipy.special import factorial
+from itertools import combinations as combo
 import pysal.spreg.user_output as USER
-from pysal.contrib.glm.family import Gaussian, Binomial, Poisson
-from pysal.contrib.glm.glm import GLM, GLMResults
-from pysal.contrib.glm.iwls import iwls
-from pysal.contrib.glm.utils import cache_readonly
+from spglm.family import Gaussian, Binomial, Poisson
+from spglm.glm import GLM, GLMResults
+from spglm.iwls import iwls
+from spglm.utils import cache_readonly
+from .diagnostics import get_AIC, get_AICc, get_BIC, corr
+from .kernels import *
 
 fk = {'gaussian': fix_gauss, 'bisquare': fix_bisquare, 'exponential': fix_exp}
 ak = {'gaussian': adapt_gauss, 'bisquare': adapt_bisquare, 'exponential': adapt_exp}
@@ -183,7 +183,7 @@ class GWR(GLM):
 
     """
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
-            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True):
+            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True,dmat=None,sorted_dmat=None):
         """
         Initialize class
         """
@@ -199,21 +199,25 @@ class GWR(GLM):
         else:
             self.offset = offset * 1.0
         self.fit_params = {}
-        self.W = self._build_W(fixed, kernel, coords, bw)
+        
         self.points = None
         self.exog_scale = None
         self.exog_resid = None
         self.P = None
+        self.dmat = dmat
+        self.sorted_dmat = sorted_dmat
+        self.W = self._build_W(fixed, kernel, coords, bw)
+
 
     def _build_W(self, fixed, kernel, coords, bw, points=None):
         if fixed:
             try:
-              W = fk[kernel](coords, bw, points)
+                W = fk[kernel](coords, bw, points, self.dmat, self.sorted_dmat)
             except:
                 raise #TypeError('Unsupported kernel function  ', kernel)
         else:
             try:
-                W = ak[kernel](coords, bw, points)
+                 W = ak[kernel](coords, bw, points, self.dmat, self.sorted_dmat)
             except:
                 raise #TypeError('Unsupported kernel function  ', kernel)
 
@@ -258,7 +262,7 @@ class GWR(GLM):
             for i in range(m):
                 wi = self.W[i].reshape((-1,1))
                 rslt = iwls(self.y, self.X, self.family, self.offset, None,
-                    ini_params, tol, max_iter, wi=wi)
+                ini_params, tol, max_iter, wi=wi)
                 params[i,:] = rslt[0].T
                 predy[i] = rslt[1][i]
                 v[i] = rslt[2][i]
@@ -840,6 +844,16 @@ class GWRResults(GLMResults):
         raise NotImplementedError('Not implemented for GWR')
 
     @cache_readonly
+    def R2(self):
+        if isinstance(self.family, Gaussian):
+            TSS = np.sum((self.y.reshape((-1,1)) - np.mean(self.y.reshape((-1,1))))**2)
+            RSS = np.sum((self.y.reshape((-1,1)) -
+                self.predy.reshape((-1,1)))**2)
+            return 1 - (RSS / TSS)
+        else:
+            raise NotImplementedError('Only available for Gaussian GWR')
+
+    @cache_readonly
     def aic(self):
         return get_AIC(self)
 
@@ -871,6 +885,74 @@ class GWRResults(GLMResults):
     def pvalues(self):
         raise NotImplementedError('Not implemented for GWR')
 
+    @cache_readonly
+    def local_collinearity(self):
+        """
+        Computes several indicators of multicollinearity within a geographically
+        weighted design matrix, including:
+        
+        local correlation coefficients (n, ((p**2) + p) / 2)
+        local variance inflation factors (VIF) (n, p-1)
+        local condition number (n, 1)
+        local variance-decomposition proportions (n, p) 
+        
+        Returns four arrays with the order and dimensions listed above where n
+        is the number of locations used as calibrations points and p is the
+        nubmer of explanatory variables. Local correlation coefficient and local
+        VIF are not calculated for constant term. 
+
+        """
+        x = self.X
+        w = self.W 
+        nvar = x.shape[1]
+        nrow = len(w)
+        if self.model.constant:
+            ncor = (((nvar-1)**2 + (nvar-1)) / 2) - (nvar-1)
+            jk = list(combo(range(1, nvar), 2))
+        else:
+            ncor = (((nvar)**2 + (nvar)) / 2) - nvar
+            jk = list(combo(range(nvar), 2))
+        corr_mat = np.ndarray((nrow, int(ncor)))
+        if self.model.constant:
+            vifs_mat = np.ndarray((nrow, nvar-1))
+        else: 
+            vifs_mat = np.ndarray((nrow, nvar))
+        vdp_idx = np.ndarray((nrow, nvar))
+        vdp_pi = np.ndarray((nrow, nvar, nvar))
+
+        for i in range(nrow):
+            wi = w[i]
+            sw = np.sum(wi)
+            wi = wi/sw
+            tag = 0
+            
+            for j, k in jk:
+                corr_mat[i, tag] = corr(np.cov(x[:,j], x[:, k], aweights=wi))[0][1]
+                tag = tag + 1
+            
+            if self.model.constant:
+                corr_mati = corr(np.cov(x[:,1:].T, aweights=wi))
+                vifs_mat[i,] = np.diag(np.linalg.solve(corr_mati, np.identity((nvar-1))))
+
+            else:
+                corr_mati = corr(np.cov(x.T, aweights=wi))
+                vifs_mat[i,] = np.diag(np.linalg.solve(corr_mati, np.identity((nvar))))
+            
+            xw = x * wi.reshape((nrow,1))
+            sxw = np.sqrt(np.sum(xw**2, axis=0))
+            sxw = np.transpose(xw.T / sxw.reshape((nvar,1))) 
+            svdx = np.linalg.svd(sxw)    
+            vdp_idx[i,] = svdx[1][0]/svdx[1]
+            phi = np.dot(svdx[2].T, np.diag(1/svdx[1]))
+            phi = np.transpose(phi**2)
+            pi_ij = phi / np.sum(phi, axis=0)
+            vdp_pi[i,:,:] = pi_ij
+        
+        local_CN = vdp_idx[:, nvar-1].reshape((-1,1))
+        VDP = vdp_pi[:,nvar-1,:]
+        
+        return corr_mat, vifs_mat, local_CN, VDP
+    
     @cache_readonly
     def predictions(self):
         P = self.model.P
