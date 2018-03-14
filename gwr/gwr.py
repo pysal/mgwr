@@ -187,7 +187,7 @@ class GWR(GLM):
 
     """
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
-            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True,dmat=None,sorted_dmat=None):
+            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True, dmat=None,sorted_dmat=None):
         """
         Initialize class
         """
@@ -226,7 +226,8 @@ class GWR(GLM):
                 raise TypeError('Unsupported kernel function  ', kernel)
 
         return W
-
+    
+    
     def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls'):
         """
         Method that fits a model with a particular estimation routine.
@@ -255,32 +256,22 @@ class GWR(GLM):
             m = self.W.shape[0]
             params = np.zeros((m, self.k))
             predy = np.zeros((m, 1))
-            v = np.zeros((m, 1))
             w = np.zeros((m, 1))
-            z = np.zeros((m, self.n))
             S = np.zeros((m, self.n))
-            R = np.zeros((m, self.n))
             CCT = np.zeros((m, self.k))
-            #f = np.zeros((n, n))
-            p = np.zeros((m, 1))
             for i in range(m):
                 wi = self.W[i].reshape((-1,1))
-                rslt = iwls(self.y, self.X, self.family, self.offset, None,
-                ini_params, tol, max_iter, wi=wi)
+                rslt = iwls(self.y, self.X, self.family, self.offset, None, ini_params, tol, max_iter, wi=wi)
                 params[i,:] = rslt[0].T
                 predy[i] = rslt[1][i]
-                v[i] = rslt[2][i]
                 w[i] = rslt[3][i]
-                z[i] = rslt[4].flatten()
-                R[i] = np.dot(self.X[i], rslt[5])
-                ri = np.dot(self.X[i], rslt[5])
-                S[i] = ri*np.reshape(rslt[4].flatten(), (1,-1))
+                S[i] = np.dot(self.X[i],rslt[5])
                 #dont need unless f is explicitly passed for
                 #prediction of non-sampled points
                 #cf = rslt[5] - np.dot(rslt[5], f)
                 #CCT[i] = np.diag(np.dot(cf, cf.T/rslt[3]))
                 CCT[i] = np.diag(np.dot(rslt[5], rslt[5].T))
-            S = S * (1.0/z)
+    
         return GWRResults(self, params, predy, S, CCT, w)
 
     def predict(self, points, P, exog_scale=None, exog_resid=None, fit_params={}):
@@ -846,7 +837,7 @@ class GWRResults(GLMResults):
     @cache_readonly
     def null_deviance(self):
         raise NotImplementedError('Not implemented for GWR')
-
+    
     @cache_readonly
     def R2(self):
         if isinstance(self.family, Gaussian):
