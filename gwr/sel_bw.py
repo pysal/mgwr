@@ -264,7 +264,7 @@ class Sel_BW(object):
         elif self.search_method == 'interval':
             self.bw = equal_interval(self.bw_min, self.bw_max, self.interval,
                     gwr_func, self.int_score)
-        elif self.search == 'scipy':
+        elif self.search_method == 'scipy':
             self.bw_min, self.bw_max = self._init_section(self.X_glob, self.X_loc, self.coords, self.constant)
             if self.bw_min == self.bw_max:
                 raise Exception('Maximum bandwidth and minimum bandwidth must be distinct for scipy optimizer.')

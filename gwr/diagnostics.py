@@ -4,7 +4,7 @@ Diagnostics for estimated gwr modesl
 __author__ = "Taylor Oshan tayoshan@gmail.com"
 
 import numpy as np
-from pysal.contrib.glm.family import Gaussian, Poisson, Binomial
+from spglm.family import Gaussian, Poisson, Binomial
 
 def get_AICc(gwr):
     """
