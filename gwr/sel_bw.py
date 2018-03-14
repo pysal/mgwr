@@ -328,7 +328,7 @@ class Sel_BW(object):
             a = np.min(sq_dists)/2.0
             c = np.max(sq_dists)*2.0
 
-        if a > self.bw_min:
+        if a < self.bw_min:
             a = self.bw_min
         if c > self.bw_max and self.bw_max > 0:
             c = self.bw_max
