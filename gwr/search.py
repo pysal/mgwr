@@ -161,6 +161,7 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
     if init:
         bw = sel_func(bw_func(y, X))
         optim_model = gwr_func(y, X, bw)
+        S = optim_model.S
         err = optim_model.resid_response.reshape((-1,1))
         est = optim_model.params
     else:
@@ -168,6 +169,17 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         err = model.resid_response.reshape((-1,1))
         est = np.repeat(model.params.T, n, axis=0)
 
+    R = np.zeros((n,n,k))
+    hat_matrix = optim_model.S
+    for i in range(k):
+        temp_vec = np.zeros((1,k))
+        temp_vec[:,i] = 1.0
+        for j in range(n):
+            Wj = np.diag(optim_model.W[j])
+            XtW = np.dot(X.T, Wj)
+            XtWX_inv = np.linalg.inv(np.dot(XtW, X))
+            P = np.dot(XtWX_inv, XtW)
+            R[j,:,i] = np.dot((X[j,i] * temp_vec), P)
 
     XB = np.multiply(est, X)
     if rss_score:
@@ -200,6 +212,21 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
             funcs.append(bw_class._functions)
             bw = sel_func(bw_class)
             optim_model = gwr_func(temp_y, temp_X, bw)
+            
+            for j in range(n):
+                Wj = np.diag(optim_model.W[j])
+                XtW = np.dot(temp_X.T, Wj)
+                XtWX_inv = np.linalg.inv(np.dot(XtW, temp_X))
+                P = np.dot(XtWX_inv, XtW)
+                Aj[j,:] = temp_X[j,:] * P
+
+            new_R = R.copy()
+            new_R[:,:,i] = Aj - np.dot(Aj, S) + np.dot(Aj, R[:,:,i])
+            new_S = S - R[:,:,i] + new_R[:,:,i]
+
+            R = new_R.copy()
+            S = new_S.copy()
+            
             err = optim_model.resid_response.reshape((-1,1))
             est = optim_model.params.reshape((-1,))
 
@@ -229,4 +256,5 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
 
     opt_bws = BWs[-1]
     return MGWR_BW_Result(opt_bws, np.array(BWs), np.array(VALs), 
-                          np.array(scores), f_XB, f_err, current_partial_residuals, FUNCs)
+                          np.array(scores), f_XB, f_err,
+                          current_partial_residuals, FUNCs, S)
