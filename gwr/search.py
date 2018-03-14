@@ -154,7 +154,9 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False):
 
 MGWR_BW_Result = namedtuple('MGWR_BW_RESULT', ['bws_','bw_trace', 'kernel_values', 'scores',
                                                'partial_predictions','model_residuals_',
-                                               'partial_residuals_', 'objective_functions'])
+                                               'partial_residuals_',
+                                               'objective_functions',
+                                               'hat_matrix'])
 
 def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         gwr_func, bw_func, sel_func):
@@ -190,6 +192,8 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
     BWs = []
     VALs = []
     FUNCs = []
+    Aj = np.zeros((n,n))
+    
     try:
         from tqdm import tqdm #if they have it, let users have a progress bar
     except ImportError:

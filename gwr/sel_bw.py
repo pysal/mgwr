@@ -234,6 +234,7 @@ class Sel_BW(object):
             self._mbw()
             self.XB = self.bw[4]
             self.err = self.bw[5]
+            self.S = self.bw[-1]
         else:
             self._bw()
 
