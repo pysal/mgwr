@@ -1,27 +1,23 @@
-"""
-GWR Bandwidth selection class
-"""
+# GWR Bandwidth selection class
 
 #x_glob parameter does not yet do anything; it is for semiparametric
 
+
 __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
-import numpy as np
+from .kernels import *
+from .search import golden_section, equal_interval, multi_bw
+from .gwr import GWR
+from pysal.contrib.glm.family import Gaussian, Poisson, Binomial
+import pysal.spreg.user_output as USER
+from .diagnostics import get_AICc, get_AIC, get_BIC, get_CV
 from scipy.spatial.distance import pdist, squareform
 from scipy.optimize import minimize_scalar
-from pysal.common import KDTree
-import pysal.spreg.user_output as USER
-from spglm.family import Gaussian, Poisson, Binomial
-from .kernels import *
-from .search import golden_section, equal_interval
-from .gwr import GWR
-from .diagnostics import get_AICc, get_AIC, get_BIC, get_CV
+from functools import partial
+import numpy as np
 
-#function for each type of kernel
 kernels = {1: fix_gauss, 2: adapt_gauss, 3: fix_bisquare, 4:
         adapt_bisquare, 5: fix_exp, 6:adapt_exp}
-
-#function to compute given diagnostic
 getDiag = {'AICc': get_AICc,'AIC':get_AIC, 'BIC': get_BIC, 'CV': get_CV}
 
 class Sel_BW(object):
@@ -50,6 +46,9 @@ class Sel_BW(object):
                      kernel function: 'gaussian', 'bisquare', 'exponetial'
     fixed          : boolean
                      True for fixed bandwidth and False for adaptive (NN)
+    multi          : True for multiple (covaraite-specific) bandwidths
+                     False for a traditional (same for  all covariates)
+                     bandwdith; defualt is False.
     constant       : boolean
                      True to include intercept (default) in model and False to exclude
                      intercept.
@@ -83,15 +82,18 @@ class Sel_BW(object):
                      tolerance used to determine convergence
     max_iter       : integer
                      max interations if no convergence to tol
+    multi          : True for multiple (covaraite-specific) bandwidths
+                     False for a traditional (same for  all covariates)
+                     bandwdith; defualt is False.
     constant       : boolean
                      True to include intercept (default) in model and False to exclude
                      intercept.
     Examples
     ________
 
-    >>> import libpysal
-    >>> from gwr.sel_bw import Sel_BW
-    >>> data = libpysal.open(libpysal.examples.get_path('GData_utm.csv'))
+    >>> import pysal
+    >>> from pysal.contrib.gwr.sel_bw import Sel_BW
+    >>> data = pysal.open(pysal.examples.get_path('GData_utm.csv'))
     >>> coords = zip(data.bycol('X'), data.by_col('Y')) 
     >>> y = np.array(data.by_col('PctBach')).reshape((-1,1))
     >>> rural = np.array(data.by_col('PctRural')).reshape((-1,1))
@@ -127,7 +129,7 @@ class Sel_BW(object):
 
     """
     def __init__(self, coords, y, X_loc, X_glob=None, family=Gaussian(),
-            offset=None, kernel='bisquare', fixed=False, constant=True):
+            offset=None, kernel='bisquare', fixed=False, multi=False, constant=True):
         self.coords = coords
         self.y = y
         self.X_loc = X_loc
@@ -139,13 +141,16 @@ class Sel_BW(object):
         self.fixed = fixed
         self.kernel = kernel
         if offset is None:
-            self.offset = np.ones((len(y), 1))
+          self.offset = np.ones((len(y), 1))
         else:
             self.offset = offset * 1.0
+        self.multi = multi
         self.constant = constant
+        self._functions = []
 
     def search(self, search='golden_section', criterion='AICc', bw_min=0.0,
-            bw_max=0.0, interval=0.0, tol=1.0e-6, max_iter=200):
+            bw_max=0.0, interval=0.0, tol=1.0e-6, max_iter=200, init_multi=True,
+            tol_multi=1.0e-5, rss_score=False, max_iter_multi=200):
         """
         Parameters
         ----------
@@ -163,11 +168,28 @@ class Sel_BW(object):
                          tolerance used to determine convergence
         max_iter       : integer
                          max iterations if no convergence to tol
+        init_multi     : True to initialize multipke bandwidth search with
+                         esitmates from a traditional GWR and False to
+                         initialize multiple bandwidth search with global
+                         regression estimates
+        tol_multi      : convergence tolerence for the multiple bandwidth
+                         backfitting algorithm; a larger tolerance may stop the
+                         algorith faster though it may result in a less optimal
+                         model
+        max_iter_multi : max iterations if no convergence to tol for multiple
+                         bandwidth backfittign algorithm
+        rss_score      : True to use the residual sum of sqaures to evaluate
+                         each iteration of the multiple bandwidth backfitting
+                         routine and False to use a smooth function; default is
+                         False
 
         Returns
         -------
         bw             : scalar or array
-                         optimal bandwidth value
+                         optimal bandwidth value or values; returns scalar for
+                         multi=False and array for multi=True; ordering of bandwidths
+                         matches the ordering of the covariates (columns) of the
+                         designs matrix, X
         """
         self.search = search
         self.criterion = criterion
@@ -176,6 +198,11 @@ class Sel_BW(object):
         self.interval = interval
         self.tol = tol
         self.max_iter = max_iter
+        self.init_multi = init_multi
+        self.tol_multi = tol_multi
+        self.rss_score = rss_score
+        self.max_iter_multi = max_iter_multi
+
 
         if self.fixed:
             if self.kernel == 'gaussian':
@@ -188,7 +215,7 @@ class Sel_BW(object):
                 raise TypeError('Unsupported kernel function ', self.kernel)
         else:
             if self.kernel == 'gaussian':
-                ktype = 2
+              ktype = 2
             elif self.kernel == 'bisquare':
                 ktype = 4
             elif self.kernel == 'exponential':
@@ -197,27 +224,30 @@ class Sel_BW(object):
                 raise TypeError('Unsupported kernel function ', self.kernel)
 
         def function(bw):
-            return GWR(self.coords, self.y, self.X_loc, bw, family=self.family,
-                    kernel=self.kernel, fixed=self.fixed, offset=self.offset).fit(final=False)[self.criterion]
-
+            return getDiag[criterion](GWR(self.coords, self.y, self.x_loc, bw, family=self.family,
+                                          kernel=self.kernel, fixed=self.fixed, offset=self.offset).fit())
 
         if ktype % 2 == 0:
             int_score = True
         else:
             int_score = False
-        self.int_score = int_score #isn't this just self.fixed?
+        self.int_score = int_score
 
-        self._bw()
+        if self.multi:
+            self._mbw()
+            self.XB = self.bw[4]
+            self.err = self.bw[5]
+        else:
+            self._bw()
 
         return self.bw[0]
 
     def _bw(self):
-        #gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant).fit())
         def gwr_func(bw):
-            return GWR(self.coords, self.y, self.X_loc, bw, family=self.family,
-                        kernel=self.kernel, fixed=self.fixed, constant=self.constant,offset=self.offset).fit(final=False)[self.criterion]
-
-        self._optimized_function = gwr_func
+            return getDiag[self.criterion](
+                    GWR(self.coords, self.y, self.X_loc, bw, family=self.family,
+                        kernel=self.kernel, fixed=self.fixed, constant=self.constant).fit())
+        self._functions.append(gwr_func)
         if self.search == 'golden_section':
             a,c = self._init_section(self.X_glob, self.X_loc, self.coords,
                     self.constant)
@@ -228,14 +258,43 @@ class Sel_BW(object):
             self.bw = equal_interval(self.bw_min, self.bw_max, self.interval,
                     gwr_func, self.int_score)
         elif self.search == 'scipy':
-            if self.bw_min == self.bw_max == 0:
-                self.bw_min, self.bw_max = self._init_section(self.X_glob, self.X_loc, self.coords, self.constant)
-            elif self.bw_min == self.bw_max:
-                raise Exception("Minimum bandwidth and maximum bandwidth must be distinct for scipy solver.")
-            self._optimize_result = minimize_scalar(gwr_func, bounds=(self.bw_min,self.bw_max), method='bounded')
-            self.bw = [np.round(self._optimize_result.x) if not self.fixed else self._optimize_result.x]
+            self.bw_min, self.bw_max = self._init_section(self.X_glob, self.X_loc, self.coords, self.constant)
+            if self.bw_min == self.bw_max:
+                raise Exception('Maximum bandwidth and minimum bandwidth must be distinct for scipy optimizer.')
+            self._optimize_result = minimize_scalar(gwr_func, bounds=(self.bw_min, self.bw_max), method='bounded')
+            self.bw = [self._optimize_result.x, self._optimize_result.fun, []]
         else:
             raise TypeError('Unsupported computational search method ', search)
+
+    def _mbw(self):
+        y = self.y
+        if self.constant:
+          X = USER.check_constant(self.X_loc)
+        else:
+            X = self.X_loc
+        n, k = X.shape
+        family = self.family
+        offset = self.offset
+        kernel = self.kernel
+        fixed = self.fixed
+        coords = self.coords
+        search = self.search
+        criterion = self.criterion
+        bw_min = self.bw_min
+        bw_max = self.bw_max
+        interval = self.interval
+        tol = self.tol
+        max_iter = self.max_iter
+        def gwr_func(y,X,bw):
+            return GWR(coords, y,X,bw,family=family, kernel=kernel, fixed=fixed, offset=offset, constant=False).fit()
+        def bw_func(y,X):
+            return Sel_BW(coords, y,X,X_glob=[], family=family, kernel=kernel, fixed=fixed, offset=offset, constant=False)
+        def sel_func(bw_func):
+            return bw_func.search(search=search, criterion=criterion, bw_min=bw_min, 
+                           bw_max=bw_max, interval=interval, tol=tol, max_iter=max_iter)
+        self.bw = multi_bw(self.init_multi, y, X, n, k, family,
+                self.tol_multi, self.max_iter_multi, self.rss_score, gwr_func,
+                bw_func, sel_func)
 
     def _init_section(self, X_glob, X_loc, coords, constant):
         if len(X_glob) > 0:

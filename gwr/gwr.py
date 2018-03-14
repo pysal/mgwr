@@ -1,23 +1,20 @@
-"""
-Main GWR classes
+#Main GWR classes
 
 #Offset does not yet do anyhting and needs to be implemented
-"""
 
 __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
 import numpy as np
 import numpy.linalg as la
 from scipy.stats import t
-import pysal.spreg.user_output as USER
-from spglm.family import Gaussian, Binomial, Poisson
-from spglm.glm import GLM, GLMResults
-from spglm.iwls import iwls
-from spglm.utils import cache_readonly
-from .diagnostics import get_AIC, get_AICc, get_BIC
 from .kernels import *
+from .diagnostics import get_AIC, get_AICc, get_BIC
+import pysal.spreg.user_output as USER
+from pysal.contrib.glm.family import Gaussian, Binomial, Poisson
+from pysal.contrib.glm.glm import GLM, GLMResults
+from pysal.contrib.glm.iwls import iwls
+from pysal.contrib.glm.utils import cache_readonly
 
-#kernel types where fk = fixed kernels and ak = adaptive kernels
 fk = {'gaussian': fix_gauss, 'bisquare': fix_bisquare, 'exponential': fix_exp}
 ak = {'gaussian': adapt_gauss, 'bisquare': adapt_bisquare, 'exponential': adapt_exp}
 
@@ -159,9 +156,9 @@ class GWR(GLM):
     --------
     #basic model calibration
 
-    >>> import libpysal
-    >>> from gwr.gwr import GWR
-    >>> data = libpysal.open(libpysal.examples.get_path('GData_utm.csv'))
+    >>> import pysal
+    >>> from pysal.contrib.gwr.gwr import GWR
+    >>> data = pysal.open(pysal.examples.get_path('GData_utm.csv'))
     >>> coords = zip(data.bycol('X'), data.by_col('Y')) 
     >>> y = np.array(data.by_col('PctBach')).reshape((-1,1))
     >>> rural = np.array(data.by_col('PctRural')).reshape((-1,1))
@@ -198,7 +195,7 @@ class GWR(GLM):
         self.kernel = kernel
         self.fixed = fixed
         if offset is None:
-            self.offset = np.ones((self.n, 1))
+          self.offset = np.ones((self.n, 1))
         else:
             self.offset = offset * 1.0
         self.fit_params = {}
@@ -211,18 +208,18 @@ class GWR(GLM):
     def _build_W(self, fixed, kernel, coords, bw, points=None):
         if fixed:
             try:
-                W = fk[kernel](coords, bw, points)
+              W = fk[kernel](coords, bw, points)
             except:
-                raise TypeError('Unsupported kernel function  ', kernel)
+                raise #TypeError('Unsupported kernel function  ', kernel)
         else:
             try:
                 W = ak[kernel](coords, bw, points)
             except:
-                raise TypeError('Unsupported kernel function  ', kernel)
+                raise #TypeError('Unsupported kernel function  ', kernel)
 
         return W
 
-    def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls',final = True):
+    def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls'):
         """
         Method that fits a model with a particular estimation routine.
 
@@ -247,76 +244,36 @@ class GWR(GLM):
         self.fit_params['max_iter'] = max_iter
         self.fit_params['solve']= solve
         if solve.lower() == 'iwls':
-            if final:
-                m = self.W.shape[0]
-                params = np.zeros((m, self.k))
-                predy = np.zeros((m, 1))
-                v = np.zeros((m, 1))
-                w = np.zeros((m, 1))
-                z = np.zeros((m, self.n))
-                S = np.zeros((m, self.n))
-                R = np.zeros((m, self.n))
-                CCT = np.zeros((m, self.k))
-                #f = np.zeros((n, n))
-                p = np.zeros((m, 1))
-                for i in range(m):
-                    wi = self.W[i].reshape((-1,1))
-                    rslt = iwls(self.y, self.X, self.family, self.offset, None,
-                                ini_params, tol, max_iter, wi=wi)
-                    params[i,:] = rslt[0].T
-                    predy[i] = rslt[1][i]
-                    v[i] = rslt[2][i]
-                    w[i] = rslt[3][i]
-                    z[i] = rslt[4].flatten()
-                    R[i] = np.dot(self.X[i], rslt[5])
-                    ri = np.dot(self.X[i], rslt[5])
-                    S[i] = ri*np.reshape(rslt[4].flatten(), (1,-1))
-                    #dont need unless f is explicitly passed for
-                    #prediction of non-sampled points
-                    #cf = rslt[5] - np.dot(rslt[5], f)
-                    #CCT[i] = np.diag(np.dot(cf, cf.T/rslt[3]))
-                    CCT[i] = np.diag(np.dot(rslt[5], rslt[5].T))
-                S = S * (1.0/z)
-                return GWRResults(self, params, predy, S, CCT, w)
-        
-            #Minimum calculation in bandwidth searching
-            else:
-                trS = 0 #trace of S
-                RSS = 0
-                dev = 0
-                CV_temp = 0
-                n = self.n
-                for i in range(n):
-                    nonzero_i = np.nonzero(self.W[i]) #local neighborhood
-                    wi = self.W[i,nonzero_i].reshape((-1,1))
-                    X_new = self.X[nonzero_i]
-                    Y_new = self.y[nonzero_i]
-                    rslt = iwls(Y_new, X_new, self.family, self.offset[nonzero_i], None, ini_params, tol, max_iter, wi=wi)
-                    temp = rslt[5]
-                    current_i = np.where(wi==1)[0]
-                    hat = np.dot(X_new[current_i],temp[:,current_i])[0][0]*rslt[3][current_i][0][0]
-                    yhat = rslt[1][current_i][0][0]
-                    err = Y_new[current_i][0][0]-yhat
-                    CV_temp += (err/(1-hat))**2
-                    RSS += err*err
-                    trS += hat
-                    dev += self.family.resid_dev(Y_new[current_i][0][0], yhat)**2
-            
-                if isinstance(self.family, Gaussian):
-                    ll = -np.log(RSS)*n/2 - (1+np.log(np.pi/n*2))*n/2 #log likelihood
-                    aic = -2*ll + 2.0 * (trS + 1)
-                    aicc = -2.0*ll + 2.0*n*(trS + 1.0)/(n - trS - 2.0)
-                    bic = -2*ll + (trS+1) * np.log(n)
-                    cv = CV_temp/n
-                elif isinstance(self.family, (Poisson, Binomial)):
-                    aic = dev + 2.0 * trS
-                    aicc = aic + 2.0 * trS * (trS + 1.0)/(n - trS - 1.0)
-                    bic = dev + trS * np.log(n)
-                    cv = None
-                
-                return {'AICc': aicc,'AIC':aic, 'BIC': bic,'CV': cv}
-    
-    
+            m = self.W.shape[0]
+            params = np.zeros((m, self.k))
+            predy = np.zeros((m, 1))
+            v = np.zeros((m, 1))
+            w = np.zeros((m, 1))
+            z = np.zeros((m, self.n))
+            S = np.zeros((m, self.n))
+            R = np.zeros((m, self.n))
+            CCT = np.zeros((m, self.k))
+            #f = np.zeros((n, n))
+            p = np.zeros((m, 1))
+            for i in range(m):
+                wi = self.W[i].reshape((-1,1))
+                rslt = iwls(self.y, self.X, self.family, self.offset, None,
+                    ini_params, tol, max_iter, wi=wi)
+                params[i,:] = rslt[0].T
+                predy[i] = rslt[1][i]
+                v[i] = rslt[2][i]
+                w[i] = rslt[3][i]
+                z[i] = rslt[4].flatten()
+                R[i] = np.dot(self.X[i], rslt[5])
+                ri = np.dot(self.X[i], rslt[5])
+                S[i] = ri*np.reshape(rslt[4].flatten(), (1,-1))
+                #dont need unless f is explicitly passed for
+                #prediction of non-sampled points
+                #cf = rslt[5] - np.dot(rslt[5], f)
+                #CCT[i] = np.diag(np.dot(cf, cf.T/rslt[3]))
+                CCT[i] = np.diag(np.dot(rslt[5], rslt[5].T))
+            S = S * (1.0/z)
+        return GWRResults(self, params, predy, S, CCT, w)
 
     def predict(self, points, P, exog_scale=None, exog_resid=None, fit_params={}):
         """
@@ -607,7 +564,7 @@ class GWRResults(GLMResults):
         weighted mean of y
         """
         if self.model.points is not None:
-            n = len(self.model.points)
+          n = len(self.model.points)
         else:
             n = self.n
         off = self.offset.reshape((-1,1))
@@ -630,13 +587,13 @@ class GWRResults(GLMResults):
 
         """
         if self.model.points is not None:
-            n = len(self.model.points)
+          n = len(self.model.points)
         else:
             n = self.n
         TSS = np.zeros(shape=(n,1))
         for i in range(n):
-            TSS[i] = np.sum(np.reshape(np.array(self.W[i]), (-1,1)) *
-                (self.y.reshape((-1,1)) - self.y_bar[i])**2)
+          TSS[i] = np.sum(np.reshape(np.array(self.W[i]), (-1,1)) *
+                  (self.y.reshape((-1,1)) - self.y_bar[i])**2)
         return TSS
 
     @cache_readonly
@@ -650,15 +607,15 @@ class GWRResults(GLMResults):
         relationships.
         """
         if self.model.points is not None:
-            n = len(self.model.points)
-            resid = self.model.exog_resid.reshape((-1,1))
+          n = len(self.model.points)
+          resid = self.model.exog_resid.reshape((-1,1))
         else:
             n = self.n
             resid = self.resid_response.reshape((-1,1))
         RSS = np.zeros(shape=(n,1))
         for i in range(n):
             RSS[i] = np.sum(np.reshape(np.array(self.W[i]), (-1,1))
-                * resid**2)
+                  * resid**2)
         return RSS
 
     @cache_readonly
@@ -704,10 +661,10 @@ class GWRResults(GLMResults):
         """
         if isinstance(self.family, (Poisson, Binomial)):
             return self.resid_ss/(self.n - 2.0*self.tr_S +
-                self.tr_STS) #could be changed to SWSTW - nothing to test against
+                  self.tr_STS) #could be changed to SWSTW - nothing to test against
         else:
             return self.resid_ss/(self.n - 2.0*self.tr_S +
-                self.tr_STS) #could be changed to SWSTW - nothing to test against
+                  self.tr_STS) #could be changed to SWSTW - nothing to test against
     @cache_readonly
     def sigma2_ML(self):
         """
@@ -767,7 +724,7 @@ class GWRResults(GLMResults):
         y = self.y
         ybar = self.y_bar
         if isinstance(self.family, Gaussian):
-            raise NotImplementedError('deviance not currently used for Gaussian')
+          raise NotImplementedError('deviance not currently used for Gaussian')
         elif isinstance(self.family, Poisson):
             dev = np.sum(2.0*self.W*(y*np.log(y/(ybar*off))-(y-ybar*off)),axis=1)
         elif isinstance(self.family, Binomial):
@@ -777,7 +734,7 @@ class GWRResults(GLMResults):
     @cache_readonly
     def resid_deviance(self):
         if isinstance(self.family, Gaussian):
-            raise NotImplementedError('deviance not currently used for Gaussian')
+          raise NotImplementedError('deviance not currently used for Gaussian')
         else:
             off = self.offset.reshape((-1,1)).T
             y = self.y
@@ -795,7 +752,7 @@ class GWRResults(GLMResults):
         manual. Equivalent to 1 - (deviance/null deviance)
         """
         if isinstance(self.family, Gaussian):
-            raise NotImplementedError('Not implemented for Gaussian')
+          raise NotImplementedError('Not implemented for Gaussian')
         else:
             return 1.0 - (self.resid_deviance/self.deviance)
 
@@ -918,8 +875,254 @@ class GWRResults(GLMResults):
     def predictions(self):
         P = self.model.P
         if P is None:
-            raise NotImplementedError('predictions only avaialble if predict'
-            'method called on GWR model')
+          raise NotImplementedError('predictions only avaialble if predict'
+          'method called on GWR model')
         else:
             predictions = np.sum(P*self.params, axis=1).reshape((-1,1))
         return predictions
+
+class MGWR(GWR):
+    """
+    Parameters
+    ----------
+        coords        : array-like
+                        n*2, collection of n sets of (x,y) coordinates of
+                        observatons; also used as calibration locations is
+                        'points' is set to None
+
+        y             : array
+                        n*1, dependent variable
+
+        X             : array
+                        n*k, independent variable, exlcuding the constant
+
+        points        : array-like
+                        n*2, collection of n sets of (x,y) coordinates used for
+                        calibration locations; default is set to None, which
+                        uses every observation as a calibration point
+
+        bws           : array-like
+                        collection of bandwidth values consisting of either a distance or N
+                        nearest neighbors; user specified or obtained using
+                        Sel_BW with fb=True. Order of values should the same as
+                        the order of columns associated with X
+        XB            : array
+                        n*k, product of temporary X and params obtained as through-put
+                        from the backfitting algorithm used to select flexible
+                        bandwidths; product of the Sel_BW class
+        err           : array
+                        n*1, temporary residuals associated with the predicted values from
+                        the backfitting algorithm used to select flexible
+                        bandwidths; product of the Sel_BW class
+
+        family        : family object
+                        underlying probability model; provides
+                        distribution-specific calculations
+
+        offset        : array
+                        n*1, the offset variable at the ith location. For Poisson model
+                        this term is often the size of the population at risk or
+                        the expected size of the outcome in spatial epidemiology
+                        Default is None where Ni becomes 1.0 for all locations
+
+        sigma2_v1     : boolean
+                        specify sigma squared, True to use n as denominator;
+                        default is False which uses n-k
+
+        kernel        : string
+                        type of kernel function used to weight observations;
+                        available options:
+                        'gaussian'
+                        'bisquare'
+                        'exponential'
+
+        fixed         : boolean
+                        True for distance based kernel function and  False for
+                        adaptive (nearest neighbor) kernel function (default)
+
+        constant      : boolean
+                        True to include intercept (default) in model and False to exclude
+                        intercept.
+
+    Attributes
+    ----------
+        coords        : array-like
+                        n*2, collection of n sets of (x,y) coordinates of
+                        observatons; also used as calibration locations is
+                        'points' is set to None
+
+        y             : array
+                        n*1, dependent variable
+
+        X             : array
+                        n*k, independent variable, exlcuding the constant
+
+        points        : array-like
+                        n*2, collection of n sets of (x,y) coordinates used for
+                        calibration locations; default is set to None, which
+                        uses every observation as a calibration point
+
+        bws           : array-like
+                        collection of bandwidth values consisting of either a distance or N
+                        nearest neighbors; user specified or obtained using
+                        Sel_BW with fb=True. Order of values should the same as
+                        the order of columns associated with X
+        XB            : array
+                        n*k, product of temporary X and params obtained as through-put
+                        from the backfitting algorithm used to select flexible
+                        bandwidths; product of the Sel_BW class
+        err           : array
+                        n*1, temporary residuals associated with the predicted values from
+                        the backfitting algorithm used to select flexible
+                        bandwidths; product of the Sel_BW class
+
+        family        : family object
+                        underlying probability model; provides
+                        distribution-specific calculations
+
+        offset        : array
+                        n*1, the offset variable at the ith location. For Poisson model
+                        this term is often the size of the population at risk or
+                        the expected size of the outcome in spatial epidemiology
+                        Default is None where Ni becomes 1.0 for all locations
+
+        sigma2_v1     : boolean
+                        specify sigma squared, True to use n as denominator;
+                        default is False which uses n-k
+
+        kernel        : string
+                        type of kernel function used to weight observations;
+                        available options:
+                        'gaussian'
+                        'bisquare'
+                        'exponential'
+
+        fixed         : boolean
+                        True for distance based kernel function and  False for
+                        adaptive (nearest neighbor) kernel function (default)
+
+        constant      : boolean
+                        True to include intercept (default) in model and False to exclude
+                        intercept.
+
+
+    Examples
+    -------
+    TODO
+
+    """
+    def __init__(self, coords, y, X, bws, XB, err, family=Gaussian(), offset=None,
+           sigma2_v1=False, kernel='bisquare', fixed=False, constant=True):
+        """
+        Initialize class
+        """
+        self.coords = coords
+        self.y = y
+        self.X = X
+        self.XB = XB
+        self.err = err
+        self.bws = bws
+        self.family = family
+        self.offset = offset
+        self.sigma2_v1 = sigma2_v1
+        self.kernel = kernel
+        self.fixed = fixed
+        self.constant = constant
+        if constant:
+          self.X = USER.check_constant(self.X)
+
+    def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls'):
+        """
+        Method that fits a model with a particular estimation routine.
+
+        Parameters
+        ----------
+
+        ini_betas     : array
+                        k*1, initial coefficient values, including constant.
+                        Default is None, which calculates initial values during
+                        estimation
+        tol:            float
+                        Tolerence for estimation convergence
+        max_iter      : integer
+                        Maximum number of iterations if convergence not
+                        achieved
+        solve         : string
+                        Technique to solve MLE equations.
+                        'iwls' = iteratively (re)weighted least squares (default)
+
+        """
+        params = np.zeros_like(self.X)
+        err = self.err
+        for i, bw in enumerate(self.bws):
+            W = self._build_W(self.fixed, self.kernel, self.coords, bw)
+            X = self.X[:,i].reshape((-1,1))
+            y = self.XB[:,i].reshape((-1,1)) + err
+            model = GWR(self.coords, y, X, bw, self.family, self.offset,
+                    self.sigma2_v1, self.kernel, self.fixed, constant=False)
+            results = model.fit(ini_params, tol, max_iter, solve)
+            params[:,i] = results.params.flatten()
+            err = results.resid_response.reshape((-1,1))
+        return MGWRResults(self, params)
+
+class MGWRResults(object):
+    """
+    Parameters
+    ----------
+        model               : GWR object
+                              pointer to MGWR object with estimation parameters
+
+        params              : array
+                              n*k, estimated coefficients
+
+    Attributes
+    ----------
+        model               : GWR Object
+                              points to MGWR object for which parameters have been
+                              estimated
+
+        params              : array
+                              n*k, parameter estimates
+
+        predy               : array
+                              n*1, predicted value of y
+
+        y                   : array
+                              n*1, dependent variable
+
+        X                   : array
+                              n*k, independent variable, including constant
+
+                            : array
+        resid_response        n*1, residuals of response
+
+        resid_ss            : scalar
+                              residual sum of sqaures
+
+    Examples
+    -------
+    TODO
+
+    """
+    def __init__(self, model, params):
+        """
+        Initialize class
+        """
+        self.model = model
+        self.params = params
+        self.X = model.X
+        self.y = model.y
+        self._cache = {}
+
+    @cache_readonly
+    def predy(self):
+        return np.sum(np.multiply(self.params, self.X), axis=1).reshape((-1,1))
+
+    @cache_readonly
+    def resid_response(self):
+        return (self.y - self.predy).reshape((-1,1))
+
+    @cache_readonly
+    def resid_ss(self):
+        u = self.resid_response.flatten()
+        return np.dot(u, u.T)

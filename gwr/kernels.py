@@ -1,13 +1,11 @@
-"""
-GWR kernel function specifications
-"""
+# GWR kernel function specifications
 
 __author__ = "Taylor Oshan tayoshan@gmail.com"
 
+#from pysal.weights.Distance import Kernel
 import scipy
-import numpy as np
 from scipy.spatial.kdtree import KDTree
-from scipy.spatial.distance import cdist
+import numpy as np
 
 #adaptive specifications should be parameterized with nn-1 to match original gwr
 #implementation. That is, pysal counts self neighbors with knn automatically.
@@ -40,11 +38,12 @@ def adapt_exp(coords, nn, points=None):
             truncate=False, points=points)
     return w.kernel
 
+from scipy.spatial.distance import cdist
+
 #Customized Kernel class user for GWR because the default PySAL kernel class
 #favors memory optimization over speed optimizations and GWR often needs the 
 #speed optimization since it is not always assume points far awar are truncated
 #to zero
-
 class _Kernel(object):
     """
 

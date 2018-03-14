@@ -1,10 +1,11 @@
-"""
-Bandwidth optimization methods
-"""
+#Bandwidth optimization methods
 
 __author__ = "Taylor Oshan"
 
 import numpy as np
+from copy import deepcopy
+import copy
+from collections import namedtuple
 
 def golden_section(a, c, delta, function, tol, max_iter, int_score=False):
     """
@@ -40,10 +41,8 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False):
     output          : list of tuples
                       searching history
     """
-
     b = a + delta * np.abs(c-a)
     d = c - delta * np.abs(c-a)
-
     score = 0.0
     diff = 1.0e9
     iters  = 0
@@ -51,14 +50,13 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False):
     while np.abs(diff) > tol and iters < max_iter:
         iters += 1
         if int_score:
-            b = np.round(b)
-            d = np.round(d)
+          b = np.round(b)
+          d = np.round(d)
 
-        #score_a = function(a)
+        score_a = function(a)
         score_b = function(b)
-        #score_c = function(c)
+        score_c = function(c)
         score_d = function(d)
-
 
         if score_b <= score_d:
             opt_val = b
@@ -146,3 +144,81 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False):
 
     return opt_val, opt_score, output
 
+MGWR_BW_Result = namedtuple('MGWR_BW_RESULT', ['bws_','bw_trace', 'kernel_values', 'scores',
+                                               'partial_predictions','model_residuals_',
+                                               'partial_residuals_', 'objective_functions'])
+
+def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
+        gwr_func, bw_func, sel_func):
+    if init:
+        bw = sel_func(bw_func(y, X))
+        optim_model = gwr_func(y, X, bw)
+        err = optim_model.resid_response.reshape((-1,1))
+        est = optim_model.params
+    else:
+        model = GLM(y, X, family=self.family, constant=False).fit()
+        err = model.resid_response.reshape((-1,1))
+        est = np.repeat(model.params.T, n, axis=0)
+
+
+    XB = np.multiply(est, X)
+    if rss_score:
+        rss = np.sum((err)**2)
+    iters = 0
+    scores = []
+    delta = 1e6
+    BWs = []
+    VALs = []
+    FUNCs = []
+    try:
+        from tqdm import tqdm #if they have it, let users have a progress bar
+    except ImportError:
+        def tqdm(x): #otherwise, just passthrough the range
+            return x
+    for iters in tqdm(range(1, max_iter+1)):
+        new_XB = np.zeros_like(X)
+        bws = []
+        vals = []
+        funcs = []
+        current_partial_residuals = []
+        ests = np.zeros_like(X)
+        f_XB = XB.copy()
+        f_err = err.copy()
+        for i in range(k):
+            temp_y = XB[:,i].reshape((-1,1))
+            temp_y = temp_y + err
+            temp_X = X[:,i].reshape((-1,1))
+            bw_class = bw_func(temp_y, temp_X)
+            funcs.append(bw_class._functions)
+            bw = sel_func(bw_class)
+            optim_model = gwr_func(temp_y, temp_X, bw)
+            err = optim_model.resid_response.reshape((-1,1))
+            est = optim_model.params.reshape((-1,))
+
+            new_XB[:,i] = np.multiply(est, temp_X.reshape((-1,)))
+            bws.append(copy.deepcopy(bw))
+            ests[:,i] = est
+            vals.append(bw_class.bw[1])
+            current_partial_residuals.append(err.copy())
+
+        predy = np.sum(np.multiply(ests, X), axis=1).reshape((-1,1))
+        num = np.sum((new_XB - XB)**2)/n
+        den = np.sum(np.sum(new_XB, axis=1)**2)
+        score = (num/den)**0.5
+        XB = new_XB
+
+        if rss_score:
+            new_rss = np.sum((y - predy)**2)
+            score = np.abs((new_rss - rss)/new_rss)
+            rss = new_rss
+        scores.append(copy.deepcopy(score))
+        delta = score
+        BWs.append(copy.deepcopy(bws))
+        VALs.append(copy.deepcopy(vals))
+        FUNCs.append(copy.deepcopy(funcs))
+        if delta < tol:
+            break
+
+    opt_bws = BWs[-1]
+    return MGWR_BW_Result(opt_bws, np.array(BWs), np.array(VALs), 
+                          np.array(scores), f_XB, f_err, current_partial_residuals, FUNCs)
