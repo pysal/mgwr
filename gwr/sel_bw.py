@@ -7,7 +7,7 @@ __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
 import pysal.spreg.user_output as USER
 import numpy as np
-from scipy.spatial.distance import cdist,pdist,squareform
+from scipy.spatial.distance import pdist,squareform
 from scipy.optimize import minimize_scalar
 from spglm.family import Gaussian, Poisson, Binomial
 from spglm.iwls import iwls,_compute_betas_gwr
@@ -129,7 +129,8 @@ class Sel_BW(object):
 
     """
     def __init__(self, coords, y, X_loc, X_glob=None, family=Gaussian(),
-            offset=None, kernel='bisquare', fixed=False, multi=False, constant=True):
+            offset=None, kernel='bisquare', fixed=False, multi=False,
+            constant=True, spherical=False):
         self.coords = coords
         self.y = y
         self.X_loc = X_loc
@@ -147,7 +148,9 @@ class Sel_BW(object):
         self.multi = multi
         self._functions = []
         self.constant = constant
+        self.spherical = spherical
         self._build_dMat()
+        self.search_params = {}
 
     def search(self, search_method='golden_section', criterion='AICc', bw_min=0.0,
             bw_max=0.0, interval=0.0, tol=1.0e-6, max_iter=200, init_multi=True,
@@ -193,6 +196,13 @@ class Sel_BW(object):
                          designs matrix, X
         """
         self.search_method = search_method
+        self.search_params['search_method'] = search_method
+        self.search_params['criterion'] = criterion
+        self.search_params['bw_min'] = bw_min
+        self.search_params['bw_max'] = bw_max
+        self.search_params['interval'] = interval
+        self.search_params['tol'] = tol
+        self.search_params['max_iter'] = max_iter
         self.criterion = criterion
         self.bw_min = bw_min
         self.bw_max = bw_max
@@ -243,16 +253,16 @@ class Sel_BW(object):
 
     def _build_dMat(self):
         if self.fixed:
-            self.dmat = cdist(self.coords,self.coords)
+            self.dmat = cdist(self.coords,self.coords,self.spherical)
             self.sorted_dmat = None
         else:
-            self.dmat = cdist(self.coords,self.coords)
+            self.dmat = cdist(self.coords,self.coords,self.spherical)
             self.sorted_dmat = np.sort(self.dmat)
 
 
     def _bw(self):
 
-        gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant,dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit())
+        gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant,dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit(searching = True))
         
         self._optimized_function = gwr_func
 

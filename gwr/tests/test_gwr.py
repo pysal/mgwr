@@ -111,6 +111,7 @@ class TestGWRGaussian(unittest.TestCase):
         cn1 = np.array(pysal.open(local_cn))
         local_vdp = os.path.join(os.path.dirname(__file__),'local_vdp.csv')
         vdp1 = np.array(pysal.open(local_vdp), dtype=np.float64)
+        spat_var_p_vals = [0. , 0. , 0.5, 0.2 ]
 
         model = GWR(self.coords, self.y, self.X, bw=90.000, fixed=False)
         rslt = model.fit()
@@ -133,6 +134,7 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(vif1, vif2, rtol=1e-04)
         np.testing.assert_allclose(cn1, cn2, rtol=1e-04)
         np.testing.assert_allclose(vdp1, vdp2, rtol=1e-04)
+
         np.testing.assert_allclose(est_Int, rslt.params[:,0], rtol=1e-04)
         np.testing.assert_allclose(se_Int, rslt.bse[:,0], rtol=1e-04)
         np.testing.assert_allclose(t_Int, rslt.tvalues[:,0], rtol=1e-04)
@@ -151,6 +153,16 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(localR2, rslt.localR2, rtol=1e-05)
         np.testing.assert_allclose(inf, rslt.influ, rtol=1e-04)
         np.testing.assert_allclose(cooksD, rslt.cooksD, rtol=1e-00)
+
+        sel = Sel_BW(self.coords, self.y, self.X)
+        bw = sel.search()
+        model = GWR(self.coords, self.y, self.X, bw)
+        result = model.fit()
+
+        p_vals = result.spatial_variability(sel, 10)
+
+        np.testing.assert_allclose(spat_var_p_vals, p_vals, rtol=1e-04)
+
 
     def test_GS_F(self):
         est_Int = self.GS_F.by_col(' est_Intercept')
@@ -338,6 +350,67 @@ class TestGWRGaussian(unittest.TestCase):
                                 [  8.70638418],
                                 [  8.17582599]])
         np.testing.assert_allclose(predictions, results.predictions, rtol=1e-05)
+
+
+
+    def test_BS_NN_longlat(self):
+        GA_longlat = os.path.join(os.path.dirname(__file__),'ga_bs_nn_longlat_listwise.csv')
+        self.BS_NN_longlat = pysal.open(GA_longlat)
+        
+        coords_longlat = list(zip(self.BS_NN_longlat.by_col(' x_coord'), self.BS_NN_longlat.by_col(' y_coord')))
+        est_Int = self.BS_NN_longlat.by_col(' est_Intercept')
+        se_Int = self.BS_NN_longlat.by_col(' se_Intercept')
+        t_Int = self.BS_NN_longlat.by_col(' t_Intercept')
+        est_rural = self.BS_NN_longlat.by_col(' est_PctRural')
+        se_rural = self.BS_NN_longlat.by_col(' se_PctRural')
+        t_rural = self.BS_NN_longlat.by_col(' t_PctRural')
+        est_pov = self.BS_NN_longlat.by_col(' est_PctPov')
+        se_pov = self.BS_NN_longlat.by_col(' se_PctPov')
+        t_pov = self.BS_NN_longlat.by_col(' t_PctPov')
+        est_black = self.BS_NN_longlat.by_col(' est_PctBlack')
+        se_black = self.BS_NN_longlat.by_col(' se_PctBlack')
+        t_black = self.BS_NN_longlat.by_col(' t_PctBlack')
+        yhat = self.BS_NN_longlat.by_col(' yhat')
+        res = np.array(self.BS_NN_longlat.by_col(' residual'))
+        std_res = np.array(self.BS_NN_longlat.by_col(' std_residual')).reshape((-1,1))
+        localR2 = np.array(self.BS_NN_longlat.by_col(' localR2')).reshape((-1,1))
+        inf = np.array(self.BS_NN_longlat.by_col(' influence')).reshape((-1,1))
+        cooksD = np.array(self.BS_NN_longlat.by_col(' CooksD')).reshape((-1,1))
+        
+        model = GWR(coords_longlat, self.y, self.X, bw=90.000, fixed=False,spherical=True)
+        rslt = model.fit()
+        
+        AICc = get_AICc(rslt)
+        AIC = get_AIC(rslt)
+        BIC = get_BIC(rslt)
+        CV = get_CV(rslt)
+        
+        R2 = rslt.R2
+        
+        self.assertAlmostEquals(np.around(R2, 4), 0.5921)
+        self.assertAlmostEquals(np.floor(AICc), 896.0)
+        self.assertAlmostEquals(np.floor(AIC), 892.0)
+        self.assertAlmostEquals(np.floor(BIC), 941.0)
+        self.assertAlmostEquals(np.around(CV, 2), 19.11)
+        np.testing.assert_allclose(est_Int, rslt.params[:,0], rtol=1e-04)
+        np.testing.assert_allclose(se_Int, rslt.bse[:,0], rtol=1e-04)
+        np.testing.assert_allclose(t_Int, rslt.tvalues[:,0], rtol=1e-04)
+        np.testing.assert_allclose(est_rural, rslt.params[:,1], rtol=1e-04)
+        np.testing.assert_allclose(se_rural, rslt.bse[:,1], rtol=1e-04)
+        np.testing.assert_allclose(t_rural, rslt.tvalues[:,1], rtol=1e-04)
+        np.testing.assert_allclose(est_pov, rslt.params[:,2], rtol=1e-04)
+        np.testing.assert_allclose(se_pov, rslt.bse[:,2], rtol=1e-04)
+        np.testing.assert_allclose(t_pov, rslt.tvalues[:,2], rtol=1e-04)
+        np.testing.assert_allclose(est_black, rslt.params[:,3], rtol=1e-02)
+        np.testing.assert_allclose(se_black, rslt.bse[:,3], rtol=1e-02)
+        np.testing.assert_allclose(t_black, rslt.tvalues[:,3], rtol=1e-02)
+        np.testing.assert_allclose(yhat, rslt.mu, rtol=1e-05)
+        np.testing.assert_allclose(res, rslt.resid_response, rtol=1e-04)
+        np.testing.assert_allclose(std_res, rslt.std_res, rtol=1e-04)
+        np.testing.assert_allclose(localR2, rslt.localR2, rtol=1e-05)
+        np.testing.assert_allclose(inf, rslt.influ, rtol=1e-04)
+        np.testing.assert_allclose(cooksD, rslt.cooksD, rtol=1e-00)
+
 
 class TestGWRPoisson(unittest.TestCase):
     def setUp(self):

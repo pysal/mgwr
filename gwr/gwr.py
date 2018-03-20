@@ -2,6 +2,7 @@
 
 __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
+import copy
 import numpy as np
 import numpy.linalg as la
 from scipy.stats import t
@@ -10,7 +11,7 @@ from itertools import combinations as combo
 import pysal.spreg.user_output as USER
 from spglm.family import Gaussian, Binomial, Poisson
 from spglm.glm import GLM, GLMResults
-from spglm.iwls import iwls
+from spglm.iwls import iwls,_compute_betas_gwr
 from spglm.utils import cache_readonly
 from .diagnostics import get_AIC, get_AICc, get_BIC, corr
 from .kernels import *
@@ -71,7 +72,11 @@ class GWR(GLM):
         constant      : boolean
                         True to include intercept (default) in model and False to exclude
                         intercept.
-
+                        
+        spherical     : boolean
+                        True for shperical coordinates (long-lat),
+                        False for projected coordinates (defalut).
+                        
     Attributes
     ----------
         coords        : array-like
@@ -117,6 +122,10 @@ class GWR(GLM):
         constant      : boolean
                         True to include intercept (default) in model and False to exclude
                         intercept
+
+        spherical     : boolean
+                        True for shperical coordinates (long-lat),
+                        False for projected coordinates (defalut).
 
         n             : integer
                         number of observations
@@ -183,7 +192,8 @@ class GWR(GLM):
 
     """
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
-            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True, dmat=None,sorted_dmat=None):
+            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True, 
+            dmat=None, sorted_dmat=None, spherical=False):
         """
         Initialize class
         """
@@ -206,25 +216,25 @@ class GWR(GLM):
         self.P = None
         self.dmat = dmat
         self.sorted_dmat = sorted_dmat
+        self.spherical = spherical
         self.W = self._build_W(fixed, kernel, coords, bw)
-
 
     def _build_W(self, fixed, kernel, coords, bw, points=None):
         if fixed:
             try:
-                W = fk[kernel](coords, bw, points, self.dmat, self.sorted_dmat)
+                W = fk[kernel](coords, bw, points, self.dmat, self.sorted_dmat,spherical=self.spherical)
             except:
                 raise #TypeError('Unsupported kernel function  ', kernel)
         else:
             try:
-                 W = ak[kernel](coords, bw, points, self.dmat, self.sorted_dmat)
+                 W = ak[kernel](coords, bw, points, self.dmat, self.sorted_dmat,spherical=self.spherical)
             except:
                 raise #TypeError('Unsupported kernel function  ', kernel)
 
         return W
     
     
-    def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls'):
+    def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls',searching = False):
         """
         Method that fits a model with a particular estimation routine.
 
@@ -250,25 +260,47 @@ class GWR(GLM):
         self.fit_params['solve']= solve
         if solve.lower() == 'iwls':
             m = self.W.shape[0]
-            params = np.zeros((m, self.k))
-            predy = np.zeros((m, 1))
-            w = np.zeros((m, 1))
-            S = np.zeros((m, self.n))
-            CCT = np.zeros((m, self.k))
-            for i in range(m):
-                wi = self.W[i].reshape((-1,1))
-                rslt = iwls(self.y, self.X, self.family, self.offset, None, ini_params, tol, max_iter, wi=wi)
-                params[i,:] = rslt[0].T
-                predy[i] = rslt[1][i]
-                w[i] = rslt[3][i]
-                S[i] = np.dot(self.X[i],rslt[5])
-                #dont need unless f is explicitly passed for
-                #prediction of non-sampled points
-                #cf = rslt[5] - np.dot(rslt[5], f)
-                #CCT[i] = np.diag(np.dot(cf, cf.T/rslt[3]))
-                CCT[i] = np.diag(np.dot(rslt[5], rslt[5].T))
-    
-        return GWRResults(self, params, predy, S, CCT, w)
+            
+            #In bandwidth selection, return GWRResultsLite
+            if searching:
+                resid = np.zeros((m, 1))
+                influ = np.zeros((m,1))
+                for i in range(m):
+                    wi = self.W[i].reshape((-1,1))
+                    if isinstance(self.family, Gaussian):
+                        betas, inv_xtx_xt = _compute_betas_gwr(self.y,self.X,wi)
+                        influ[i] = np.dot(self.X[i],inv_xtx_xt[:,i])
+                        predy = np.dot(self.X[i],betas)[0]
+                        resid[i] = self.y[i] - predy
+                    elif isinstance(self.family, (Poisson, Binomial)):
+                        rslt = iwls(self.y, self.X, self.family, self.offset, None, ini_params, tol, max_iter, wi=wi)
+                        inv_xtx_xt = rslt[5]
+                        influ[i] = np.dot(self.X[i],inv_xtx_xt[:,i])*rslt[3][i][0]
+                        predy = rslt[1][i]
+                        resid[i] = self.y[i] - predy
+                return GWRResultsLite(self,resid,influ)
+
+            else:
+                params = np.zeros((m, self.k))
+                predy = np.zeros((m, 1))
+                w = np.zeros((m, 1))
+                S = np.zeros((m, self.n))
+                CCT = np.zeros((m, self.k))
+                for i in range(m):
+                    wi = self.W[i].reshape((-1,1))
+                    rslt = iwls(self.y, self.X, self.family, self.offset, None, ini_params, tol, max_iter, wi=wi)
+                    params[i,:] = rslt[0].T
+                    predy[i] = rslt[1][i]
+                    w[i] = rslt[3][i]
+                    S[i] = np.dot(self.X[i],rslt[5])
+                    #dont need unless f is explicitly passed for
+                    #prediction of non-sampled points
+                    #cf = rslt[5] - np.dot(rslt[5], f)
+                    #CCT[i] = np.diag(np.dot(cf, cf.T/rslt[3]))
+                    CCT[i] = np.diag(np.dot(rslt[5], rslt[5].T))
+                return GWRResults(self, params, predy, S, CCT, w)
+                
+                    
 
     def predict(self, points, P, exog_scale=None, exog_resid=None, fit_params={}):
         """
@@ -323,6 +355,57 @@ class GWR(GLM):
     @cache_readonly
     def df_resid(self):
         raise NotImplementedError('Only computed for fitted model in GWRResults')
+
+
+#A lighter GWR result object for bw searching
+class GWRResultsLite(object):
+    """
+    Light class including minimum properties for computing GWR diagnostics
+    
+    Parameters
+    ----------
+    model               : GWR object
+                        pointer to GWR object with estimation parameters
+                        
+    resid_response      : array
+                        n*1, residuals of the repsonse
+                        
+    influ               : array
+                        n*1, leading diagonal of S matrix
+                        
+    Attributes
+    ----------
+    tr_S                : float
+                        trace of S (hat) matrix
+                        
+    llf                 : scalar
+                        log-likelihood of the full model; see
+                        pysal.contrib.glm.family for damily-sepcific
+                        log-likelihoods
+                        
+    mu                  : array
+                        n*, flat one dimensional array of predicted mean
+                        response value from estimator
+    """
+
+    def __init__(self, model, resid, influ):
+        self.y = model.y
+        self.family = model.family
+        self.n = model.n
+        self.influ = influ
+        self.resid_response = resid
+    
+    @cache_readonly
+    def tr_S(self):
+        return np.sum(self.influ)
+    @cache_readonly
+    def llf(self):
+        return self.family.loglike(self.y,self.mu)
+    @cache_readonly
+    def mu(self):
+        return self.y - self.resid_response
+
+
 
 class GWRResults(GLMResults):
     """
@@ -943,7 +1026,78 @@ class GWRResults(GLMResults):
         VDP = vdp_pi[:,nvar-1,:]
         
         return corr_mat, vifs_mat, local_CN, VDP
+   
+    def spatial_variability(self, selector, n_iters=1000, seed=None):
+        """
+        Method to compute a Monte Carlo test of spatial variability for each
+        estimated coefficient surface.
+
+        WARNING: This test is very computationally demanding!
+
+        Parameters
+        ----------
+        selector        : sel_bw object
+                          should be the sel_bw object used to select a bandwidth
+                          for the gwr model that produced the surfaces that are
+                          being tested for spatial variation
+        
+        n_iters         : int
+                          the number of Monte Carlo iterations to include for
+                          the tests of spatial variability.
+
+       seed             : int
+                          optional parameter to select a custom seed to ensure
+                          stochastic results are replicable. Default is none
+                          which automatically sets the seed to 5536
+
+       Returns
+       -------
+
+       p values         : list
+                          a list of psuedo p-values that correspond to the model
+                          parameter surfaces. Allows us to assess the
+                          probability of obtaining the observed spatial
+                          variation of a given surface by random chance. 
+
+
+        """
+        temp_sel = copy.deepcopy(selector)
+        temp_gwr = copy.deepcopy(self.model)
+
+        if seed is None:
+        	np.random.seed(5536)
+        else:
+            np.random.seed(seed)
+
+        fit_params = temp_gwr.fit_params
+        search_params = temp_sel.search_params
+        kernel = temp_gwr.kernel
+        fixed = temp_gwr.fixed
+
+
+        if self.model.constant:
+            X = self.X[:,1:]
+        else:
+            X = self.X
+
+        init_sd =  np.std(self.params, axis=0)
+        SDs = []
     
+        for x in range(n_iters):
+            temp_coords = np.random.permutation(self.model.coords)
+            temp_sel.coords = temp_coords
+            temp_sel._build_dMat()
+            temp_bw = temp_sel.search(**search_params)
+   
+            temp_gwr.W = temp_gwr._build_W(fixed, kernel, temp_coords, temp_bw)
+            temp_params = temp_gwr.fit(**fit_params).params
+    
+            temp_sd = np.std(temp_params, axis=0)
+            SDs.append(temp_sd)
+        
+        p_vals = (np.sum(np.array(SDs) > init_sd, axis=0) / float(n_iters))
+        return p_vals
+
     @cache_readonly
     def predictions(self):
         P = self.model.P
@@ -1017,6 +1171,9 @@ class MGWR(GWR):
                         True to include intercept (default) in model and False to exclude
                         intercept.
 
+        spherical     : boolean
+                        True for shperical coordinates (long-lat),
+                        False for projected coordinates (defalut).
     Attributes
     ----------
         coords        : array-like
@@ -1086,7 +1243,7 @@ class MGWR(GWR):
     """
     def __init__(self, coords, y, X, bws, XB, err, family=Gaussian(), offset=None,
            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True,
-           dmat=None, sorted_dmat=None):
+           dmat=None, sorted_dmat=None, spherical=False):
         """
         Initialize class
         """
@@ -1104,6 +1261,7 @@ class MGWR(GWR):
         self.constant = constant
         self.dmat = dmat
         self.sorted_dmat = sorted_dmat
+        self.spherical = spherical
         if constant:
           self.X = USER.check_constant(self.X)
 
