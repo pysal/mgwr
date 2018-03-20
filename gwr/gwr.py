@@ -1288,16 +1288,22 @@ class MGWR(GWR):
         """
         params = np.zeros_like(self.X)
         err = self.err
+        S = []
+        SE = []
+        Ws = []
         for i, bw in enumerate(self.bws):
             W = self._build_W(self.fixed, self.kernel, self.coords, bw)
+            Ws.append(W)
             X = self.X[:,i].reshape((-1,1))
             y = self.XB[:,i].reshape((-1,1)) + err
             model = GWR(self.coords, y, X, bw, self.family, self.offset,
                     self.sigma2_v1, self.kernel, self.fixed, constant=False)
             results = model.fit(ini_params, tol, max_iter, solve)
+            S.append(results.S)
             params[:,i] = results.params.flatten()
+            SE.append(results.bse)
             err = results.resid_response.reshape((-1,1))
-        return MGWRResults(self, params)
+        return MGWRResults(self, params, S, SE, Ws)
 
 class MGWRResults(object):
     """
@@ -1338,7 +1344,7 @@ class MGWRResults(object):
     TODO
 
     """
-    def __init__(self, model, params):
+    def __init__(self, model, params, S, SE, Ws):
         """
         Initialize class
         """
@@ -1346,6 +1352,9 @@ class MGWRResults(object):
         self.params = params
         self.X = model.X
         self.y = model.y
+        self.S = S
+        self.SE = SE
+        self.Ws = Ws
         self._cache = {}
 
     @cache_readonly
