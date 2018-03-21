@@ -1102,8 +1102,8 @@ class GWRResults(GLMResults):
     def predictions(self):
         P = self.model.P
         if P is None:
-          raise NotImplementedError('predictions only avaialble if predict'
-          'method called on GWR model')
+          raise TypeError('predictions only avaialble if predict'
+          'method is previously called on GWR model')
         else:
             predictions = np.sum(P*self.params, axis=1).reshape((-1,1))
         return predictions
