@@ -152,8 +152,8 @@ class Sel_BW(object):
         self._build_dMat()
         self.search_params = {}
 
-    def search(self, search_method='golden_section', criterion='AICc', bw_min=0.0,
-            bw_max=0.0, interval=0.0, tol=1.0e-6, max_iter=200, init_multi=True,
+    def search(self, search_method='golden_section', criterion='AICc',
+            bw_min=None, bw_max=None, interval=0.0, tol=1.0e-6, max_iter=200, init_multi=True,
             tol_multi=1.0e-5, rss_score=False, max_iter_multi=200):
         """
         Parameters
@@ -344,8 +344,9 @@ class Sel_BW(object):
             a = np.min(sq_dists)/2.0
             c = np.max(sq_dists)*2.0
 
-        if a < self.bw_min:
+        if self.bw_min is not None:
             a = self.bw_min
-        if c > self.bw_max and self.bw_max > 0:
+        if self.bw_max is not None:
             c = self.bw_max
+        
         return a, c
