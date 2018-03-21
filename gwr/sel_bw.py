@@ -262,7 +262,9 @@ class Sel_BW(object):
 
     def _bw(self):
 
-        gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, constant=self.constant,dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit(searching = True))
+        gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, 
+            self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, 
+            constant=self.constant,dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit(searching = True))
         
         self._optimized_function = gwr_func
 
@@ -276,10 +278,12 @@ class Sel_BW(object):
             self.bw = equal_interval(self.bw_min, self.bw_max, self.interval,
                     gwr_func, self.int_score)
         elif self.search_method == 'scipy':
-            self.bw_min, self.bw_max = self._init_section(self.X_glob, self.X_loc, self.coords, self.constant)
+            self.bw_min, self.bw_max = self._init_section(self.X_glob, self.X_loc,
+                    self.coords, self.constant)
             if self.bw_min == self.bw_max:
                 raise Exception('Maximum bandwidth and minimum bandwidth must be distinct for scipy optimizer.')
-            self._optimize_result = minimize_scalar(gwr_func, bounds=(self.bw_min, self.bw_max), method='bounded')
+            self._optimize_result = minimize_scalar(gwr_func, bounds=(self.bw_min,
+                self.bw_max), method='bounded')
             self.bw = [self._optimize_result.x, self._optimize_result.fun, []]
         else:
             raise TypeError('Unsupported computational search method ',
@@ -288,7 +292,7 @@ class Sel_BW(object):
     def _mbw(self):
         y = self.y
         if self.constant:
-          X = USER.check_constant(self.X_loc)
+            X = USER.check_constant(self.X_loc)
         else:
             X = self.X_loc
         n, k = X.shape
@@ -305,12 +309,14 @@ class Sel_BW(object):
         tol = self.tol
         max_iter = self.max_iter
         def gwr_func(y,X,bw):
-            return GWR(coords, y,X,bw,family=family, kernel=kernel, fixed=fixed, offset=offset, constant=False).fit()
+            return GWR(coords, y,X,bw,family=family, kernel=kernel, fixed=fixed,
+                    offset=offset, constant=False).fit()
         def bw_func(y,X):
-            return Sel_BW(coords, y,X,X_glob=[], family=family, kernel=kernel, fixed=fixed, offset=offset, constant=False)
+            return Sel_BW(coords, y,X,X_glob=[], family=family, kernel=kernel,
+                    fixed=fixed, offset=offset, constant=False)
         def sel_func(bw_func):
-            return bw_func.search(search_method=search_method, criterion=criterion, bw_min=bw_min, 
-                           bw_max=bw_max, interval=interval, tol=tol, max_iter=max_iter)
+            return bw_func.search(search_method=search_method, criterion=criterion,
+                    bw_min=bw_min, bw_max=bw_max, interval=interval, tol=tol, max_iter=max_iter)
         self.bw = multi_bw(self.init_multi, y, X, n, k, family,
                 self.tol_multi, self.max_iter_multi, self.rss_score, gwr_func,
                 bw_func, sel_func)

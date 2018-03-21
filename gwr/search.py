@@ -167,7 +167,7 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         err = optim_model.resid_response.reshape((-1,1))
         est = optim_model.params
     else:
-        model = GLM(y, X, family=self.family, constant=False).fit()
+        model = GLM(y, X, family=family, constant=False).fit()
         err = model.resid_response.reshape((-1,1))
         est = np.repeat(model.params.T, n, axis=0)
 

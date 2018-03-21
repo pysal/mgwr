@@ -1,5 +1,5 @@
 """
-Diagnostics for estimated gwr modesl
+Diagnostics for estimated gwr models
 """
 __author__ = "Taylor Oshan tayoshan@gmail.com"
 
