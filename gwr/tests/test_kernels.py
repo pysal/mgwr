@@ -58,7 +58,7 @@ class TestKernels(unittest.TestCase):
         [ 0.07811997,  0.36787948,  1.        ,  0.36787948,  0.07811997],
         [ 0.27949951,  0.36787948,  0.60653069,  1.        ,  0.23276223],
         [ 0.67554721,  0.36787948,  0.36787948,  0.31868771,  1.        ]])
-
+    
     def test_fix_gauss(self):
         kern = fix_gauss(self.coords, 3)
         np.testing.assert_allclose(kern, self.fix_gauss_kern)
