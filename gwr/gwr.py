@@ -1241,7 +1241,7 @@ class MGWR(GWR):
     TODO
 
     """
-    def __init__(self, coords, y, X, sel, family=Gaussian(), offset=None,
+    def __init__(self, coords, y, X, selector, family=Gaussian(), offset=None,
            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True,
            dmat=None, sorted_dmat=None, spherical=False):
         """
@@ -1252,7 +1252,7 @@ class MGWR(GWR):
         self.X = X
         self.family = family
         self.offset = offset
-        self.sel = sel
+        self.selector = selector
         self.sigma2_v1 = sigma2_v1
         self.kernel = kernel
         self.fixed = fixed
@@ -1284,9 +1284,9 @@ class MGWR(GWR):
                         'iwls' = iteratively (re)weighted least squares (default)
 
         """
-        S = self.sel.S
-        R = self.sel.R
-        params = self.sel.est
+        S = self.selector.S
+        R = self.selector.R
+        params = self.selector.est
     
         return MGWRResults(self, params, S, R)
 
@@ -1384,7 +1384,7 @@ class MGWRResults(object):
         k = self.params.shape[1]
         bse = np.zeros((n,k))
         for j in range(k):
-            Rj = R[:,:,j]
+            Rj = self.R[:,:,j]
             Cj = Rj/self.X[:,j].reshape(-1,1)
             bse[:,j] = np.sqrt(np.diag(np.dot(Cj, Cj.T)*self.sigma2))
 

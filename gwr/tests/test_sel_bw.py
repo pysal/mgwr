@@ -22,9 +22,9 @@ class TestSelBW(unittest.TestCase):
         black = np.array(data.by_col('PctBlack')).reshape((-1,1))
         self.X = np.hstack([rural, pov, black])
         XB_path = os.path.join(os.path.dirname(__file__),'XB.p')
-        self.XB = pk.load(open(XB_path, 'r'))
+        self.XB = pk.load(open(XB_path,'rb'))
         err_path = os.path.join(os.path.dirname(__file__),'err.p')
-        self.err = pk.load(open(err_path, 'r'))
+        self.err = pk.load(open(err_path,'rb'))
   
     def test_golden_fixed_AICc(self):
         bw1 = 211020.83
