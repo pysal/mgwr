@@ -269,8 +269,9 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(cooksD, rslt.cooksD, rtol=1e-00)
     
     def test_MGWR(self):
-        model = MGWR(self.coords, self.y, self.X, [157.0, 65.0, 52.0],
-                XB=self.XB, err=self.err, constant=False)
+        selector = Sel_BW(self.coords, self.y, self.X,multi=True)
+        
+        model = MGWR(self.coords, self.y, self.X, selector=selector, constant=False)
         rslt = model.fit()
 
         np.testing.assert_allclose(rslt.predy, self.MGWR['predy'], atol=1e-07)

@@ -242,9 +242,10 @@ class Sel_BW(object):
 
         if self.multi:
             self._mbw()
-            self.XB = self.bw[4]
-            self.err = self.bw[5]
-            self.S = self.bw[-1]
+            self.est = self.bw[3] #params
+            self.err = self.bw[4] #residual
+            self.S = self.bw[-2] #(n,n)
+            self.R = self.bw[-1] #(n,n,k)
         else:
             self._bw()
 

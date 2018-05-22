@@ -1241,7 +1241,7 @@ class MGWR(GWR):
     TODO
 
     """
-    def __init__(self, coords, y, X, bws, XB, err, family=Gaussian(), offset=None,
+    def __init__(self, coords, y, X, selector, family=Gaussian(), offset=None,
            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True,
            dmat=None, sorted_dmat=None, spherical=False):
         """
@@ -1250,11 +1250,9 @@ class MGWR(GWR):
         self.coords = coords
         self.y = y
         self.X = X
-        self.XB = XB
-        self.err = err
-        self.bws = bws
         self.family = family
         self.offset = offset
+        self.selector = selector
         self.sigma2_v1 = sigma2_v1
         self.kernel = kernel
         self.fixed = fixed
@@ -1263,7 +1261,7 @@ class MGWR(GWR):
         self.sorted_dmat = sorted_dmat
         self.spherical = spherical
         if constant:
-          self.X = USER.check_constant(self.X)
+            self.X = USER.check_constant(self.X)
 
     def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls'):
         """
@@ -1286,24 +1284,11 @@ class MGWR(GWR):
                         'iwls' = iteratively (re)weighted least squares (default)
 
         """
-        params = np.zeros_like(self.X)
-        err = self.err
-        S = []
-        SE = []
-        Ws = []
-        for i, bw in enumerate(self.bws):
-            W = self._build_W(self.fixed, self.kernel, self.coords, bw)
-            Ws.append(W)
-            X = self.X[:,i].reshape((-1,1))
-            y = self.XB[:,i].reshape((-1,1)) + err
-            model = GWR(self.coords, y, X, bw, self.family, self.offset,
-                    self.sigma2_v1, self.kernel, self.fixed, constant=False)
-            results = model.fit(ini_params, tol, max_iter, solve)
-            S.append(results.S)
-            params[:,i] = results.params.flatten()
-            SE.append(results.bse)
-            err = results.resid_response.reshape((-1,1))
-        return MGWRResults(self, params, S, SE, Ws)
+        S = self.selector.S
+        R = self.selector.R
+        params = self.selector.est
+    
+        return MGWRResults(self, params, S, R)
 
 class MGWRResults(object):
     """
@@ -1344,7 +1329,7 @@ class MGWRResults(object):
     TODO
 
     """
-    def __init__(self, model, params, S, SE, Ws):
+    def __init__(self, model, params, S, R):
         """
         Initialize class
         """
@@ -1353,19 +1338,54 @@ class MGWRResults(object):
         self.X = model.X
         self.y = model.y
         self.S = S
-        self.SE = SE
-        self.Ws = Ws
+        self.R = R
+        self.n = self.y.shape[0]
         self._cache = {}
 
     @cache_readonly
     def predy(self):
-        return np.sum(np.multiply(self.params, self.X), axis=1).reshape((-1,1))
+        return np.dot(self.S,self.y)
 
     @cache_readonly
     def resid_response(self):
-        return (self.y - self.predy).reshape((-1,1))
+        return (self.y - self.predy).reshape(-1)
 
     @cache_readonly
     def resid_ss(self):
-        u = self.resid_response.flatten()
-        return np.dot(u, u.T)
+        return np.sum(self.resid_response**2)
+    
+    @cache_readonly
+    def tr_S(self):
+        return np.trace(self.S)
+    
+    @cache_readonly
+    def sigma2(self):
+        return self.resid_ss / (self.n - self.tr_S)
+    
+    @cache_readonly
+    def aicc(self):
+        n = self.n
+        tr_S = self.tr_S
+        aicc = n*np.log(self.sigma2) + n*np.log(2*np.pi) + n*(n+tr_S)/(n-tr_S-2.0)
+        return aicc
+    
+    @cache_readonly
+    def ENPj(self):
+        k = self.params.shape[1]
+        ENPj = np.zeros(k)
+        for j in range(k):
+            Rj = self.R[:,:,j]
+            ENPj[j] = np.trace(Rj)
+        return ENPj
+    
+    @cache_readonly
+    def bse(self):
+        n = self.n
+        k = self.params.shape[1]
+        bse = np.zeros((n,k))
+        for j in range(k):
+            Rj = self.R[:,:,j]
+            Cj = Rj/self.X[:,j].reshape(-1,1)
+            bse[:,j] = np.sqrt(np.diag(np.dot(Cj, Cj.T)*self.sigma2))
+
+        return bse

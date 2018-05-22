@@ -152,11 +152,9 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False):
 
     return opt_val, opt_score, output
 
-MGWR_BW_Result = namedtuple('MGWR_BW_RESULT', ['bws_','bw_trace', 'kernel_values', 'scores',
-                                               'partial_predictions','model_residuals_',
-                                               'partial_residuals_',
-                                               'objective_functions',
-                                               'hat_matrix'])
+MGWR_BW_Result = namedtuple('MGWR_BW_RESULT', ['bws_','bw_trace', 'scores',
+                                               'parameter_estimates','model_residuals',
+                                               'hat_matrix','covariate_specific_hat_matrices'])
 
 def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         gwr_func, bw_func, sel_func):
@@ -170,18 +168,15 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         model = GLM(y, X, family=family, constant=False).fit()
         err = model.resid_response.reshape((-1,1))
         est = np.repeat(model.params.T, n, axis=0)
-
+    
     R = np.zeros((n,n,k))
-    hat_matrix = optim_model.S
-    for i in range(k):
-        temp_vec = np.zeros((1,k))
-        temp_vec[:,i] = 1.0
-        for j in range(n):
-            Wj = np.diag(optim_model.W[j])
-            XtW = np.dot(X.T, Wj)
-            XtWX_inv = np.linalg.inv(np.dot(XtW, X))
-            P = np.dot(XtWX_inv, XtW)
-            R[j,:,i] = np.dot((X[j,i] * temp_vec), P)
+    
+    for j in range(k):
+        for i in range(n):
+            wi = optim_model.W[i].reshape(-1,1)
+            xT = (X * wi).T
+            P = np.dot(np.linalg.inv(np.dot(xT, X)), xT)
+            R[i,:,j] = X[i,j]*P[j]
 
     XB = np.multiply(est, X)
     if rss_score:
@@ -192,7 +187,6 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
     BWs = []
     VALs = []
     FUNCs = []
-    Aj = np.zeros((n,n))
     
     try:
         from tqdm import tqdm #if they have it, let users have a progress bar
@@ -208,45 +202,36 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         ests = np.zeros_like(X)
         f_XB = XB.copy()
         f_err = err.copy()
-        for i in range(k):
-            temp_y = XB[:,i].reshape((-1,1))
+        
+        for j in range(k):
+            temp_y = XB[:,j].reshape((-1,1))
             temp_y = temp_y + err
-            temp_X = X[:,i].reshape((-1,1))
+            temp_X = X[:,j].reshape((-1,1))
             bw_class = bw_func(temp_y, temp_X)
             funcs.append(bw_class._functions)
             bw = sel_func(bw_class)
             optim_model = gwr_func(temp_y, temp_X, bw)
-            
-            for j in range(n):
-                Wj = np.diag(optim_model.W[j])
-                XtW = np.dot(temp_X.T, Wj)
-                XtWX_inv = np.linalg.inv(np.dot(XtW, temp_X))
-                P = np.dot(XtWX_inv, XtW)
-                Aj[j,:] = temp_X[j,:] * P
-
-            new_R = R.copy()
-            new_R[:,:,i] = Aj - np.dot(Aj, S) + np.dot(Aj, R[:,:,i])
-            new_S = S - R[:,:,i] + new_R[:,:,i]
-
-            R = new_R.copy()
-            S = new_S.copy()
+            Aj = optim_model.S
+            new_Rj = Aj - np.dot(Aj, S) + np.dot(Aj, R[:,:,j])
+            S = S - R[:,:,j] + new_Rj
+            R[:,:,j] = new_Rj
             
             err = optim_model.resid_response.reshape((-1,1))
             est = optim_model.params.reshape((-1,))
 
-            new_XB[:,i] = np.multiply(est, temp_X.reshape((-1,)))
+            new_XB[:,j] = optim_model.predy.reshape(-1)
             bws.append(copy.deepcopy(bw))
-            ests[:,i] = est
+            ests[:,j] = est
             vals.append(bw_class.bw[1])
             current_partial_residuals.append(err.copy())
 
-        predy = np.sum(np.multiply(ests, X), axis=1).reshape((-1,1))
         num = np.sum((new_XB - XB)**2)/n
         den = np.sum(np.sum(new_XB, axis=1)**2)
         score = (num/den)**0.5
         XB = new_XB
 
         if rss_score:
+            predy = np.sum(np.multiply(ests, X), axis=1).reshape((-1,1))
             new_rss = np.sum((y - predy)**2)
             score = np.abs((new_rss - rss)/new_rss)
             rss = new_rss
@@ -259,6 +244,6 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
             break
 
     opt_bws = BWs[-1]
-    return MGWR_BW_Result(opt_bws, np.array(BWs), np.array(VALs), 
-                          np.array(scores), f_XB, f_err,
-                          current_partial_residuals, FUNCs, S)
+    return MGWR_BW_Result(opt_bws, np.array(BWs),
+                          np.array(scores), ests,
+                          err, S, R)
