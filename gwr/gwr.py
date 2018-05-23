@@ -55,8 +55,9 @@ class GWR(GLM):
                         only for Poisson models
 
         sigma2_v1     : boolean
-                        specify sigma squared, True to use n as denominator;
-                        default is False which uses n-k
+                        specify form of sigma squared to use for model
+                        diagnostics, Defaults to True to use n - tr(S) as 
+                        denominator; False uses n-2(tr(s)+tr(S'S))
 
         kernel        : string
                         type of kernel function used to weight observations;
@@ -72,7 +73,19 @@ class GWR(GLM):
         constant      : boolean
                         True to include intercept (default) in model and False to exclude
                         intercept.
+
+        dmat          : array
+                        n*n, distance matrix between calibration locations used
+                        to compute weight matrix. Defaults to None and is
+                        primarily for avoiding duplicate computation during
+                        bandwidth selection.
                         
+        sorted_dmat   : array
+                        n*n, sorted distance matrix between calibration locations used
+                        to compute weight matrix. Defaults to None and is
+                        primarily for avoiding duplicate computation during
+                        bandwidth selection.
+        
         spherical     : boolean
                         True for shperical coordinates (long-lat),
                         False for projected coordinates (defalut).
@@ -105,8 +118,9 @@ class GWR(GLM):
                         Default is None where Ni becomes 1.0 for all locations
 
         sigma2_v1     : boolean
-                        specify sigma squared, True to use n as denominator;
-                        default is False which uses n-k
+                        specify form of sigma squared to use for model
+                        diagnostics, Defaults to True to use n - tr(S) as 
+                        denominator; False uses n-2(tr(s)+tr(S'S))
 
         kernel        : string
                         type of kernel function used to weight observations;
@@ -123,6 +137,18 @@ class GWR(GLM):
                         True to include intercept (default) in model and False to exclude
                         intercept
 
+        dmat          : array
+                        n*n, distance matrix between calibration locations used
+                        to compute weight matrix. Defaults to None and is
+                        primarily for avoiding duplicate computation during
+                        bandwidth selection.
+                        
+        sorted_dmat   : array
+                        n*n, sorted distance matrix between calibration locations used
+                        to compute weight matrix. Defaults to None and is
+                        primarily for avoiding duplicate computation during
+                        bandwidth selection.
+        
         spherical     : boolean
                         True for shperical coordinates (long-lat),
                         False for projected coordinates (defalut).
@@ -192,7 +218,7 @@ class GWR(GLM):
 
     """
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
-            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True, 
+            sigma2_v1=True, kernel='bisquare', fixed=False, constant=True, 
             dmat=None, sorted_dmat=None, spherical=False):
         """
         Initialize class
@@ -356,57 +382,6 @@ class GWR(GLM):
     def df_resid(self):
         raise NotImplementedError('Only computed for fitted model in GWRResults')
 
-
-#A lighter GWR result object for bw searching
-class GWRResultsLite(object):
-    """
-    Light class including minimum properties for computing GWR diagnostics
-    
-    Parameters
-    ----------
-    model               : GWR object
-                        pointer to GWR object with estimation parameters
-                        
-    resid_response      : array
-                        n*1, residuals of the repsonse
-                        
-    influ               : array
-                        n*1, leading diagonal of S matrix
-                        
-    Attributes
-    ----------
-    tr_S                : float
-                        trace of S (hat) matrix
-                        
-    llf                 : scalar
-                        log-likelihood of the full model; see
-                        pysal.contrib.glm.family for damily-sepcific
-                        log-likelihoods
-                        
-    mu                  : array
-                        n*, flat one dimensional array of predicted mean
-                        response value from estimator
-    """
-
-    def __init__(self, model, resid, influ):
-        self.y = model.y
-        self.family = model.family
-        self.n = model.n
-        self.influ = influ
-        self.resid_response = resid
-    
-    @cache_readonly
-    def tr_S(self):
-        return np.sum(self.influ)
-    @cache_readonly
-    def llf(self):
-        return self.family.loglike(self.y,self.mu)
-    @cache_readonly
-    def mu(self):
-        return self.y - self.resid_response
-
-
-
 class GWRResults(GLMResults):
     """
     Basic class including common properties for all GWR regression models
@@ -422,15 +397,15 @@ class GWRResults(GLMResults):
         predy               : array
                               n*1, predicted y values
 
-        w                   : array
-                              n*1, final weight used for iteratively re-weighted least
-                              sqaures; default is None
-
         S                   : array
                               n*n, hat matrix
 
         CCT                 : array
                               n*k, scaled variance-covariance matrix
+        
+        w                   : array
+                              n*1, final weight used for iteratively re-weighted least
+                              sqaures; default is None
 
     Attributes
     ----------
@@ -502,11 +477,6 @@ class GWRResults(GLMResults):
         tr_STS              : float
                               trace of STS matrix
 
-        tr_SWSTW            : float
-                              trace of weighted STS matrix; weights are those output
-                              from iteratively weighted least sqaures (not spatial
-                              weights)
-
         y_bar               : array
                               n*1, weighted mean value of y
 
@@ -515,18 +485,33 @@ class GWRResults(GLMResults):
 
         RSS                 : array
                               n*1, geographically weighted residual sum of squares
+        
+        R2                  : float
+                              R-squared for the entire model (1- RSS/TSS)
+        
+        aic                 : float
+                              Akaike information criterion
+
+        aicc                : float
+                              corrected Akaike information criterion to account
+                              to account for model complexity (smaller
+                              bandwidths)
+
+        bic                 : float
+                              Bayesian information criterio
 
         localR2             : array
                               n*1, local R square
 
         sigma2_v1           : float
-                              sigma squared, use (n-v1) as denominator
+                              sigma squared, use (n-tr(S)) as denominator
 
         sigma2_v1v2         : float
-                              sigma squared, use (n-2v1+v2) as denominator
+                              sigma squared, use (n-(2tr(S)+tr(S'S)) as denominator
 
         sigma2_ML           : float
-                              sigma squared, estimated using ML
+                              sigma squared, estimated using ML (n-k) in
+                              denominator
 
         std_res             : array
                               n*1, standardised residuals
@@ -743,6 +728,7 @@ class GWRResults(GLMResults):
         else:
             return self.resid_ss/(self.n - 2.0*self.tr_S +
                   self.tr_STS) #could be changed to SWSTW - nothing to test against
+    
     @cache_readonly
     def sigma2_ML(self):
         """
@@ -960,6 +946,14 @@ class GWRResults(GLMResults):
         raise NotImplementedError('Not implemented for GWR')
 
     @cache_readonly
+    def conf_int(self):
+        raise NotImplementedError('Not implemented for GWR')
+
+    @cache_readonly
+    def use_t(self):
+        raise NotImplementedError('Not implemented for GWR')
+    
+    @cache_readonly
     def local_collinearity(self):
         """
         Computes several indicators of multicollinearity within a geographically
@@ -1107,6 +1101,54 @@ class GWRResults(GLMResults):
         else:
             predictions = np.sum(P*self.params, axis=1).reshape((-1,1))
         return predictions
+
+class GWRResultsLite(object):
+    """
+    Lightweight GWR that computes the minimum diagnostics needed for bandwidth
+    selection
+    
+    Parameters
+    ----------
+    model               : GWR object
+                        pointer to GWR object with estimation parameters
+                        
+    resid_response      : array
+                        n*1, residuals of the repsonse
+                        
+    influ               : array
+                        n*1, leading diagonal of S matrix
+                        
+    Attributes
+    ----------
+    tr_S                : float
+                        trace of S (hat) matrix
+                        
+    llf                 : scalar
+                        log-likelihood of the full model; see
+                        pysal.contrib.glm.family for damily-sepcific
+                        log-likelihoods
+                        
+    mu                  : array
+                        n*, flat one dimensional array of predicted mean
+                        response value from estimator
+    """
+
+    def __init__(self, model, resid, influ):
+        self.y = model.y
+        self.family = model.family
+        self.n = model.n
+        self.influ = influ
+        self.resid_response = resid
+    
+    @cache_readonly
+    def tr_S(self):
+        return np.sum(self.influ)
+    @cache_readonly
+    def llf(self):
+        return self.family.loglike(self.y,self.mu)
+    @cache_readonly
+    def mu(self):
+        return self.y - self.resid_response
 
 class MGWR(GWR):
     """
@@ -1348,7 +1390,7 @@ class MGWRResults(object):
 
     @cache_readonly
     def resid_response(self):
-        return (self.y - self.predy).reshape(-1)
+        return (self.y - self.predy).reshape((-1,1))
 
     @cache_readonly
     def resid_ss(self):
