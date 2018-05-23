@@ -1143,9 +1143,11 @@ class GWRResultsLite(object):
     @cache_readonly
     def tr_S(self):
         return np.sum(self.influ)
+    
     @cache_readonly
     def llf(self):
         return self.family.loglike(self.y,self.mu)
+    
     @cache_readonly
     def mu(self):
         return self.y - self.resid_response
@@ -1283,27 +1285,37 @@ class MGWR(GWR):
     TODO
 
     """
-    def __init__(self, coords, y, X, selector, family=Gaussian(), offset=None,
-           sigma2_v1=False, kernel='bisquare', fixed=False, constant=True,
+    def __init__(self, coords, y, X, selector, offset=None,
+           sigma2_v1=True, kernel='bisquare', fixed=False, constant=True,
            dmat=None, sorted_dmat=None, spherical=False):
         """
         Initialize class
         """
-        self.coords = coords
-        self.y = y
-        self.X = X
-        self.family = family
-        self.offset = offset
         self.selector = selector
-        self.sigma2_v1 = sigma2_v1
-        self.kernel = kernel
-        self.fixed = fixed
-        self.constant = constant
-        self.dmat = dmat
-        self.sorted_dmat = sorted_dmat
-        self.spherical = spherical
-        if constant:
-            self.X = USER.check_constant(self.X)
+        self.bw = self.selector.bw[0]
+        self.family = Gaussian() #manually set since we only support Gassian MGWR for now
+        GWR.__init__(self, coords, y, X, self.bw, family=self.family, offset=offset,
+                sigma2_v1=sigma2_v1, kernel=kernel, fixed=fixed,
+                constant=constant, dmat=dmat, sorted_dmat=sorted_dmat, 
+                spherical=spherical)
+        self.selector = selector
+    
+    #overwrite GWR method to handle multiple BW's
+    def _build_W(self, fixed, kernel, coords, bw, points=None):
+        Ws = []
+        for bw_i in bw:
+            if fixed:
+                try:
+                    W = fk[kernel](coords, bw_i, points, self.dmat, self.sorted_dmat,spherical=self.spherical)
+                except:
+                    raise #TypeError('Unsupported kernel function  ', kernel)
+            else:
+                try:
+                     W = ak[kernel](coords, bw_i, points, self.dmat, self.sorted_dmat,spherical=self.spherical)
+                except:
+                    raise #TypeError('Unsupported kernel function  ', kernel)
+        Ws.append(W)
+        return Ws
 
     def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls'):
         """
@@ -1329,10 +1341,15 @@ class MGWR(GWR):
         S = self.selector.S
         R = self.selector.R
         params = self.selector.est
-    
-        return MGWRResults(self, params, S, R)
+        predy = np.dot(S, self.y)
+        CCT = np.zeros((self.n, self.k))
+        for j in range(self.k):
+            C = np.dot(np.linalg.inv(np.diag(self.X[:,j])), R[:,:,j])
+            CCT[:,j] = np.diag(np.dot(C,C.T))
+        w = np.ones(self.n) #manually set since we onlly support Gaussian MGWR for now
+        return MGWRResults(self, params, predy, S, CCT, R, w)
 
-class MGWRResults(object):
+class MGWRResults(GWRResults):
     """
     Parameters
     ----------
@@ -1371,63 +1388,571 @@ class MGWRResults(object):
     TODO
 
     """
-    def __init__(self, model, params, S, R):
+    def __init__(self, model, params, predy, S, CCT, R, w):
         """
         Initialize class
         """
-        self.model = model
-        self.params = params
-        self.X = model.X
-        self.y = model.y
-        self.S = S
+        GWRResults.__init__(self, model, params, predy, S, CCT, w)
         self.R = R
-        self.n = self.y.shape[0]
-        self._cache = {}
 
-    @cache_readonly
-    def predy(self):
-        return np.dot(self.S,self.y)
+    #@cache_readonly
+    #def aicc(self):
+    #    n = self.n
+    #    tr_S = self.tr_S
+    #    aicc = n*np.log(self.sigma2_v1) + n*np.log(2*np.pi) + n*(n+tr_S)/(n-tr_S-2.0)
+    #    return aicc
+    
+    #@cache_readonly
+    #def ENPj(self):
+    #    k = self.params.shape[1]
+    #    ENPj = np.zeros(k)
+    #    for j in range(k):
+    #        Rj = self.R[:,:,j]
+    #        ENPj[j] = np.trace(Rj)
+    #    return ENPj
+    
+    #@cache_readonly
+    #def bse(self):
+    #    n = self.n
+    #    k = self.params.shape[1]
+    #    bse = np.zeros((n,k))
+    #    for j in range(k):
+    #        Rj = self.R[:,:,j]
+    #        Cj = Rj/self.X[:,j].reshape(-1,1)
+    #        bse[:,j] = np.sqrt(np.diag(np.dot(Cj, Cj.T)*self.sigma2))
 
-    @cache_readonly
-    def resid_response(self):
-        return (self.y - self.predy).reshape((-1,1))
+    #    return bse
 
+    '''
     @cache_readonly
     def resid_ss(self):
-        return np.sum(self.resid_response**2)
-    
+        if self.model.points is not None:
+            raise NotImplementedError('Not available for GWR prediction')
+        else:
+            u = self.resid_response.flatten()
+        return np.dot(u, u.T)
+
+    @cache_readonly
+    def scale(self, scale=None):
+        if isinstance(self.family, Gaussian):
+            if self.model.sigma2_v1:
+                scale = self.sigma2_v1
+            else:
+                scale = self.sigma2_v1v2
+        else:
+            scale = 1.0
+        return scale
+
+    def cov_params(self, cov, exog_scale=None):
+        """
+        Returns scaled covariance parameters
+        Parameters
+        ----------
+        cov         : array
+                      estimated covariance parameters
+
+        Returns
+        -------
+        Scaled covariance parameters
+
+        """
+        if exog_scale is not None:
+          return cov*exog_scale
+        else:
+            return cov*self.scale
+
     @cache_readonly
     def tr_S(self):
-        return np.trace(self.S)
+        """
+        trace of S (hat) matrix
+        """
+        return np.trace(self.S*self.w)
+
+    @cache_readonly
+    def tr_STS(self):
+        """
+        trace of STS matrix
+        """
+        return np.trace(np.dot(self.S.T*self.w,self.S*self.w))
+
+    @cache_readonly
+    def y_bar(self):
+        """
+        weighted mean of y
+        """
+        if self.model.points is not None:
+          n = len(self.model.points)
+        else:
+            n = self.n
+        off = self.offset.reshape((-1,1))
+        arr_ybar = np.zeros(shape=(self.n,1))
+        for i in range(n):
+            w_i= np.reshape(np.array(self.W[i]), (-1, 1))
+            sum_yw = np.sum(self.y.reshape((-1,1)) * w_i)
+            arr_ybar[i] = 1.0 * sum_yw / np.sum(w_i*off)
+        return arr_ybar
+
+    @cache_readonly
+    def TSS(self):
+        """
+        geographically weighted total sum of squares
+
+        Methods: p215, (9.9)
+        Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
+        Geographically weighted regression: the analysis of spatially varying
+        relationships.
+
+        """
+        if self.model.points is not None:
+          n = len(self.model.points)
+        else:
+            n = self.n
+        TSS = np.zeros(shape=(n,1))
+        for i in range(n):
+          TSS[i] = np.sum(np.reshape(np.array(self.W[i]), (-1,1)) *
+                  (self.y.reshape((-1,1)) - self.y_bar[i])**2)
+        return TSS
+
+    @cache_readonly
+    def RSS(self):
+        """
+        geographically weighted residual sum of squares
+
+        Methods: p215, (9.10)
+        Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
+        Geographically weighted regression: the analysis of spatially varying
+        relationships.
+        """
+        if self.model.points is not None:
+          n = len(self.model.points)
+          resid = self.model.exog_resid.reshape((-1,1))
+        else:
+            n = self.n
+            resid = self.resid_response.reshape((-1,1))
+        RSS = np.zeros(shape=(n,1))
+        for i in range(n):
+            RSS[i] = np.sum(np.reshape(np.array(self.W[i]), (-1,1))
+                  * resid**2)
+        return RSS
+
+    @cache_readonly
+    def localR2(self):
+        """
+        local R square
+
+        Methods: p215, (9.8)
+        Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
+        Geographically weighted regression: the analysis of spatially varying
+        relationships.
+        """
+        if isinstance(self.family, Gaussian):
+            return (self.TSS - self.RSS)/self.TSS
+        else:
+            raise NotImplementedError('Only applicable to Gaussian')
+
+    @cache_readonly
+    def sigma2_v1(self):
+        """
+        residual variance
+
+        Methods: p214, (9.6),
+        Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
+        Geographically weighted regression: the analysis of spatially varying
+        relationships.
+
+        only use v1
+        """
+        return (self.resid_ss/(self.n-self.tr_S))
+
+    @cache_readonly
+    def sigma2_v1v2(self):
+        """
+        residual variance
+
+        Methods: p55 (2.16)-(2.18)
+        Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
+        Geographically weighted regression: the analysis of spatially varying
+        relationships.
+
+        use v1 and v2 #used in GWR4
+        """
+        if isinstance(self.family, (Poisson, Binomial)):
+            return self.resid_ss/(self.n - 2.0*self.tr_S +
+                  self.tr_STS) #could be changed to SWSTW - nothing to test against
+        else:
+            return self.resid_ss/(self.n - 2.0*self.tr_S +
+                  self.tr_STS) #could be changed to SWSTW - nothing to test against
     
     @cache_readonly
-    def sigma2(self):
-        return self.resid_ss / (self.n - self.tr_S)
-    
+    def sigma2_ML(self):
+        """
+        residual variance
+
+        Methods: maximum likelihood
+        """
+        return self.resid_ss/self.n
+
     @cache_readonly
-    def aicc(self):
-        n = self.n
-        tr_S = self.tr_S
-        aicc = n*np.log(self.sigma2) + n*np.log(2*np.pi) + n*(n+tr_S)/(n-tr_S-2.0)
-        return aicc
-    
-    @cache_readonly
-    def ENPj(self):
-        k = self.params.shape[1]
-        ENPj = np.zeros(k)
-        for j in range(k):
-            Rj = self.R[:,:,j]
-            ENPj[j] = np.trace(Rj)
-        return ENPj
-    
+    def std_res(self):
+        """
+        standardized residuals
+
+        Methods:  p215, (9.7)
+        Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
+        Geographically weighted regression: the analysis of spatially varying
+        relationships.
+        """
+        return self.resid_response.reshape((-1,1))/(np.sqrt(self.scale * (1.0 - self.influ)))
+
     @cache_readonly
     def bse(self):
-        n = self.n
-        k = self.params.shape[1]
-        bse = np.zeros((n,k))
-        for j in range(k):
-            Rj = self.R[:,:,j]
-            Cj = Rj/self.X[:,j].reshape(-1,1)
-            bse[:,j] = np.sqrt(np.diag(np.dot(Cj, Cj.T)*self.sigma2))
+        """
+        standard errors of Betas
 
-        return bse
+        Methods:  p215, (2.15) and (2.21)
+        Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
+        Geographically weighted regression: the analysis of spatially varying
+        relationships.
+        """
+        return np.sqrt(self.CCT)
+
+    @cache_readonly
+    def influ(self):
+        """
+        Influence: leading diagonal of S Matrix
+        """
+        return np.reshape(np.diag(self.S),(-1,1))
+
+    @cache_readonly
+    def cooksD(self):
+        """
+        Influence: leading diagonal of S Matrix
+
+        Methods: p216, (9.11),
+        Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
+        Geographically weighted regression: the analysis of spatially varying
+        relationships.
+        Note: in (9.11), p should be tr(S), that is, the effective number of parameters
+        """
+        return self.std_res**2 * self.influ / (self.tr_S * (1.0-self.influ))
+
+    @cache_readonly
+    def deviance(self):
+        off = self.offset.reshape((-1,1)).T
+        y = self.y
+        ybar = self.y_bar
+        if isinstance(self.family, Gaussian):
+          raise NotImplementedError('deviance not currently used for Gaussian')
+        elif isinstance(self.family, Poisson):
+            dev = np.sum(2.0*self.W*(y*np.log(y/(ybar*off))-(y-ybar*off)),axis=1)
+        elif isinstance(self.family, Binomial):
+            dev = self.family.deviance(self.y, self.y_bar, self.W, axis=1)
+        return dev.reshape((-1,1))
+
+    @cache_readonly
+    def resid_deviance(self):
+        if isinstance(self.family, Gaussian):
+          raise NotImplementedError('deviance not currently used for Gaussian')
+        else:
+            off = self.offset.reshape((-1,1)).T
+            y = self.y
+            ybar = self.y_bar
+            global_dev_res = ((self.family.resid_dev(self.y, self.mu))**2)
+            dev_res = np.repeat(global_dev_res.flatten(),self.n)
+            dev_res = dev_res.reshape((self.n, self.n))
+            dev_res = np.sum(dev_res * self.W.T, axis=0)
+            return dev_res.reshape((-1,1))
+
+    @cache_readonly
+    def pDev(self):
+        """
+        Local percentage of deviance accounted for. Described in the GWR4
+        manual. Equivalent to 1 - (deviance/null deviance)
+        """
+        if isinstance(self.family, Gaussian):
+          raise NotImplementedError('Not implemented for Gaussian')
+        else:
+            return 1.0 - (self.resid_deviance/self.deviance)
+
+    @cache_readonly
+    def adj_alpha(self):
+        """
+        Corrected alpha (critical) values to account for multiple testing during hypothesis
+        testing. Includes corrected value for 90% (.1), 95% (.05), and 99%
+        (.01) confidence levels. Correction comes from:
+
+        da Silva, A. R., & Fotheringham, A. S. (2015). The Multiple Testing Issue in
+        Geographically Weighted Regression. Geographical Analysis.
+
+        """
+        alpha = np.array([.1, .05, .001])
+        pe = (2.0 * self.tr_S) - self.tr_STS
+        p = self.k
+        return (alpha*p)/pe
+
+    def filter_tvals(self, alpha):
+        """
+        Utility function to set tvalues with an absolute value smaller than the
+        absolute value of the alpha (critical) value to 0
+
+        Parameters
+        ----------
+        alpha           : scalar
+                          critical value to determine which tvalues are
+                          associated with statistically significant parameter
+                          estimates
+
+        Returns
+        -------
+        filtered       : array
+                          n*k; new set of n tvalues for each of k variables
+                          where absolute tvalues less than the absolute value of
+                          alpha have been set to 0.
+        """
+        alpha = np.abs(alpha)/2.0
+        n = self.n
+        critical = t.ppf(1-alpha, n-1)
+        subset = (self.tvalues < critical) & (self.tvalues > -1.0*critical)
+        tvalues = self.tvalues.copy()
+        tvalues[subset] = 0
+        return tvalues
+
+    @cache_readonly
+    def df_model(self):
+        return self.n - self.tr_S
+
+    @cache_readonly
+    def df_resid(self):
+        return self.n - 2.0*self.tr_S + self.tr_STS
+
+    @cache_readonly
+    def normalized_cov_params(self):
+        raise NotImplementedError('Not implemented for GWR')
+
+    @cache_readonly
+    def resid_pearson(self):
+        raise NotImplementedError('Not implemented for GWR')
+
+    @cache_readonly
+    def resid_working(self):
+        raise NotImplementedError('Not implemented for GWR')
+
+    @cache_readonly
+    def resid_anscombe(self):
+        raise NotImplementedError('Not implemented for GWR')
+
+    @cache_readonly
+    def pearson_chi2(self):
+        raise NotImplementedError('Not implemented for GWR')
+
+    @cache_readonly
+    def null(self):
+        raise NotImplementedError('Not implemented for GWR')
+
+    @cache_readonly
+    def llnull(self):
+        raise NotImplementedError('Not implemented for GWR')
+
+    @cache_readonly
+    def null_deviance(self):
+        raise NotImplementedError('Not implemented for GWR')
+    
+    @cache_readonly
+    def R2(self):
+        if isinstance(self.family, Gaussian):
+            TSS = np.sum((self.y.reshape((-1,1)) - np.mean(self.y.reshape((-1,1))))**2)
+            RSS = np.sum((self.y.reshape((-1,1)) -
+                self.predy.reshape((-1,1)))**2)
+            return 1 - (RSS / TSS)
+        else:
+            raise NotImplementedError('Only available for Gaussian GWR')
+
+    @cache_readonly
+    def aic(self):
+        return get_AIC(self)
+
+    @cache_readonly
+    def aicc(self):
+        return get_AICc(self)
+
+    @cache_readonly
+    def bic(self):
+        return get_BIC(self)
+
+    @cache_readonly
+    def D2(self):
+        raise NotImplementedError('Not implemented for GWR')
+
+    @cache_readonly
+    def adj_D2(self):
+        raise NotImplementedError('Not implemented for GWR')
+
+    @cache_readonly
+    def pseudoR2(self):
+        raise NotImplementedError('Not implemented for GWR')
+
+    @cache_readonly
+    def adj_pseudoR2(self):
+        raise NotImplementedError('Not implemented for GWR')
+
+    @cache_readonly
+    def pvalues(self):
+        raise NotImplementedError('Not implemented for GWR')
+
+    @cache_readonly
+    def conf_int(self):
+        raise NotImplementedError('Not implemented for GWR')
+
+    @cache_readonly
+    def use_t(self):
+        raise NotImplementedError('Not implemented for GWR')
+    
+    @cache_readonly
+    def local_collinearity(self):
+        """
+        Computes several indicators of multicollinearity within a geographically
+        weighted design matrix, including:
+        
+        local correlation coefficients (n, ((p**2) + p) / 2)
+        local variance inflation factors (VIF) (n, p-1)
+        local condition number (n, 1)
+        local variance-decomposition proportions (n, p) 
+        
+        Returns four arrays with the order and dimensions listed above where n
+        is the number of locations used as calibrations points and p is the
+        nubmer of explanatory variables. Local correlation coefficient and local
+        VIF are not calculated for constant term. 
+
+        """
+        x = self.X
+        w = self.W 
+        nvar = x.shape[1]
+        nrow = len(w)
+        if self.model.constant:
+            ncor = (((nvar-1)**2 + (nvar-1)) / 2) - (nvar-1)
+            jk = list(combo(range(1, nvar), 2))
+        else:
+            ncor = (((nvar)**2 + (nvar)) / 2) - nvar
+            jk = list(combo(range(nvar), 2))
+        corr_mat = np.ndarray((nrow, int(ncor)))
+        if self.model.constant:
+            vifs_mat = np.ndarray((nrow, nvar-1))
+        else: 
+            vifs_mat = np.ndarray((nrow, nvar))
+        vdp_idx = np.ndarray((nrow, nvar))
+        vdp_pi = np.ndarray((nrow, nvar, nvar))
+
+        for i in range(nrow):
+            wi = w[i]
+            sw = np.sum(wi)
+            wi = wi/sw
+            tag = 0
+            
+            for j, k in jk:
+                corr_mat[i, tag] = corr(np.cov(x[:,j], x[:, k], aweights=wi))[0][1]
+                tag = tag + 1
+            
+            if self.model.constant:
+                corr_mati = corr(np.cov(x[:,1:].T, aweights=wi))
+                vifs_mat[i,] = np.diag(np.linalg.solve(corr_mati, np.identity((nvar-1))))
+
+            else:
+                corr_mati = corr(np.cov(x.T, aweights=wi))
+                vifs_mat[i,] = np.diag(np.linalg.solve(corr_mati, np.identity((nvar))))
+            
+            xw = x * wi.reshape((nrow,1))
+            sxw = np.sqrt(np.sum(xw**2, axis=0))
+            sxw = np.transpose(xw.T / sxw.reshape((nvar,1))) 
+            svdx = np.linalg.svd(sxw)    
+            vdp_idx[i,] = svdx[1][0]/svdx[1]
+            phi = np.dot(svdx[2].T, np.diag(1/svdx[1]))
+            phi = np.transpose(phi**2)
+            pi_ij = phi / np.sum(phi, axis=0)
+            vdp_pi[i,:,:] = pi_ij
+        
+        local_CN = vdp_idx[:, nvar-1].reshape((-1,1))
+        VDP = vdp_pi[:,nvar-1,:]
+        
+        return corr_mat, vifs_mat, local_CN, VDP
+   
+    def spatial_variability(self, selector, n_iters=1000, seed=None):
+        """
+        Method to compute a Monte Carlo test of spatial variability for each
+        estimated coefficient surface.
+
+        WARNING: This test is very computationally demanding!
+
+        Parameters
+        ----------
+        selector        : sel_bw object
+                          should be the sel_bw object used to select a bandwidth
+                          for the gwr model that produced the surfaces that are
+                          being tested for spatial variation
+        
+        n_iters         : int
+                          the number of Monte Carlo iterations to include for
+                          the tests of spatial variability.
+
+       seed             : int
+                          optional parameter to select a custom seed to ensure
+                          stochastic results are replicable. Default is none
+                          which automatically sets the seed to 5536
+
+       Returns
+       -------
+
+       p values         : list
+                          a list of psuedo p-values that correspond to the model
+                          parameter surfaces. Allows us to assess the
+                          probability of obtaining the observed spatial
+                          variation of a given surface by random chance. 
+
+
+        """
+        temp_sel = copy.deepcopy(selector)
+        temp_gwr = copy.deepcopy(self.model)
+
+        if seed is None:
+        	np.random.seed(5536)
+        else:
+            np.random.seed(seed)
+
+        fit_params = temp_gwr.fit_params
+        search_params = temp_sel.search_params
+        kernel = temp_gwr.kernel
+        fixed = temp_gwr.fixed
+
+
+        if self.model.constant:
+            X = self.X[:,1:]
+        else:
+            X = self.X
+
+        init_sd =  np.std(self.params, axis=0)
+        SDs = []
+    
+        for x in range(n_iters):
+            temp_coords = np.random.permutation(self.model.coords)
+            temp_sel.coords = temp_coords
+            temp_sel._build_dMat()
+            temp_bw = temp_sel.search(**search_params)
+   
+            temp_gwr.W = temp_gwr._build_W(fixed, kernel, temp_coords, temp_bw)
+            temp_params = temp_gwr.fit(**fit_params).params
+    
+            temp_sd = np.std(temp_params, axis=0)
+            SDs.append(temp_sd)
+        
+        p_vals = (np.sum(np.array(SDs) > init_sd, axis=0) / float(n_iters))
+        return p_vals
+
+    @cache_readonly
+    def predictions(self):
+        P = self.model.P
+        if P is None:
+          raise TypeError('predictions only avaialble if predict'
+          'method is previously called on GWR model')
+        else:
+            predictions = np.sum(P*self.params, axis=1).reshape((-1,1))
+        return predictions
+    '''
