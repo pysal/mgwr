@@ -53,7 +53,8 @@ class TestGWRGaussian(unittest.TestCase):
         inf = np.array(self.BS_F.by_col(' influence')).reshape((-1,1))
         cooksD = np.array(self.BS_F.by_col(' CooksD')).reshape((-1,1))
 
-        model = GWR(self.coords, self.y, self.X, bw=209267.689, fixed=True)
+        model = GWR(self.coords, self.y, self.X, bw=209267.689, fixed=True,
+                sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -113,7 +114,8 @@ class TestGWRGaussian(unittest.TestCase):
         vdp1 = np.array(pysal.open(local_vdp), dtype=np.float64)
         spat_var_p_vals = [0. , 0. , 0.5, 0.2 ]
 
-        model = GWR(self.coords, self.y, self.X, bw=90.000, fixed=False)
+        model = GWR(self.coords, self.y, self.X, bw=90.000, fixed=False,
+                sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -185,7 +187,7 @@ class TestGWRGaussian(unittest.TestCase):
         cooksD = np.array(self.GS_F.by_col(' CooksD')).reshape((-1,1))
         
         model = GWR(self.coords, self.y, self.X, bw=87308.298,
-                kernel='gaussian', fixed=True)
+                kernel='gaussian', fixed=True, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -237,7 +239,7 @@ class TestGWRGaussian(unittest.TestCase):
         cooksD = np.array(self.GS_NN.by_col(' CooksD')).reshape((-1,1))
 
         model = GWR(self.coords, self.y, self.X, bw=49.000,
-                kernel='gaussian', fixed=False)
+                kernel='gaussian', fixed=False, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -269,14 +271,16 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(cooksD, rslt.cooksD, rtol=1e-00)
     
     def test_MGWR(self):
-        selector = Sel_BW(self.coords, self.y, self.X,multi=True)
-        
+        selector = Sel_BW(self.coords, self.y, self.X, multi=True,
+                constant=False, sigma2_v1=False)
+        selector.search(tol_multi=1e-03)
         model = MGWR(self.coords, self.y, self.X, selector=selector, constant=False)
         rslt = model.fit()
 
         np.testing.assert_allclose(rslt.predy, self.MGWR['predy'], atol=1e-07)
         np.testing.assert_allclose(rslt.params, self.MGWR['params'], atol=1e-07)
-        np.testing.assert_allclose(rslt.resid_response, self.MGWR['u'], atol=1e-05)
+        np.testing.assert_allclose(rslt.resid_response, self.MGWR['u'],
+                atol=1e-04, rtol=1e-04)
         np.testing.assert_almost_equal(rslt.resid_ss, 6339.3497144025841)
     
     def test_Prediction(self):
@@ -289,7 +293,7 @@ class TestGWRGaussian(unittest.TestCase):
 
 
         model = GWR(self.coords, self.y, self.X, 93, family=Gaussian(),
-                fixed=False, kernel='bisquare')
+                fixed=False, kernel='bisquare', sigma2_v1=False)
         results = model.predict(coords_test, X_test)
         
         params = np.array([22.77198, -0.10254,    -0.215093,   -0.01405,
@@ -378,7 +382,8 @@ class TestGWRGaussian(unittest.TestCase):
         inf = np.array(self.BS_NN_longlat.by_col(' influence')).reshape((-1,1))
         cooksD = np.array(self.BS_NN_longlat.by_col(' CooksD')).reshape((-1,1))
         
-        model = GWR(coords_longlat, self.y, self.X, bw=90.000, fixed=False,spherical=True)
+        model = GWR(coords_longlat, self.y, self.X, bw=90.000, fixed=False,
+                spherical=True, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -450,7 +455,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.BS_F.by_col(' localpdev')).reshape((-1,1))
         
         model = GWR(self.coords, self.y, self.X, bw=26029.625, family=Poisson(), 
-                kernel='bisquare', fixed=True)
+                kernel='bisquare', fixed=True, sigma2_v1=False)
         rslt = model.fit()
 
         AICc = get_AICc(rslt)
@@ -499,7 +504,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.BS_NN.by_col(' localpdev')).reshape((-1,1))
 
         model = GWR(self.coords, self.y, self.X, bw=50, family=Poisson(), 
-                kernel='bisquare', fixed=False)
+                kernel='bisquare', fixed=False, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -547,7 +552,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.BS_NN_OFF.by_col(' localpdev')).reshape((-1,1))
 
         model = GWR(self.coords, self.y, self.X, bw=100, offset=self.off, family=Poisson(), 
-                kernel='bisquare', fixed=False)
+                kernel='bisquare', fixed=False, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -606,7 +611,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.GS_F.by_col(' localpdev')).reshape((-1,1))
         
         model = GWR(self.coords, self.y, self.X, bw=8764.474, family=Poisson(), 
-                kernel='gaussian', fixed=True)
+                kernel='gaussian', fixed=True, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -654,7 +659,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.GS_NN.by_col(' localpdev')).reshape((-1,1))
         
         model = GWR(self.coords, self.y, self.X, bw=50, family=Poisson(), 
-                kernel='gaussian', fixed=False)
+                kernel='gaussian', fixed=False, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -725,7 +730,7 @@ class TestGWRBinomial(unittest.TestCase):
         pdev = np.array(self.BS_F.by_col(' localpdev')).reshape((-1,1))
 
         model = GWR(self.coords, self.y, self.X, bw=19642.170, family=Binomial(), 
-                kernel='bisquare', fixed=True)
+                kernel='bisquare', fixed=True, sigma2_v1=False)
         rslt = model.fit()
 
         AICc = get_AICc(rslt)
@@ -788,7 +793,7 @@ class TestGWRBinomial(unittest.TestCase):
         pdev = self.BS_NN.by_col(' localpdev')
         
         model = GWR(self.coords, self.y, self.X, bw=158, family=Binomial(), 
-                kernel='bisquare', fixed=False)
+                kernel='bisquare', fixed=False, sigma2_v1=False)
         rslt = model.fit()
 
         AICc = get_AICc(rslt)
@@ -851,7 +856,7 @@ class TestGWRBinomial(unittest.TestCase):
         pdev = self.GS_F.by_col(' localpdev')
 
         model = GWR(self.coords, self.y, self.X, bw=8929.061, family=Binomial(), 
-                kernel='gaussian', fixed=True)
+                kernel='gaussian', fixed=True, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -914,7 +919,7 @@ class TestGWRBinomial(unittest.TestCase):
         pdev = self.GS_NN.by_col(' localpdev')
         
         model = GWR(self.coords, self.y, self.X, bw=64, family=Binomial(), 
-                kernel='gaussian', fixed=False)
+                kernel='gaussian', fixed=False, sigma2_v1=False)
         rslt = model.fit()
 
         AICc = get_AICc(rslt)
