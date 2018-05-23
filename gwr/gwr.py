@@ -1396,13 +1396,6 @@ class MGWRResults(GWRResults):
         self.R = R
 
     #@cache_readonly
-    #def aicc(self):
-    #    n = self.n
-    #    tr_S = self.tr_S
-    #    aicc = n*np.log(self.sigma2_v1) + n*np.log(2*np.pi) + n*(n+tr_S)/(n-tr_S-2.0)
-    #    return aicc
-    
-    #@cache_readonly
     #def ENPj(self):
     #    k = self.params.shape[1]
     #    ENPj = np.zeros(k)
