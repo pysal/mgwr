@@ -27,17 +27,17 @@ class TestSelBW(unittest.TestCase):
         self.err = pk.load(open(err_path,'rb'))
   
     def test_golden_fixed_AICc(self):
-        bw1 = 211020.83
+        bw1 = 290934.29
         bw2 = Sel_BW(self.coords, self.y, self.X, kernel='bisquare',
                 fixed=True).search(criterion='AICc')
         assert_allclose(bw1, bw2)
-        scipy_known = 211025.26
+        scipy_known = 290944.41239
         scipy = Sel_BW(self.coords, self.y, self.X, kernel='bisquare',
                 fixed=True).search(criterion='AICc', search_method='scipy')
         assert_allclose(scipy_known, scipy, atol=1)
 
     def test_golden_adapt_AICc(self):
-        bw1 = 93.0
+        bw1 = 117.0
         bw2 = Sel_BW(self.coords, self.y, self.X, kernel='bisquare',
                 fixed=False).search(criterion='AICc')
         assert_allclose(bw1, bw2)
@@ -92,7 +92,7 @@ class TestSelBW(unittest.TestCase):
         assert_allclose(bw1, bw2)
    
     def test_interval_fixed_AICc(self):
-        bw1 = 211025.0#211027.00
+        bw1 = 211035.0
         bw2 = Sel_BW(self.coords, self.y, self.X, kernel='bisquare',
                 fixed=True).search(criterion='AICc', search_method='interval',
                         bw_min=211001.0, bw_max=211035.0, interval=2)
@@ -148,7 +148,7 @@ class TestSelBW(unittest.TestCase):
         assert_allclose(bw1, bw2)
 
     def test_MGWR_AICc(self):
-        bw1 = [157.0, 65.0, 52.0]
+        bw1 = [157.0, 79.0, 60.0]
         sel = Sel_BW(self.coords, self.y, self.X, multi=True, kernel='bisquare',
                 constant=False)
         bw2 = sel.search(tol_multi=1e-03)

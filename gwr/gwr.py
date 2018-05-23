@@ -1152,6 +1152,53 @@ class GWRResultsLite(object):
     def mu(self):
         return self.y - self.resid_response
 
+    @cache_readonly
+    def resid_ss(self):
+        u = self.resid_response.flatten()
+        return np.dot(u, u.T)
+    
+    @cache_readonly
+    def sigma2_v1(self):
+        """
+        residual variance
+
+        Methods: p214, (9.6),
+        Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
+        Geographically weighted regression: the analysis of spatially varying
+        relationships.
+
+        only use v1
+        """
+        return (self.resid_ss/(self.n-self.tr_S))
+
+    @cache_readonly
+    def sigma2_v1v2(self):
+        """
+        residual variance
+
+        Methods: p55 (2.16)-(2.18)
+        Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
+        Geographically weighted regression: the analysis of spatially varying
+        relationships.
+
+        use v1 and v2 #used in GWR4
+        """
+        if isinstance(self.family, (Poisson, Binomial)):
+            return self.resid_ss/(self.n - 2.0*self.tr_S +
+                  self.tr_STS) #could be changed to SWSTW - nothing to test against
+        else:
+            return self.resid_ss/(self.n - 2.0*self.tr_S +
+                  self.tr_STS) #could be changed to SWSTW - nothing to test against
+    
+    @cache_readonly
+    def sigma2_ML(self):
+        """
+        residual variance
+
+        Methods: maximum likelihood
+        """
+        return self.resid_ss/self.n
+
 class MGWR(GWR):
     """
     Parameters

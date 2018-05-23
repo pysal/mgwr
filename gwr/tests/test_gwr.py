@@ -62,7 +62,7 @@ class TestGWRGaussian(unittest.TestCase):
         BIC = get_BIC(rslt)
         CV = get_CV(rslt)
 
-        self.assertAlmostEquals(np.floor(AICc), 894.0)
+        self.assertAlmostEquals(np.floor(AICc), 912.0)
         self.assertAlmostEquals(np.floor(AIC), 890.0)
         self.assertAlmostEquals(np.floor(BIC), 944.0)
         self.assertAlmostEquals(np.round(CV,2), 18.25)
@@ -112,7 +112,7 @@ class TestGWRGaussian(unittest.TestCase):
         cn1 = np.array(pysal.open(local_cn))
         local_vdp = os.path.join(os.path.dirname(__file__),'local_vdp.csv')
         vdp1 = np.array(pysal.open(local_vdp), dtype=np.float64)
-        spat_var_p_vals = [0. , 0. , 0.5, 0.2 ]
+        spat_var_p_vals = [0. , 0.1 , 0.8, 0.1]
 
         model = GWR(self.coords, self.y, self.X, bw=90.000, fixed=False,
                 sigma2_v1=False)
@@ -128,7 +128,7 @@ class TestGWRGaussian(unittest.TestCase):
         R2 = rslt.R2
 
         self.assertAlmostEquals(np.around(R2, 4), 0.5924)
-        self.assertAlmostEquals(np.floor(AICc), 896.0)
+        self.assertAlmostEquals(np.floor(AICc), 912.0)
         self.assertAlmostEquals(np.floor(AIC), 892.0)
         self.assertAlmostEquals(np.floor(BIC), 941.0)
         self.assertAlmostEquals(np.around(CV, 2), 19.19)
@@ -195,7 +195,7 @@ class TestGWRGaussian(unittest.TestCase):
         BIC = get_BIC(rslt)
         CV = get_CV(rslt)
         
-        self.assertAlmostEquals(np.floor(AICc), 895.0)
+        self.assertAlmostEquals(np.floor(AICc), 912.0)
         self.assertAlmostEquals(np.floor(AIC), 890.0)
         self.assertAlmostEquals(np.floor(BIC), 943.0)
         self.assertAlmostEquals(np.around(CV, 2), 18.21)
@@ -247,7 +247,7 @@ class TestGWRGaussian(unittest.TestCase):
         BIC = get_BIC(rslt)
         CV = get_CV(rslt)
         
-        self.assertAlmostEquals(np.floor(AICc),  896)
+        self.assertAlmostEquals(np.floor(AICc),  904.0)
         self.assertAlmostEquals(np.floor(AIC), 894.0)
         self.assertAlmostEquals(np.floor(BIC), 922.0)
         self.assertAlmostEquals(np.around(CV, 2), 17.91)
@@ -394,7 +394,7 @@ class TestGWRGaussian(unittest.TestCase):
         R2 = rslt.R2
         
         self.assertAlmostEquals(np.around(R2, 4), 0.5921)
-        self.assertAlmostEquals(np.floor(AICc), 896.0)
+        self.assertAlmostEquals(np.floor(AICc), 912.0)
         self.assertAlmostEquals(np.floor(AIC), 892.0)
         self.assertAlmostEquals(np.floor(BIC), 941.0)
         self.assertAlmostEquals(np.around(CV, 2), 19.11)
