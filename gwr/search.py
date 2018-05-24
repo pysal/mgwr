@@ -152,9 +152,9 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False):
 
     return opt_val, opt_score, output
 
-MGWR_BW_Result = namedtuple('MGWR_BW_RESULT', ['bws_','bw_trace', 'scores',
-                                               'parameter_estimates','model_residuals',
-                                               'hat_matrix','covariate_specific_hat_matrices'])
+#MGWR_BW_Result = namedtuple('MGWR_BW_RESULT', ['bws_','bw_trace', 'scores',
+#                                               'parameter_estimates','model_residuals',
+#                                               'hat_matrix','covariate_specific_hat_matrices'])
 
 def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         gwr_func, bw_func, sel_func):
@@ -244,6 +244,6 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
             break
 
     opt_bws = BWs[-1]
-    return MGWR_BW_Result(opt_bws, np.array(BWs),
+    return (opt_bws, np.array(BWs),
                           np.array(scores), ests,
                           err, S, R)
