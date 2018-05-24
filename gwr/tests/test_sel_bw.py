@@ -20,11 +20,13 @@ class TestSelBW(unittest.TestCase):
         rural  = np.array(data.by_col('PctRural')).reshape((-1,1))
         pov = np.array(data.by_col('PctPov')).reshape((-1,1)) 
         black = np.array(data.by_col('PctBlack')).reshape((-1,1))
+        fb = np.array(data.by_col('PctFB')).reshape((-1,1))
         self.X = np.hstack([rural, pov, black])
         XB_path = os.path.join(os.path.dirname(__file__),'XB.p')
         self.XB = pk.load(open(XB_path,'rb'))
         err_path = os.path.join(os.path.dirname(__file__),'err.p')
         self.err = pk.load(open(err_path,'rb'))
+        self.mgwr_X = np.hstack([fb, black, rural])
   
     def test_golden_fixed_AICc(self):
         bw1 = 290934.29
@@ -148,10 +150,12 @@ class TestSelBW(unittest.TestCase):
         assert_allclose(bw1, bw2)
 
     def test_MGWR_AICc(self):
-        bw1 = [157.0, 79.0, 60.0]
-        sel = Sel_BW(self.coords, self.y, self.X, multi=True, kernel='bisquare',
-                constant=False)
-        bw2 = sel.search(tol_multi=1e-03)
+        bw1 = [116.0, 104.0, 157.0, 157.0]
+        std_y = (self.y - self.y.mean()) / self.y.std()
+        std_X = (self.mgwr_X - self.mgwr_X.mean(axis=0)) / self.mgwr_X.std(axis=0)
+        selector = Sel_BW(self.coords, std_y, std_X, multi=True,
+                constant=True)
+        bw2 = selector.search()
         np.testing.assert_allclose(bw1, bw2)
 
 if __name__ == '__main__':
