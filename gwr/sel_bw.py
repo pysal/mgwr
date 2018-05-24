@@ -140,7 +140,7 @@ class Sel_BW(object):
             self.X_glob = []
         self.family=family
         self.fixed = fixed
-        if sigma2.lower() in ['v1', 'v1v2', 'ml']
+        if sigma2.lower() in ['v1', 'v1v2', 'ml']:
             self.sigma2 = sigma2.lower()
         self.kernel = kernel
         if offset is None:

@@ -52,7 +52,7 @@ class TestGWRGaussian(unittest.TestCase):
         cooksD = np.array(self.BS_F.by_col(' CooksD')).reshape((-1,1))
 
         model = GWR(self.coords, self.y, self.X, bw=209267.689, fixed=True,
-                sigma2_v1=False)
+                sigma2='v1v2')
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -60,7 +60,7 @@ class TestGWRGaussian(unittest.TestCase):
         BIC = get_BIC(rslt)
         CV = get_CV(rslt)
 
-        self.assertAlmostEquals(np.floor(AICc), 912.0)
+        self.assertAlmostEquals(np.floor(AICc), 918.0)
         self.assertAlmostEquals(np.floor(AIC), 890.0)
         self.assertAlmostEquals(np.floor(BIC), 944.0)
         self.assertAlmostEquals(np.round(CV,2), 18.25)
@@ -113,7 +113,7 @@ class TestGWRGaussian(unittest.TestCase):
         spat_var_p_vals = [0. , 0.1 , 0.8, 0.1]
 
         model = GWR(self.coords, self.y, self.X, bw=90.000, fixed=False,
-                sigma2_v1=False)
+                sigma2='v1v2')
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -126,7 +126,7 @@ class TestGWRGaussian(unittest.TestCase):
         R2 = rslt.R2
 
         self.assertAlmostEquals(np.around(R2, 4), 0.5924)
-        self.assertAlmostEquals(np.floor(AICc), 912.0)
+        self.assertAlmostEquals(np.floor(AICc), 917.0)
         self.assertAlmostEquals(np.floor(AIC), 892.0)
         self.assertAlmostEquals(np.floor(BIC), 941.0)
         self.assertAlmostEquals(np.around(CV, 2), 19.19)
@@ -185,7 +185,7 @@ class TestGWRGaussian(unittest.TestCase):
         cooksD = np.array(self.GS_F.by_col(' CooksD')).reshape((-1,1))
         
         model = GWR(self.coords, self.y, self.X, bw=87308.298,
-                kernel='gaussian', fixed=True, sigma2_v1=False)
+                kernel='gaussian', fixed=True, sigma2='v1v2')
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -193,7 +193,7 @@ class TestGWRGaussian(unittest.TestCase):
         BIC = get_BIC(rslt)
         CV = get_CV(rslt)
         
-        self.assertAlmostEquals(np.floor(AICc), 912.0)
+        self.assertAlmostEquals(np.floor(AICc), 919.0)
         self.assertAlmostEquals(np.floor(AIC), 890.0)
         self.assertAlmostEquals(np.floor(BIC), 943.0)
         self.assertAlmostEquals(np.around(CV, 2), 18.21)
@@ -237,7 +237,7 @@ class TestGWRGaussian(unittest.TestCase):
         cooksD = np.array(self.GS_NN.by_col(' CooksD')).reshape((-1,1))
 
         model = GWR(self.coords, self.y, self.X, bw=49.000,
-                kernel='gaussian', fixed=False, sigma2_v1=False)
+                kernel='gaussian', fixed=False, sigma2='v1v2')
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -245,7 +245,7 @@ class TestGWRGaussian(unittest.TestCase):
         BIC = get_BIC(rslt)
         CV = get_CV(rslt)
         
-        self.assertAlmostEquals(np.floor(AICc),  904.0)
+        self.assertAlmostEquals(np.floor(AICc),  907.0)
         self.assertAlmostEquals(np.floor(AIC), 894.0)
         self.assertAlmostEquals(np.floor(BIC), 922.0)
         self.assertAlmostEquals(np.around(CV, 2), 17.91)
@@ -297,7 +297,7 @@ class TestGWRGaussian(unittest.TestCase):
 
 
         model = GWR(self.coords, self.y, self.X, 93, family=Gaussian(),
-                fixed=False, kernel='bisquare', sigma2_v1=False)
+                fixed=False, kernel='bisquare', sigma2='v1v2')
         results = model.predict(coords_test, X_test)
         
         params = np.array([22.77198, -0.10254,    -0.215093,   -0.01405,
@@ -387,7 +387,7 @@ class TestGWRGaussian(unittest.TestCase):
         cooksD = np.array(self.BS_NN_longlat.by_col(' CooksD')).reshape((-1,1))
         
         model = GWR(coords_longlat, self.y, self.X, bw=90.000, fixed=False,
-                spherical=True, sigma2_v1=False)
+                spherical=True, sigma2='v1v2')
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -398,7 +398,7 @@ class TestGWRGaussian(unittest.TestCase):
         R2 = rslt.R2
         
         self.assertAlmostEquals(np.around(R2, 4), 0.5921)
-        self.assertAlmostEquals(np.floor(AICc), 912.0)
+        self.assertAlmostEquals(np.floor(AICc), 917.0)
         self.assertAlmostEquals(np.floor(AIC), 892.0)
         self.assertAlmostEquals(np.floor(BIC), 941.0)
         self.assertAlmostEquals(np.around(CV, 2), 19.11)
@@ -459,7 +459,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.BS_F.by_col(' localpdev')).reshape((-1,1))
         
         model = GWR(self.coords, self.y, self.X, bw=26029.625, family=Poisson(), 
-                kernel='bisquare', fixed=True, sigma2_v1=False)
+                kernel='bisquare', fixed=True, sigma2='v1v2')
         rslt = model.fit()
 
         AICc = get_AICc(rslt)
@@ -508,7 +508,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.BS_NN.by_col(' localpdev')).reshape((-1,1))
 
         model = GWR(self.coords, self.y, self.X, bw=50, family=Poisson(), 
-                kernel='bisquare', fixed=False, sigma2_v1=False)
+                kernel='bisquare', fixed=False, sigma2='v1v2')
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -556,7 +556,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.BS_NN_OFF.by_col(' localpdev')).reshape((-1,1))
 
         model = GWR(self.coords, self.y, self.X, bw=100, offset=self.off, family=Poisson(), 
-                kernel='bisquare', fixed=False, sigma2_v1=False)
+                kernel='bisquare', fixed=False, sigma2='v1v2')
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -615,7 +615,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.GS_F.by_col(' localpdev')).reshape((-1,1))
         
         model = GWR(self.coords, self.y, self.X, bw=8764.474, family=Poisson(), 
-                kernel='gaussian', fixed=True, sigma2_v1=False)
+                kernel='gaussian', fixed=True, sigma2='v1v2')
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -663,7 +663,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.GS_NN.by_col(' localpdev')).reshape((-1,1))
         
         model = GWR(self.coords, self.y, self.X, bw=50, family=Poisson(), 
-                kernel='gaussian', fixed=False, sigma2_v1=False)
+                kernel='gaussian', fixed=False, sigma2='v1v2')
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -734,7 +734,7 @@ class TestGWRBinomial(unittest.TestCase):
         pdev = np.array(self.BS_F.by_col(' localpdev')).reshape((-1,1))
 
         model = GWR(self.coords, self.y, self.X, bw=19642.170, family=Binomial(), 
-                kernel='bisquare', fixed=True, sigma2_v1=False)
+                kernel='bisquare', fixed=True, sigma2='v1v2')
         rslt = model.fit()
 
         AICc = get_AICc(rslt)
@@ -797,7 +797,7 @@ class TestGWRBinomial(unittest.TestCase):
         pdev = self.BS_NN.by_col(' localpdev')
         
         model = GWR(self.coords, self.y, self.X, bw=158, family=Binomial(), 
-                kernel='bisquare', fixed=False, sigma2_v1=False)
+                kernel='bisquare', fixed=False, sigma2='v1v2')
         rslt = model.fit()
 
         AICc = get_AICc(rslt)
@@ -860,7 +860,7 @@ class TestGWRBinomial(unittest.TestCase):
         pdev = self.GS_F.by_col(' localpdev')
 
         model = GWR(self.coords, self.y, self.X, bw=8929.061, family=Binomial(), 
-                kernel='gaussian', fixed=True, sigma2_v1=False)
+                kernel='gaussian', fixed=True, sigma2='v1v2')
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -923,7 +923,7 @@ class TestGWRBinomial(unittest.TestCase):
         pdev = self.GS_NN.by_col(' localpdev')
         
         model = GWR(self.coords, self.y, self.X, bw=64, family=Binomial(), 
-                kernel='gaussian', fixed=False, sigma2_v1=False)
+                kernel='gaussian', fixed=False, sigma2='v1v2')
         rslt = model.fit()
 
         AICc = get_AICc(rslt)

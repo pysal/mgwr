@@ -231,7 +231,7 @@ class GWR(GLM):
         """
         GLM.__init__(self, y, X, family, constant=constant)
         self.constant = constant
-        if sigma2.lower() in ['v1', 'v1v2', 'ml']
+        if sigma2.lower() in ['v1', 'v1v2', 'ml']:
             self.sigma2 = sigma2.lower()
         else:
             raise AttributeError("sigma2 must be one of: 'v1', 'v1v2', 'ML'")
@@ -1128,6 +1128,7 @@ class GWRResultsLite(object):
         self.n = model.n
         self.influ = influ
         self.resid_response = resid
+        self.model = model
     
     @cache_readonly
     def tr_S(self):
