@@ -8,7 +8,7 @@ import numpy as np
 import libpysal
 import unittest
 import pickle as pk
-from ..gwr import GWR, MGWR
+from ..gwr import GWR, MGWR, MGWRResults
 from ..sel_bw import Sel_BW
 from ..diagnostics import get_AICc, get_AIC, get_BIC, get_CV
 from spglm.family import Gaussian, Poisson, Binomial
@@ -21,17 +21,15 @@ class TestGWRGaussian(unittest.TestCase):
         rural  = np.array(data.by_col('PctRural')).reshape((-1,1))
         pov = np.array(data.by_col('PctPov')).reshape((-1,1)) 
         black = np.array(data.by_col('PctBlack')).reshape((-1,1))
+        fb = np.array(data.by_col('PctFB')).reshape((-1,1))
         self.X = np.hstack([rural, pov, black])
+        self.mgwr_X = np.hstack([fb, black, rural])
         self.BS_F = pysal.open(pysal.examples.get_path('georgia_BS_F_listwise.csv'))
         self.BS_NN = pysal.open(pysal.examples.get_path('georgia_BS_NN_listwise.csv'))
         self.GS_F = pysal.open(pysal.examples.get_path('georgia_GS_F_listwise.csv'))
         self.GS_NN = pysal.open(pysal.examples.get_path('georgia_GS_NN_listwise.csv'))
-        MGWR_path = os.path.join(os.path.dirname(__file__),'FB.p')
+        MGWR_path = os.path.join(os.path.dirname(__file__),'mgwr_example.p')
         self.MGWR = pk.load(open(MGWR_path, 'r'))
-        XB_path = os.path.join(os.path.dirname(__file__),'XB.p')
-        self.XB = pk.load(open(XB_path, 'r'))
-        err_path = os.path.join(os.path.dirname(__file__),'err.p')
-        self.err = pk.load(open(err_path, 'r'))
 
     def test_BS_F(self):
         est_Int = self.BS_F.by_col(' est_Intercept')
@@ -271,17 +269,23 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(cooksD, rslt.cooksD, rtol=1e-00)
     
     def test_MGWR(self):
-        selector = Sel_BW(self.coords, self.y, self.X, multi=True,
-                constant=False, sigma2_v1=False)
-        selector.search(tol_multi=1e-03)
-        model = MGWR(self.coords, self.y, self.X, selector=selector, constant=False)
+        std_y = (self.y - self.y.mean()) / self.y.std()
+        std_X = (self.mgwr_X - self.mgwr_X.mean(axis=0)) / self.mgwr_X.std(axis=0)
+        selector = Sel_BW(self.coords, std_y, std_X, multi=True,
+                constant=True)
+        selector.search()
+        model = MGWR(self.coords, std_y, std_X, selector=selector,
+                constant=True)
         rslt = model.fit()
 
-        np.testing.assert_allclose(rslt.predy, self.MGWR['predy'], atol=1e-07)
-        np.testing.assert_allclose(rslt.params, self.MGWR['params'], atol=1e-07)
-        np.testing.assert_allclose(rslt.resid_response, self.MGWR['u'],
+        np.testing.assert_allclose(rslt.predy, self.MGWR.predy, atol=1e-07)
+        np.testing.assert_allclose(rslt.params, self.MGWR.params, atol=1e-07)
+        np.testing.assert_allclose(rslt.bse, self.MGWR.bse, atol=1e-07)
+        np.testing.assert_allclose(rslt.tvalues, self.MGWR.tvalues, atol=1e-07)
+        np.testing.assert_allclose(rslt.resid_response, self.MGWR.resid_response,
                 atol=1e-04, rtol=1e-04)
-        np.testing.assert_almost_equal(rslt.resid_ss, 6339.3497144025841)
+        np.testing.assert_almost_equal(rslt.resid_ss, self.MGWR.resid_ss)
+        np.testing.assert_almost_equal(rslt.aicc, self.MGWR.aicc)
     
     def test_Prediction(self):
         coords =np.array(self.coords)
