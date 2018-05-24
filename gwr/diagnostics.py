@@ -17,7 +17,7 @@ def get_AICc(gwr):
     """
     n = gwr.n
     k = gwr.tr_S
-    sigma2 = gwr.sigma2_v1
+    sigma2 = gwr.sigma2
     if isinstance(gwr.family, Gaussian):
         #aicc = -2.0*gwr.llf + 2.0*n*(k + 1.0)/(n-k-2.0) #equivalent to below but
         #can't control denominator of sigma without altering GLM familt code

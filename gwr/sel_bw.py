@@ -129,7 +129,7 @@ class Sel_BW(object):
 
     """
     def __init__(self, coords, y, X_loc, X_glob=None, family=Gaussian(),
-            offset=None, kernel='bisquare', fixed=False, sigma2_v1=True, multi=False,
+            offset=None, kernel='bisquare', fixed=False, sigma2='v1', multi=False,
             constant=True, spherical=False):
         self.coords = coords
         self.y = y
@@ -140,7 +140,8 @@ class Sel_BW(object):
             self.X_glob = []
         self.family=family
         self.fixed = fixed
-        self.sigma2_v1 = sigma2_v1
+        if sigma2.lower() in ['v1', 'v1v2', 'ml']
+            self.sigma2 = sigma2.lower()
         self.kernel = kernel
         if offset is None:
           self.offset = np.ones((len(y), 1))
@@ -266,7 +267,7 @@ class Sel_BW(object):
 
         gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, 
             self.X_loc, bw, family=self.family, kernel=self.kernel,
-            fixed=self.fixed, sigma2_v1=self.sigma2_v1, constant=self.constant,
+            fixed=self.fixed, sigma2=self.sigma2, constant=self.constant,
             dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit(searching = True))
         
         self._optimized_function = gwr_func
@@ -303,7 +304,7 @@ class Sel_BW(object):
         offset = self.offset
         kernel = self.kernel
         fixed = self.fixed
-        sigma2_v1 = self.sigma2_v1
+        sigma2 = self.sigma2
         coords = self.coords
         search_method = self.search_method
         criterion = self.criterion
@@ -314,10 +315,10 @@ class Sel_BW(object):
         max_iter = self.max_iter
         def gwr_func(y,X,bw):
             return GWR(coords, y,X,bw,family=family, kernel=kernel, fixed=fixed,
-                    offset=offset, sigma2_v1=sigma2_v1, constant=False).fit()
+                    offset=offset, sigma2=sigma2, constant=False).fit()
         def bw_func(y,X):
             return Sel_BW(coords, y,X,X_glob=[], family=family, kernel=kernel,
-                    fixed=fixed, sigma2_v1=sigma2_v1, offset=offset, constant=False)
+                    fixed=fixed, sigma2=sigma2, offset=offset, constant=False)
         def sel_func(bw_func):
             return bw_func.search(search_method=search_method, criterion=criterion,
                     bw_min=bw_min, bw_max=bw_max, interval=interval, tol=tol, max_iter=max_iter)
