@@ -156,6 +156,8 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False):
 #                                               'parameter_estimates','model_residuals',
 #                                               'hat_matrix','covariate_specific_hat_matrices'])
 
+#removed for now since not playing nice with pickle
+
 def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         gwr_func, bw_func, sel_func):
     if init:
