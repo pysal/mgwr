@@ -614,6 +614,15 @@ class GWRResults(GLMResults):
         return np.trace(self.S*self.w)
 
     @cache_readonly
+    def ENP(self):
+        """
+        Effective number of parameters
+        Equivalent to tr(S) as defined in Yu et. al (2018) Inference in
+        Multiscale GWR
+        """
+        return np.trace(self.S*self.w)
+
+    @cache_readonly
     def tr_STS(self):
         """
         trace of STS matrix
@@ -706,6 +715,8 @@ class GWRResults(GLMResults):
         Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
         Geographically weighted regression: the analysis of spatially varying
         relationships.
+
+        and as defined  in Yu et. al. (2018) Inference in Multiscale GWR
 
         v1v2: use n-2(tr(S)+tr(S'S)) in denominator
 
@@ -1159,6 +1170,8 @@ class GWRResultsLite(object):
         Geographically weighted regression: the analysis of spatially varying
         relationships.
 
+        and as defined in Yu et. al. (2018) Inference in Multiscale GWR
+
         v1v2: use n-2(tr(S)+tr(S'S)) in denominator
 
         Methods: p55 (2.16)-(2.18)
@@ -1432,24 +1445,12 @@ class MGWRResults(GWRResults):
         GWRResults.__init__(self, model, params, predy, S, CCT, w)
         self.R = R
 
-    #@cache_readonly
-    #def ENPj(self):
+    @cache_readonly
+    def ENPj(self):
     #    k = self.params.shape[1]
     #    ENPj = np.zeros(k)
     #    for j in range(k):
     #        Rj = self.R[:,:,j]
     #        ENPj[j] = np.trace(Rj)
     #    return ENPj
-    
-    #@cache_readonly
-    #def bse(self):
-    #    n = self.n
-    #    k = self.params.shape[1]
-    #    bse = np.zeros((n,k))
-    #    for j in range(k):
-    #        Rj = self.R[:,:,j]
-    #        Cj = Rj/self.X[:,j].reshape(-1,1)
-    #        bse[:,j] = np.sqrt(np.diag(np.dot(Cj, Cj.T)*self.sigma2))
-
-    #    return bse
-
+        return [np.trace(self.R[:,:,j]) for j in range(self.R.shape[2])] 
