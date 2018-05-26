@@ -125,7 +125,7 @@ class TestGWRGaussian(unittest.TestCase):
         BIC = get_BIC(rslt)
         CV = get_CV(rslt)
         
-        corr2, vif2, cn2, vdp2 = rslt.local_collinearity
+        corr2, vif2, cn2, vdp2 = rslt.local_collinearity()
 
         R2 = rslt.R2
 
