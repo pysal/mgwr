@@ -924,35 +924,35 @@ class GWRResults(GLMResults):
 
     @cache_readonly
     def normalized_cov_params(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
 
     @cache_readonly
     def resid_pearson(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
 
     @cache_readonly
     def resid_working(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
 
     @cache_readonly
     def resid_anscombe(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
 
     @cache_readonly
     def pearson_chi2(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
 
     @cache_readonly
     def null(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
 
     @cache_readonly
     def llnull(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
 
     @cache_readonly
     def null_deviance(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
     
     @cache_readonly
     def R2(self):
@@ -978,31 +978,31 @@ class GWRResults(GLMResults):
 
     @cache_readonly
     def D2(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
 
     @cache_readonly
     def adj_D2(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
 
     @cache_readonly
     def pseudoR2(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
 
     @cache_readonly
     def adj_pseudoR2(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
 
     @cache_readonly
     def pvalues(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
 
     @cache_readonly
     def conf_int(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
 
     @cache_readonly
     def use_t(self):
-        raise NotImplementedError('Not implemented for GWR')
+        raise NotImplementedError('N/A')
     
     @cache_readonly
     def local_collinearity(self):
@@ -1498,29 +1498,23 @@ class MGWRResults(GWRResults):
 
     @cache_readonly
     def ENPj(self):
-    #    k = self.params.shape[1]
-    #    ENPj = np.zeros(k)
-    #    for j in range(k):
-    #        Rj = self.R[:,:,j]
-    #        ENPj[j] = np.trace(Rj)
-    #    return ENPj
         return [np.trace(self.R[:,:,j]) for j in range(self.R.shape[2])] 
     
     @cache_readonly
     def RSS(self):
-        raise NotImplementedError('N/A for MGWR')
+        raise NotImplementedError('N/A')
     
     @cache_readonly
     def TSS(self):
-        raise NotImplementedError('N/A for MGWR')
+        raise NotImplementedError('N/A')
     
     @cache_readonly
     def localR2(self):
-        raise NotImplementedError('N/A for MGWR')
+        raise NotImplementedError('N/A')
     
     @cache_readonly
     def y_bar(self):
-        raise NotImplementedError('N/A for MGWR')
+        raise NotImplementedError('N/A')
     
     @cache_readonly
     def predictions(self):
