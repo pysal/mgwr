@@ -1413,7 +1413,7 @@ class MGWR(GWR):
                      W = ak[kernel](coords, bw_i, points, self.dmat, self.sorted_dmat,spherical=self.spherical)
                 except:
                     raise #TypeError('Unsupported kernel function  ', kernel)
-        Ws.append(W)
+            Ws.append(W)
         return Ws
 
     def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls'):
@@ -1505,3 +1505,23 @@ class MGWRResults(GWRResults):
     #        ENPj[j] = np.trace(Rj)
     #    return ENPj
         return [np.trace(self.R[:,:,j]) for j in range(self.R.shape[2])] 
+    
+    @cache_readonly
+    def RSS(self):
+        raise NotImplementedError('N/A for MGWR')
+    
+    @cache_readonly
+    def TSS(self):
+        raise NotImplementedError('N/A for MGWR')
+    
+    @cache_readonly
+    def localR2(self):
+        raise NotImplementedError('N/A for MGWR')
+    
+    @cache_readonly
+    def y_bar(self):
+        raise NotImplementedError('N/A for MGWR')
+    
+    @cache_readonly
+    def predictions(self):
+        raise NotImplementedError('Not yet implemented for MGWR')
