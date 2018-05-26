@@ -60,7 +60,6 @@ class GWR(GLM):
                         
                         'v1':       n-tr(S) (defualt)
                         'v1v2':     n-2(tr(S)+tr(S'S))
-                        'ml':       n
 
         kernel        : string
                         type of kernel function used to weight observations;
@@ -126,7 +125,6 @@ class GWR(GLM):
                         
                         'v1':       n-tr(S) (defualt)
                         'v1v2':     n-2(tr(S)+tr(S'S))
-                        'ml':       n
 
         kernel        : string
                         type of kernel function used to weight observations;
@@ -614,21 +612,29 @@ class GWRResults(GLMResults):
         return np.trace(self.S*self.w)
 
     @cache_readonly
-    def ENP(self):
-        """
-        Effective number of parameters
-        Equivalent to tr(S) as defined in Yu et. al (2018) Inference in
-        Multiscale GWR
-        """
-        return np.trace(self.S*self.w)
-
-    @cache_readonly
     def tr_STS(self):
         """
         trace of STS matrix
         """
         return np.trace(np.dot(self.S.T*self.w,self.S*self.w))
 
+    @cache_readonly
+    def ENP(self):
+        """
+        effective number of parameters
+
+        Defualts to tr(s) as defined in yu et. al (2018) Inference in
+        Multiscale GWR
+
+        but can alternatively be based on 2tr(s) - tr(STS)
+
+        and the form depends on the specification of sigma2
+        """
+        if self.model.sigma2 == 'v1':
+            return self.tr_S
+        elif self.model.sigma2 == 'v1v2':
+            return 2*self.tr_S - self.tr_STS      
+    
     @cache_readonly
     def y_bar(self):
         """
@@ -832,19 +838,57 @@ class GWRResults(GLMResults):
 
         """
         alpha = np.array([.1, .05, .001])
-        pe = (2.0 * self.tr_S) - self.tr_STS
+        pe = self.ENP
         p = self.k
         return (alpha*p)/pe
 
-    def filter_tvals(self, alpha):
+    def critical_tval(self, alpha=None):
         """
-        Utility function to set tvalues with an absolute value smaller than the
-        absolute value of the alpha (critical) value to 0
+        Utility function to derive the critial t-value based on given alpha
+        that are needed for hypothesis testing
 
         Parameters
         ----------
         alpha           : scalar
                           critical value to determine which tvalues are
+                          associated with statistically significant parameter
+                          estimates. Default to None in which case the adjusted
+                          alpha value at the 95 percent CI is automatically
+                          used.
+
+        Returns
+        -------
+        critical        : scalar
+                          critical t-val based on alpha
+        """
+        n = self.n
+        if alpha is not None:
+            alpha = np.abs(alpha)/2.0
+            critical = t.ppf(1-alpha, n-1)
+        else:
+            alpha = np.abs(self.adj_alpha[1])/2.0
+            critical = t.ppf(1-alpha, n-1)
+        return critical
+    
+    def filter_tvals(self, critical_t=None, alpha=None):
+        """
+        Utility function to set tvalues with an absolute value smaller than the
+        absolute value of the alpha (critical) value to 0. If critical_t
+        is supplied than it is used directly to filter. If alpha is provided
+        than the critical t value will be derived and used to filter. If neither
+        are critical_t nor alpha are provided, an adjusted alpha at the 95
+        percent CI will automatically be used to define the critical t-value and
+        used to filter. If both critical_t and alpha are supplied then the alpha
+        value will be ignored. 
+
+        Parameters
+        ----------
+        critical        : scalar
+                          critical t-value to determine whether parameters are
+                          statistically significant
+                        
+        alpha           : scalar
+                          alpha value to determine which tvalues are
                           associated with statistically significant parameter
                           estimates
 
@@ -855,9 +899,16 @@ class GWRResults(GLMResults):
                           where absolute tvalues less than the absolute value of
                           alpha have been set to 0.
         """
-        alpha = np.abs(alpha)/2.0
         n = self.n
-        critical = t.ppf(1-alpha, n-1)
+        if critical_t is not None:
+        	critical = critical_t
+        elif alpha is not None and critical_t is None:
+            alpha = np.abs(alpha)/2.0
+            critical = t.ppf(1-alpha, n-1)
+        elif alpha is None and critical_t is None:
+            alpha = np.abs(self.adj_alpha[1])/2.0
+            critical = t.ppf(1-alpha, n-1)
+        
         subset = (self.tvalues < critical) & (self.tvalues > -1.0*critical)
         tvalues = self.tvalues.copy()
         tvalues[subset] = 0

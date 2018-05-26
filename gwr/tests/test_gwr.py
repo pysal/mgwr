@@ -116,6 +116,10 @@ class TestGWRGaussian(unittest.TestCase):
                 sigma2='v1v2')
         rslt = model.fit()
         
+
+        adj_alpha = rslt.adj_alpha
+        alpha = 0.01017489
+        critical_t = rslt.critical_tval(alpha)
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
         BIC = get_BIC(rslt)
@@ -125,6 +129,10 @@ class TestGWRGaussian(unittest.TestCase):
 
         R2 = rslt.R2
 
+        
+        np.testing.assert_allclose(adj_alpha, np.array([ 0.02034978,  0.01017489,
+            0.0002035 ]), rtol=1e-04)
+        self.assertAlmostEquals(critical_t, 2.6011011542649394)
         self.assertAlmostEquals(np.around(R2, 4), 0.5924)
         self.assertAlmostEquals(np.floor(AICc), 917.0)
         self.assertAlmostEquals(np.floor(AIC), 892.0)
