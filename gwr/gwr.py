@@ -1497,8 +1497,96 @@ class MGWRResults(GWRResults):
         self.R = R
 
     @cache_readonly
-    def ENPj(self):
+    def ENP_j(self):
         return [np.trace(self.R[:,:,j]) for j in range(self.R.shape[2])] 
+    
+    @cache_readonly
+    def adj_alpha_j(self):
+        """
+        Corrected alpha (critical) values to account for multiple testing during hypothesis
+        testing. Includes corrected value for 90% (.1), 95% (.05), and 99%
+        (.01) confidence levels. Correction comes from:
+
+        da Silva, A. R., & Fotheringham, A. S. (2015). The Multiple Testing Issue in
+        Geographically Weighted Regression. Geographical Analysis.
+
+        """
+        alpha = np.array([.1, .05, .001])
+        pe = np.array(self.ENP_j).reshape((-1,1))
+        p = 1.
+        return (alpha*p)/pe
+
+    def critical_tval(self, alpha=None):
+        """
+        Utility function to derive the critial t-value based on given alpha
+        that are needed for hypothesis testing
+
+        Parameters
+        ----------
+        alpha           : scalar
+                          critical value to determine which tvalues are
+                          associated with statistically significant parameter
+                          estimates. Default to None in which case the adjusted
+                          alpha value at the 95 percent CI is automatically
+                          used.
+
+        Returns
+        -------
+        critical        : scalar
+                          critical t-val based on alpha
+        """
+        n = self.n
+        if alpha is not None:
+            alpha = np.abs(alpha)/2.0
+            critical = t.ppf(1-alpha, n-1)
+        else:
+            alpha = np.abs(self.adj_alpha_j[:,1])/2.0
+            critical = t.ppf(1-alpha, n-1)
+        return critical
+    
+    def filter_tvals(self, critical_t=None, alpha=None):
+        """
+        Utility function to set tvalues with an absolute value smaller than the
+        absolute value of the alpha (critical) value to 0. If critical_t
+        is supplied than it is used directly to filter. If alpha is provided
+        than the critical t value will be derived and used to filter. If neither
+        are critical_t nor alpha are provided, an adjusted alpha at the 95
+        percent CI will automatically be used to define the critical t-value and
+        used to filter. If both critical_t and alpha are supplied then the alpha
+        value will be ignored. 
+
+        Parameters
+        ----------
+        critical        : scalar
+                          critical t-value to determine whether parameters are
+                          statistically significant
+                        
+        alpha           : scalar
+                          alpha value to determine which tvalues are
+                          associated with statistically significant parameter
+                          estimates
+
+        Returns
+        -------
+        filtered       : array
+                          n*k; new set of n tvalues for each of k variables
+                          where absolute tvalues less than the absolute value of
+                          alpha have been set to 0.
+        """
+        n = self.n
+        if critical_t is not None:
+        	critical = np.array(critical_t)
+        elif alpha is not None and critical_t is None:
+            alpha = np.abs(alpha)/2.0
+            critical = t.ppf(1-alpha, n-1)
+        elif alpha is None and critical_t is None:
+            alpha = np.abs(self.adj_alpha_j[:,1])/2.0
+            critical = t.ppf(1-alpha, n-1)
+        
+        subset = (self.tvalues < critical) & (self.tvalues > -1.0*critical)
+        tvalues = self.tvalues.copy()
+        tvalues[subset] = 0
+        return tvalues
     
     @cache_readonly
     def RSS(self):

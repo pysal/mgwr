@@ -280,10 +280,10 @@ class TestGWRGaussian(unittest.TestCase):
         std_y = (self.y - self.y.mean()) / self.y.std()
         std_X = (self.mgwr_X - self.mgwr_X.mean(axis=0)) / self.mgwr_X.std(axis=0)
         selector = Sel_BW(self.coords, std_y, std_X, multi=True,
-                constant=True)
+                constant=True, sigma2='ml')
         selector.search(bw_min=2, bw_max=159)
         model = MGWR(self.coords, std_y, std_X, selector=selector,
-                constant=True)
+                constant=True, sigma2='v1')
         rslt = model.fit()
 
         np.testing.assert_allclose(rslt.predy, self.MGWR.predy, atol=1e-07)
@@ -295,7 +295,11 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_almost_equal(rslt.resid_ss, self.MGWR.resid_ss)
         np.testing.assert_almost_equal(rslt.aicc, self.MGWR.aicc)
         np.testing.assert_almost_equal(rslt.ENP, self.MGWR.ENP)
-        np.testing.assert_allclose(rslt.ENPj, self.MGWR.ENPj)
+        np.testing.assert_allclose(rslt.ENP_j, self.MGWR.ENP_j)
+        np.testing.assert_allclose(rslt.adj_alpha_j, self.MGWR.adj_alpha_j)
+        np.testing.assert_allclose(rslt.critical_tval(),
+                self.MGWR.critical_tval())
+        np.testing.assert_allclose(rslt.filter_tvals(), self.MGWR.filter_tvals())
     
     def test_Prediction(self):
         coords =np.array(self.coords)
