@@ -160,6 +160,9 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False):
 
 def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         gwr_func, bw_func, sel_func):
+    """
+    Multiscale GWR bandwidth search procedure using iterative GAM backfitting
+    """
     if init:
         bw = sel_func(bw_func(y, X))
         optim_model = gwr_func(y, X, bw)
