@@ -165,11 +165,11 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         optim_model = gwr_func(y, X, bw)
         S = optim_model.S
         err = optim_model.resid_response.reshape((-1,1))
-        est = optim_model.params
+        param = optim_model.params
     else:
         model = GLM(y, X, family=family, constant=False).fit()
         err = model.resid_response.reshape((-1,1))
-        est = np.repeat(model.params.T, n, axis=0)
+        param = np.repeat(model.params.T, n, axis=0)
     
     R = np.zeros((n,n,k))
     
@@ -180,7 +180,7 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
             P = np.dot(np.linalg.inv(np.dot(xT, X)), xT)
             R[i,:,j] = X[i,j]*P[j]
 
-    XB = np.multiply(est, X)
+    XB = np.multiply(param, X)
     if rss_score:
         rss = np.sum((err)**2)
     iters = 0
@@ -201,7 +201,7 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         vals = []
         funcs = []
         current_partial_residuals = []
-        ests = np.zeros_like(X)
+        params = np.zeros_like(X)
         f_XB = XB.copy()
         f_err = err.copy()
         
@@ -219,11 +219,11 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
             R[:,:,j] = new_Rj
             
             err = optim_model.resid_response.reshape((-1,1))
-            est = optim_model.params.reshape((-1,))
+            param = optim_model.params.reshape((-1,))
 
             new_XB[:,j] = optim_model.predy.reshape(-1)
             bws.append(copy.deepcopy(bw))
-            ests[:,j] = est
+            params[:,j] = param
             vals.append(bw_class.bw[1])
             current_partial_residuals.append(err.copy())
 
@@ -233,7 +233,7 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         XB = new_XB
 
         if rss_score:
-            predy = np.sum(np.multiply(ests, X), axis=1).reshape((-1,1))
+            predy = np.sum(np.multiply(params, X), axis=1).reshape((-1,1))
             new_rss = np.sum((y - predy)**2)
             score = np.abs((new_rss - rss)/new_rss)
             rss = new_rss
@@ -247,5 +247,5 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
 
     opt_bws = BWs[-1]
     return (opt_bws, np.array(BWs),
-                          np.array(scores), ests,
+                          np.array(scores), params,
                           err, S, R)

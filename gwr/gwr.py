@@ -1476,7 +1476,7 @@ class MGWR(GWR):
         """
         S = self.selector.S
         R = self.selector.R
-        params = self.selector.est
+        params = self.selector.params
         predy = np.dot(S, self.y)
         CCT = np.zeros((self.n, self.k))
         for j in range(self.k):
@@ -1867,18 +1867,13 @@ class MGWRResults(GWRResults):
 
         """
         temp_sel = copy.deepcopy(selector)
-        temp_gwr = copy.deepcopy(self.model)
 
         if seed is None:
         	np.random.seed(5536)
         else:
             np.random.seed(seed)
 
-        fit_params = temp_gwr.fit_params
         search_params = temp_sel.search_params
-        kernel = temp_gwr.kernel
-        fixed = temp_gwr.fixed
-
 
         if self.model.constant:
             X = self.X[:,1:]
@@ -1892,11 +1887,8 @@ class MGWRResults(GWRResults):
             temp_coords = np.random.permutation(self.model.coords)
             temp_sel.coords = temp_coords
             temp_sel._build_dMat()
-            temp_bw = temp_sel.search(**search_params)
-   
-            temp_gwr.W = temp_gwr._build_W(fixed, kernel, temp_coords, temp_bw)
-            temp_params = temp_gwr.fit(**fit_params).params
-    
+            temp_sel.search(**search_params)
+            temp_params = temp_sel.params
             temp_sd = np.std(temp_params, axis=0)
             SDs.append(temp_sd)
         
