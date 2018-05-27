@@ -18,3 +18,8 @@ Features
 - MGWR covariate-specific inference, including a multiple hypothesis test
   correction and local collinearity   
 
+
+To do list
+----------
+
+- Add examples notebook
