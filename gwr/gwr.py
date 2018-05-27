@@ -1177,7 +1177,7 @@ class GWRResultsLite(object):
     model               : GWR object
                         pointer to GWR object with estimation parameters
                         
-    resid_response      : array
+    resid               : array
                         n*1, residuals of the repsonse
                         
     influ               : array
@@ -1196,6 +1196,13 @@ class GWRResultsLite(object):
     mu                  : array
                         n*, flat one dimensional array of predicted mean
                         response value from estimator
+        
+    resid_ss            : scalar
+                          residual sum of sqaures
+
+    sigma2              : float
+                          sigma squared (residual variance)
+
     """
 
     def __init__(self, model, resid, influ):
