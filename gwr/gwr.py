@@ -1770,58 +1770,34 @@ class MGWRResults(GWRResults):
         Computes several indicators of multicollinearity within a geographically
         weighted design matrix, including:
         
-        local correlation coefficients (n, ((p**2) + p) / 2)
-        local variance inflation factors (VIF) (n, p-1)
         local condition number (n, 1)
         local variance-decomposition proportions (n, p) 
         
         Returns four arrays with the order and dimensions listed above where n
         is the number of locations used as calibrations points and p is the
-        nubmer of explanatory variables. Local correlation coefficient and local
-        VIF are not calculated for constant term. 
+        nubmer of explanatory variables 
 
         """
         x = self.X
         w = self.W 
         nvar = x.shape[1]
-        nrow = len(w)
-        if self.model.constant:
-            ncor = (((nvar-1)**2 + (nvar-1)) / 2) - (nvar-1)
-            jk = list(combo(range(1, nvar), 2))
-        else:
-            ncor = (((nvar)**2 + (nvar)) / 2) - nvar
-            jk = list(combo(range(nvar), 2))
-        corr_mat = np.ndarray((nrow, int(ncor)))
-        if self.model.constant:
-            vifs_mat = np.ndarray((nrow, nvar-1))
-        else: 
-            vifs_mat = np.ndarray((nrow, nvar))
+        nrow = self.n
         vdp_idx = np.ndarray((nrow, nvar))
         vdp_pi = np.ndarray((nrow, nvar, nvar))
 
         for i in range(nrow):
-            wi = w[i]
-            sw = np.sum(wi)
-            wi = wi/sw
-            tag = 0
-            
-            for j, k in jk:
-                corr_mat[i, tag] = corr(np.cov(x[:,j], x[:, k], aweights=wi))[0][1]
-                tag = tag + 1
-            
-            if self.model.constant:
-                corr_mati = corr(np.cov(x[:,1:].T, aweights=wi))
-                vifs_mat[i,] = np.diag(np.linalg.solve(corr_mati, np.identity((nvar-1))))
+            xw = np.zeros((x.shape))
+            for j in range(nvar):
+                wi = w[j][i]
+                sw = np.sum(wi)
+                wi = wi/sw
+                xw[:,j] = x[:,j] * wi
 
-            else:
-                corr_mati = corr(np.cov(x.T, aweights=wi))
-                vifs_mat[i,] = np.diag(np.linalg.solve(corr_mati, np.identity((nvar))))
-            
-            xw = x * wi.reshape((nrow,1))
             sxw = np.sqrt(np.sum(xw**2, axis=0))
             sxw = np.transpose(xw.T / sxw.reshape((nvar,1))) 
             svdx = np.linalg.svd(sxw)    
             vdp_idx[i,] = svdx[1][0]/svdx[1]
+            
             phi = np.dot(svdx[2].T, np.diag(1/svdx[1]))
             phi = np.transpose(phi**2)
             pi_ij = phi / np.sum(phi, axis=0)
@@ -1830,7 +1806,7 @@ class MGWRResults(GWRResults):
         local_CN = vdp_idx[:, nvar-1].reshape((-1,1))
         VDP = vdp_pi[:,nvar-1,:]
         
-        return corr_mat, vifs_mat, local_CN, VDP
+        return local_CN, VDP
    
     def spatial_variability(self, selector, n_iters=1000, seed=None):
         """

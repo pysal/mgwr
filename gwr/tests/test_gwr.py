@@ -285,6 +285,7 @@ class TestGWRGaussian(unittest.TestCase):
         model = MGWR(self.coords, std_y, std_X, selector=selector,
                 constant=True, sigma2='v1')
         rslt = model.fit()
+        spat_var = rslt.spatial_variability(selector, 5)
 
         np.testing.assert_allclose(rslt.predy, self.MGWR.predy, atol=1e-07)
         np.testing.assert_allclose(rslt.params, self.MGWR.params, atol=1e-07)
@@ -300,6 +301,8 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(rslt.critical_tval(),
                 self.MGWR.critical_tval())
         np.testing.assert_allclose(rslt.filter_tvals(), self.MGWR.filter_tvals())
+        np.testing.assert_allclose(rslt.local_collinearity()[0],
+                self.MGWR.local_collinearity()[0])
     
     def test_Prediction(self):
         coords =np.array(self.coords)
