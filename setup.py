@@ -5,10 +5,10 @@ try:
 except ImportError:
     from distutils.command.build_py import build_py
 
-setup(name='gwr', #name of package
+setup(name='mgwr', #name of package
       version='1.0.0',
-      description='geographically weighted regression', #short <80chr description
-      url='https://github.com/TaylorOshan/gwr', #github repo
+      description='multiscale geographically weighted regression', #short <80chr description
+      url='https://github.com/TaylorOshan/mgwr', #github repo
       maintainer='Taylor M. Oshan', 
       maintainer_email='tayoshan@gmail.com', 
       test_suite = 'nose.collector',
@@ -29,7 +29,7 @@ setup(name='gwr', #name of package
         'Programming Language :: Python :: 3.4'
         ],
       license='3-Clause BSD',
-      packages=['gwr'],
+      packages=['mgwr'],
       install_requires=['numpy', 'scipy', 'libpysal', 'spglm', 'spreg'],
       zip_safe=False,
       cmdclass = {'build.py':build_py})
