@@ -1,3 +1,2 @@
 scipy>=0.11
 numpy>=1.3
-spreg>=1.0.3
