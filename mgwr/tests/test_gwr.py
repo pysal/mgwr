@@ -29,7 +29,7 @@ class TestGWRGaussian(unittest.TestCase):
         self.GS_F = libpysal.open(os.path.join(os.path.dirname(__file__),'georgia/georgia_GS_F_listwise.csv'))
         self.GS_NN =libpysal.open(os.path.join(os.path.dirname(__file__),'georgia/georgia_GS_NN_listwise.csv'))
         MGWR_path = os.path.join(os.path.dirname(__file__),'mgwr_example.p')
-        self.MGWR = pk.load(open(MGWR_path, 'r'))
+        self.MGWR = pk.load(open(MGWR_path, 'rb'))
 
     def test_BS_F(self):
         est_Int = self.BS_F.by_col(' est_Intercept')
