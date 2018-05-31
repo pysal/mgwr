@@ -5,7 +5,7 @@
 
 __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
-import pysal.spreg.user_output as USER
+import spreg.user_output as USER
 import numpy as np
 from scipy.spatial.distance import pdist,squareform
 from scipy.optimize import minimize_scalar

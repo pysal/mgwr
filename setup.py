@@ -30,6 +30,6 @@ setup(name='gwr', #name of package
         ],
       license='3-Clause BSD',
       packages=['gwr'],
-      install_requires=['numpy', 'scipy', 'libpysal', 'pysal', 'spglm'],
+      install_requires=['numpy', 'scipy', 'libpysal', 'spglm', 'spreg'],
       zip_safe=False,
       cmdclass = {'build.py':build_py})

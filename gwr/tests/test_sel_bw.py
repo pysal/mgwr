@@ -3,7 +3,6 @@ GWR is tested against results from GWR4
 """
 
 import os
-import pysal
 import numpy as np
 import libpysal
 import unittest
@@ -14,7 +13,8 @@ from numpy.testing import assert_allclose
 
 class TestSelBW(unittest.TestCase):
     def setUp(self):
-        data = pysal.open(pysal.examples.get_path('GData_utm.csv'))
+        data_path = os.path.join(os.path.dirname(__file__),'georgia/GData_utm.csv')
+        data = libpysal.open(data_path)
         self.coords = list(zip(data.by_col('X'), data.by_col('Y')))
         self.y = np.array(data.by_col('PctBach')).reshape((-1,1))
         rural  = np.array(data.by_col('PctRural')).reshape((-1,1))

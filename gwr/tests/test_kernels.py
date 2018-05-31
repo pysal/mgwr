@@ -4,10 +4,10 @@ Tests for the custom GWR kernel class
 
 import unittest
 import numpy as np
-import pysal
+import libpysal
 from ..kernels import *
 
-PEGP = pysal.examples.get_path
+PEGP = libpysal.examples.get_path
 
 class TestKernels(unittest.TestCase):
     def setUp(self):
