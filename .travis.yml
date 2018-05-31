@@ -21,7 +21,7 @@ before_install:
   - conda create -y -q -n test-env python=$TRAVIS_PYTHON_VERSION
   - source activate test-env
   - if [[ $TRAVIS_PYTHON_VERSION == 3* ]]; 
-        then 2to3 -nw gwr > /dev/null; 
+        then 2to3 -nw mgwr > /dev/null; 
     fi
 
 install:
@@ -29,12 +29,8 @@ install:
   - conda install --yes --file requirements.txt;
   - conda install --yes nose
   - pip install libpysal
-  - cd ../ && git clone https://github.com/TaylorOshan/spglm.git
-  - if [[ $TRAVIS_PYTHON_VERSION == 3* ]]; 
-        then 2to3 -nw spglm/ > /dev/null; 
-    fi
-  - pip install -e ./spglm
-  - cd ./gwr
+  - pip install spglm
+  - pip install spreg
   - pip install -r requirements_dev.txt
 
 script:
