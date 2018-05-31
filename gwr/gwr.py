@@ -908,11 +908,9 @@ class GWRResults(GLMResults):
         if critical_t is not None:
         	critical = critical_t
         elif alpha is not None and critical_t is None:
-            alpha = np.abs(alpha)/2.0
-            critical = t.ppf(1-alpha, n-1)
+            critical = self.critical_tval(alpha=alpha)
         elif alpha is None and critical_t is None:
-            alpha = np.abs(self.adj_alpha[1])/2.0
-            critical = t.ppf(1-alpha, n-1)
+            critical = self.critical_tval()
         
         subset = (self.tvalues < critical) & (self.tvalues > -1.0*critical)
         tvalues = self.tvalues.copy()
@@ -1694,11 +1692,9 @@ class MGWRResults(GWRResults):
         if critical_t is not None:
         	critical = np.array(critical_t)
         elif alpha is not None and critical_t is None:
-            alpha = np.abs(alpha)/2.0
-            critical = t.ppf(1-alpha, n-1)
+            critical = self.critical_tval(alpha=alpha)
         elif alpha is None and critical_t is None:
-            alpha = np.abs(self.adj_alpha_j[:,1])/2.0
-            critical = t.ppf(1-alpha, n-1)
+            critical = self.critical_tval()
         
         subset = (self.tvalues < critical) & (self.tvalues > -1.0*critical)
         tvalues = self.tvalues.copy()
