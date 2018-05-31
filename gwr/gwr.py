@@ -8,7 +8,7 @@ import numpy.linalg as la
 from scipy.stats import t
 from scipy.special import factorial
 from itertools import combinations as combo
-import pysal.spreg.user_output as USER
+from spreg import user_output as USER
 from spglm.family import Gaussian, Binomial, Poisson
 from spglm.glm import GLM, GLMResults
 from spglm.iwls import iwls,_compute_betas_gwr
@@ -55,8 +55,11 @@ class GWR(GLM):
                         only for Poisson models
 
         sigma2_v1     : boolean
-                        specify sigma squared, True to use n as denominator;
-                        default is False which uses n-k
+                        specify form of corrected denominator of sigma squared to use for
+                        model diagnostics; Acceptable options are:
+                        
+                        'True':       n-tr(S) (defualt)
+                        'False':     n-2(tr(S)+tr(S'S))
 
         kernel        : string
                         type of kernel function used to weight observations;
@@ -72,7 +75,19 @@ class GWR(GLM):
         constant      : boolean
                         True to include intercept (default) in model and False to exclude
                         intercept.
+
+        dmat          : array
+                        n*n, distance matrix between calibration locations used
+                        to compute weight matrix. Defaults to None and is
+                        primarily for avoiding duplicate computation during
+                        bandwidth selection.
                         
+        sorted_dmat   : array
+                        n*n, sorted distance matrix between calibration locations used
+                        to compute weight matrix. Defaults to None and is
+                        primarily for avoiding duplicate computation during
+                        bandwidth selection.
+        
         spherical     : boolean
                         True for shperical coordinates (long-lat),
                         False for projected coordinates (defalut).
@@ -105,8 +120,11 @@ class GWR(GLM):
                         Default is None where Ni becomes 1.0 for all locations
 
         sigma2_v1     : boolean
-                        specify sigma squared, True to use n as denominator;
-                        default is False which uses n-k
+                        specify form of corrected denominator of sigma squared to use for
+                        model diagnostics; Acceptable options are:
+                        
+                        'True':       n-tr(S) (defualt)
+                        'False':     n-2(tr(S)+tr(S'S))
 
         kernel        : string
                         type of kernel function used to weight observations;
@@ -123,6 +141,18 @@ class GWR(GLM):
                         True to include intercept (default) in model and False to exclude
                         intercept
 
+        dmat          : array
+                        n*n, distance matrix between calibration locations used
+                        to compute weight matrix. Defaults to None and is
+                        primarily for avoiding duplicate computation during
+                        bandwidth selection.
+                        
+        sorted_dmat   : array
+                        n*n, sorted distance matrix between calibration locations used
+                        to compute weight matrix. Defaults to None and is
+                        primarily for avoiding duplicate computation during
+                        bandwidth selection.
+        
         spherical     : boolean
                         True for shperical coordinates (long-lat),
                         False for projected coordinates (defalut).
@@ -150,13 +180,16 @@ class GWR(GLM):
                         n*2, collection of n sets of (x,y) coordinates used for
                         calibration locations instead of all observations;
                         defaults to None unles specified in predict method
+        
         P             : array
                         n*k, independent variables used to make prediction;
                         exlcuding the constant; default to None unless specified
                         in predict method
+        
         exog_scale    : scalar
                         estimated scale using sampled locations; defualt is None
                         unless specified in predict method
+        
         exog_resid    : array-like
                         estimated residuals using sampled locations; defualt is None
                         unless specified in predict method
@@ -165,8 +198,9 @@ class GWR(GLM):
     --------
     #basic model calibration
 
+    >>> import gwr
     >>> import pysal
-    >>> from pysal.contrib.gwr.gwr import GWR
+    >>> from gwr.gwr import GWR
     >>> data = pysal.open(pysal.examples.get_path('GData_utm.csv'))
     >>> coords = zip(data.bycol('X'), data.by_col('Y')) 
     >>> y = np.array(data.by_col('PctBach')).reshape((-1,1))
@@ -192,7 +226,7 @@ class GWR(GLM):
 
     """
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
-            sigma2_v1=False, kernel='bisquare', fixed=False, constant=True, 
+            sigma2_v1=True, kernel='bisquare', fixed=False, constant=True, 
             dmat=None, sorted_dmat=None, spherical=False):
         """
         Initialize class
@@ -350,62 +384,11 @@ class GWR(GLM):
 
     @cache_readonly
     def df_model(self):
-        raise NotImplementedError('Only computed for fitted model in GWRResults')
+        return None
 
     @cache_readonly
     def df_resid(self):
-        raise NotImplementedError('Only computed for fitted model in GWRResults')
-
-
-#A lighter GWR result object for bw searching
-class GWRResultsLite(object):
-    """
-    Light class including minimum properties for computing GWR diagnostics
-    
-    Parameters
-    ----------
-    model               : GWR object
-                        pointer to GWR object with estimation parameters
-                        
-    resid_response      : array
-                        n*1, residuals of the repsonse
-                        
-    influ               : array
-                        n*1, leading diagonal of S matrix
-                        
-    Attributes
-    ----------
-    tr_S                : float
-                        trace of S (hat) matrix
-                        
-    llf                 : scalar
-                        log-likelihood of the full model; see
-                        pysal.contrib.glm.family for damily-sepcific
-                        log-likelihoods
-                        
-    mu                  : array
-                        n*, flat one dimensional array of predicted mean
-                        response value from estimator
-    """
-
-    def __init__(self, model, resid, influ):
-        self.y = model.y
-        self.family = model.family
-        self.n = model.n
-        self.influ = influ
-        self.resid_response = resid
-    
-    @cache_readonly
-    def tr_S(self):
-        return np.sum(self.influ)
-    @cache_readonly
-    def llf(self):
-        return self.family.loglike(self.y,self.mu)
-    @cache_readonly
-    def mu(self):
-        return self.y - self.resid_response
-
-
+        return None
 
 class GWRResults(GLMResults):
     """
@@ -422,15 +405,15 @@ class GWRResults(GLMResults):
         predy               : array
                               n*1, predicted y values
 
-        w                   : array
-                              n*1, final weight used for iteratively re-weighted least
-                              sqaures; default is None
-
         S                   : array
                               n*n, hat matrix
 
         CCT                 : array
                               n*k, scaled variance-covariance matrix
+        
+        w                   : array
+                              n*1, final weight used for iteratively re-weighted least
+                              sqaures; default is None
 
     Attributes
     ----------
@@ -495,17 +478,16 @@ class GWRResults(GLMResults):
 
         CCT                 : array
                               n*k, scaled variance-covariance matrix
+        
+        ENP                 : scalar
+                              effective number of paramters, which depends on
+                              sigma2
 
         tr_S                : float
                               trace of S (hat) matrix
 
         tr_STS              : float
                               trace of STS matrix
-
-        tr_SWSTW            : float
-                              trace of weighted STS matrix; weights are those output
-                              from iteratively weighted least sqaures (not spatial
-                              weights)
 
         y_bar               : array
                               n*1, weighted mean value of y
@@ -515,18 +497,27 @@ class GWRResults(GLMResults):
 
         RSS                 : array
                               n*1, geographically weighted residual sum of squares
+        
+        R2                  : float
+                              R-squared for the entire model (1- RSS/TSS)
+        
+        aic                 : float
+                              Akaike information criterion
+
+        aicc                : float
+                              corrected Akaike information criterion to account
+                              to account for model complexity (smaller
+                              bandwidths)
+
+        bic                 : float
+                              Bayesian information criterio
 
         localR2             : array
                               n*1, local R square
 
-        sigma2_v1           : float
-                              sigma squared, use (n-v1) as denominator
-
-        sigma2_v1v2         : float
-                              sigma squared, use (n-2v1+v2) as denominator
-
-        sigma2_ML           : float
-                              sigma squared, estimated using ML
+        sigma2              : float
+                              sigma squared (residual variance) that has been
+                              corrected to account for the ENP
 
         std_res             : array
                               n*1, standardised residuals
@@ -573,6 +564,11 @@ class GWRResults(GLMResults):
         fit_params          : dict
                               parameters passed into fit method to define estimation
                               routine
+
+        predictions         : array
+                              p*1, predicted values generated by calling the GWR
+                              predict method to predict dependent variable at
+                              unsampled points () 
     """
     def __init__(self, model, params, predy, S, CCT, w=None):
         GLMResults.__init__(self, model, params, predy, w)
@@ -596,10 +592,7 @@ class GWRResults(GLMResults):
     @cache_readonly
     def scale(self, scale=None):
         if isinstance(self.family, Gaussian):
-            if self.model.sigma2_v1:
-                scale = self.sigma2_v1
-            else:
-                scale = self.sigma2_v1v2
+            scale = self.sigma2
         else:
             scale = 1.0
         return scale
@@ -636,6 +629,23 @@ class GWRResults(GLMResults):
         """
         return np.trace(np.dot(self.S.T*self.w,self.S*self.w))
 
+    @cache_readonly
+    def ENP(self):
+        """
+        effective number of parameters
+
+        Defualts to tr(s) as defined in yu et. al (2018) Inference in
+        Multiscale GWR
+
+        but can alternatively be based on 2tr(s) - tr(STS)
+
+        and the form depends on the specification of sigma2
+        """
+        if self.model.sigma2_v1:
+            return self.tr_S
+        else:
+            return 2*self.tr_S - self.tr_STS      
+    
     @cache_readonly
     def y_bar(self):
         """
@@ -712,45 +722,32 @@ class GWRResults(GLMResults):
             raise NotImplementedError('Only applicable to Gaussian')
 
     @cache_readonly
-    def sigma2_v1(self):
+    def sigma2(self):
         """
         residual variance
+
+        if sigma2_v1 is True: only use n-tr(S) in denominator
 
         Methods: p214, (9.6),
         Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
         Geographically weighted regression: the analysis of spatially varying
         relationships.
 
-        only use v1
-        """
-        return (self.resid_ss/(self.n-self.tr_S))
+        and as defined  in Yu et. al. (2018) Inference in Multiscale GWR
 
-    @cache_readonly
-    def sigma2_v1v2(self):
-        """
-        residual variance
+        if sigma2_v1 is False (v1v2): use n-2(tr(S)+tr(S'S)) in denominator
 
         Methods: p55 (2.16)-(2.18)
         Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
         Geographically weighted regression: the analysis of spatially varying
         relationships.
 
-        use v1 and v2 #used in GWR4
         """
-        if isinstance(self.family, (Poisson, Binomial)):
-            return self.resid_ss/(self.n - 2.0*self.tr_S +
-                  self.tr_STS) #could be changed to SWSTW - nothing to test against
+        if self.model.sigma2_v1:
+            return (self.resid_ss / (self.n-self.tr_S))
         else:
-            return self.resid_ss/(self.n - 2.0*self.tr_S +
+            return self.resid_ss / (self.n - 2.0*self.tr_S +
                   self.tr_STS) #could be changed to SWSTW - nothing to test against
-    @cache_readonly
-    def sigma2_ML(self):
-        """
-        residual variance
-
-        Methods: maximum likelihood
-        """
-        return self.resid_ss/self.n
 
     @cache_readonly
     def std_res(self):
@@ -846,19 +843,57 @@ class GWRResults(GLMResults):
 
         """
         alpha = np.array([.1, .05, .001])
-        pe = (2.0 * self.tr_S) - self.tr_STS
+        pe = self.ENP
         p = self.k
         return (alpha*p)/pe
 
-    def filter_tvals(self, alpha):
+    def critical_tval(self, alpha=None):
         """
-        Utility function to set tvalues with an absolute value smaller than the
-        absolute value of the alpha (critical) value to 0
+        Utility function to derive the critial t-value based on given alpha
+        that are needed for hypothesis testing
 
         Parameters
         ----------
         alpha           : scalar
                           critical value to determine which tvalues are
+                          associated with statistically significant parameter
+                          estimates. Default to None in which case the adjusted
+                          alpha value at the 95 percent CI is automatically
+                          used.
+
+        Returns
+        -------
+        critical        : scalar
+                          critical t-val based on alpha
+        """
+        n = self.n
+        if alpha is not None:
+            alpha = np.abs(alpha)/2.0
+            critical = t.ppf(1-alpha, n-1)
+        else:
+            alpha = np.abs(self.adj_alpha[1])/2.0
+            critical = t.ppf(1-alpha, n-1)
+        return critical
+    
+    def filter_tvals(self, critical_t=None, alpha=None):
+        """
+        Utility function to set tvalues with an absolute value smaller than the
+        absolute value of the alpha (critical) value to 0. If critical_t
+        is supplied than it is used directly to filter. If alpha is provided
+        than the critical t value will be derived and used to filter. If neither
+        are critical_t nor alpha are provided, an adjusted alpha at the 95
+        percent CI will automatically be used to define the critical t-value and
+        used to filter. If both critical_t and alpha are supplied then the alpha
+        value will be ignored. 
+
+        Parameters
+        ----------
+        critical        : scalar
+                          critical t-value to determine whether parameters are
+                          statistically significant
+                        
+        alpha           : scalar
+                          alpha value to determine which tvalues are
                           associated with statistically significant parameter
                           estimates
 
@@ -869,9 +904,12 @@ class GWRResults(GLMResults):
                           where absolute tvalues less than the absolute value of
                           alpha have been set to 0.
         """
-        alpha = np.abs(alpha)/2.0
         n = self.n
-        critical = t.ppf(1-alpha, n-1)
+        if critical_t is not None:
+        	critical = critical_t
+        else:
+            critical = self.critical_tval(alpha=alpha)
+        
         subset = (self.tvalues < critical) & (self.tvalues > -1.0*critical)
         tvalues = self.tvalues.copy()
         tvalues[subset] = 0
@@ -887,35 +925,35 @@ class GWRResults(GLMResults):
 
     @cache_readonly
     def normalized_cov_params(self):
-        raise NotImplementedError('Not implemented for GWR')
+        return None
 
     @cache_readonly
     def resid_pearson(self):
-        raise NotImplementedError('Not implemented for GWR')
+        return None
 
     @cache_readonly
     def resid_working(self):
-        raise NotImplementedError('Not implemented for GWR')
+        return None
 
     @cache_readonly
     def resid_anscombe(self):
-        raise NotImplementedError('Not implemented for GWR')
+        return None
 
     @cache_readonly
     def pearson_chi2(self):
-        raise NotImplementedError('Not implemented for GWR')
+        return None
 
     @cache_readonly
     def null(self):
-        raise NotImplementedError('Not implemented for GWR')
+        return None
 
     @cache_readonly
     def llnull(self):
-        raise NotImplementedError('Not implemented for GWR')
+        return None
 
     @cache_readonly
     def null_deviance(self):
-        raise NotImplementedError('Not implemented for GWR')
+        return None
     
     @cache_readonly
     def R2(self):
@@ -941,25 +979,32 @@ class GWRResults(GLMResults):
 
     @cache_readonly
     def D2(self):
-        raise NotImplementedError('Not implemented for GWR')
+        return None
 
     @cache_readonly
     def adj_D2(self):
-        raise NotImplementedError('Not implemented for GWR')
+        return None
 
     @cache_readonly
     def pseudoR2(self):
-        raise NotImplementedError('Not implemented for GWR')
+        return None
 
     @cache_readonly
     def adj_pseudoR2(self):
-        raise NotImplementedError('Not implemented for GWR')
+        return None
 
     @cache_readonly
     def pvalues(self):
-        raise NotImplementedError('Not implemented for GWR')
+        return None
 
     @cache_readonly
+    def conf_int(self):
+        return None
+
+    @cache_readonly
+    def use_t(self):
+        return None
+    
     def local_collinearity(self):
         """
         Computes several indicators of multicollinearity within a geographically
@@ -1108,6 +1153,66 @@ class GWRResults(GLMResults):
             predictions = np.sum(P*self.params, axis=1).reshape((-1,1))
         return predictions
 
+class GWRResultsLite(object):
+    """
+    Lightweight GWR that computes the minimum diagnostics needed for bandwidth
+    selection
+    
+    Parameters
+    ----------
+    model               : GWR object
+                        pointer to GWR object with estimation parameters
+                        
+    resid               : array
+                        n*1, residuals of the repsonse
+                        
+    influ               : array
+                        n*1, leading diagonal of S matrix
+                        
+    Attributes
+    ----------
+    tr_S                : float
+                        trace of S (hat) matrix
+                        
+    llf                 : scalar
+                        log-likelihood of the full model; see
+                        pysal.contrib.glm.family for damily-sepcific
+                        log-likelihoods
+                        
+    mu                  : array
+                        n*, flat one dimensional array of predicted mean
+                        response value from estimator
+        
+    resid_ss            : scalar
+                          residual sum of sqaures
+
+    """
+
+    def __init__(self, model, resid, influ):
+        self.y = model.y
+        self.family = model.family
+        self.n = model.n
+        self.influ = influ
+        self.resid_response = resid
+        self.model = model
+    
+    @cache_readonly
+    def tr_S(self):
+        return np.sum(self.influ)
+    
+    @cache_readonly
+    def llf(self):
+        return self.family.loglike(self.y,self.mu)
+    
+    @cache_readonly
+    def mu(self):
+        return self.y - self.resid_response
+
+    @cache_readonly
+    def resid_ss(self):
+        u = self.resid_response.flatten()
+        return np.dot(u, u.T)
+    
 class MGWR(GWR):
     """
     Parameters
@@ -1123,38 +1228,22 @@ class MGWR(GWR):
         X             : array
                         n*k, independent variable, exlcuding the constant
 
-        points        : array-like
-                        n*2, collection of n sets of (x,y) coordinates used for
-                        calibration locations; default is set to None, which
-                        uses every observation as a calibration point
-
-        bws           : array-like
-                        collection of bandwidth values consisting of either a distance or N
-                        nearest neighbors; user specified or obtained using
-                        Sel_BW with fb=True. Order of values should the same as
-                        the order of columns associated with X
-        XB            : array
-                        n*k, product of temporary X and params obtained as through-put
-                        from the backfitting algorithm used to select flexible
-                        bandwidths; product of the Sel_BW class
-        err           : array
-                        n*1, temporary residuals associated with the predicted values from
-                        the backfitting algorithm used to select flexible
-                        bandwidths; product of the Sel_BW class
+        selector      : sel_bw object
+                        valid sel_bw object that has successfully called
+                        the "search" method. This parameter passes on
+                        information from GAM model estimation including optimal
+                        bandwidths.
 
         family        : family object
                         underlying probability model; provides
                         distribution-specific calculations
 
-        offset        : array
-                        n*1, the offset variable at the ith location. For Poisson model
-                        this term is often the size of the population at risk or
-                        the expected size of the outcome in spatial epidemiology
-                        Default is None where Ni becomes 1.0 for all locations
-
         sigma2_v1     : boolean
-                        specify sigma squared, True to use n as denominator;
-                        default is False which uses n-k
+                        specify form of corrected denominator of sigma squared to use for
+                        model diagnostics; Acceptable options are:
+                        
+                        'True':       n-tr(S) (defualt)
+                        'False':     n-2(tr(S)+tr(S'S))
 
         kernel        : string
                         type of kernel function used to weight observations;
@@ -1171,6 +1260,17 @@ class MGWR(GWR):
                         True to include intercept (default) in model and False to exclude
                         intercept.
 
+        dmat          : array
+                        n*n, distance matrix between calibration locations used
+                        to compute weight matrix. Defaults to None and is
+                        primarily for avoiding duplicate computation during
+                        bandwidth selection.
+                        
+        sorted_dmat   : array
+                        n*n, sorted distance matrix between calibration locations used
+                        to compute weight matrix. Defaults to None and is
+                        primarily for avoiding duplicate computation during
+                        bandwidth selection.
         spherical     : boolean
                         True for shperical coordinates (long-lat),
                         False for projected coordinates (defalut).
@@ -1187,38 +1287,28 @@ class MGWR(GWR):
         X             : array
                         n*k, independent variable, exlcuding the constant
 
-        points        : array-like
-                        n*2, collection of n sets of (x,y) coordinates used for
-                        calibration locations; default is set to None, which
-                        uses every observation as a calibration point
+        selector      : sel_bw object
+                        valid sel_bw object that has successfully called
+                        the "search" method. This parameter passes on
+                        information from GAM model estimation including optimal
+                        bandwidths.
 
-        bws           : array-like
+        bw            : array-like
                         collection of bandwidth values consisting of either a distance or N
                         nearest neighbors; user specified or obtained using
                         Sel_BW with fb=True. Order of values should the same as
                         the order of columns associated with X
-        XB            : array
-                        n*k, product of temporary X and params obtained as through-put
-                        from the backfitting algorithm used to select flexible
-                        bandwidths; product of the Sel_BW class
-        err           : array
-                        n*1, temporary residuals associated with the predicted values from
-                        the backfitting algorithm used to select flexible
-                        bandwidths; product of the Sel_BW class
 
         family        : family object
                         underlying probability model; provides
                         distribution-specific calculations
 
-        offset        : array
-                        n*1, the offset variable at the ith location. For Poisson model
-                        this term is often the size of the population at risk or
-                        the expected size of the outcome in spatial epidemiology
-                        Default is None where Ni becomes 1.0 for all locations
-
         sigma2_v1     : boolean
-                        specify sigma squared, True to use n as denominator;
-                        default is False which uses n-k
+                        specify form of corrected denominator of sigma squared to use for
+                        model diagnostics; Acceptable options are:
+                        
+                        'True':       n-tr(S) (defualt)
+                        'False':     n-2(tr(S)+tr(S'S))
 
         kernel        : string
                         type of kernel function used to weight observations;
@@ -1235,75 +1325,154 @@ class MGWR(GWR):
                         True to include intercept (default) in model and False to exclude
                         intercept.
 
+        dmat          : array
+                        n*n, distance matrix between calibration locations used
+                        to compute weight matrix. Defaults to None and is
+                        primarily for avoiding duplicate computation during
+                        bandwidth selection.
+                        
+        sorted_dmat   : array
+                        n*n, sorted distance matrix between calibration locations used
+                        to compute weight matrix. Defaults to None and is
+                        primarily for avoiding duplicate computation during
+                        bandwidth selection.
+        
+        spherical     : boolean
+                        True for shperical coordinates (long-lat),
+                        False for projected coordinates (defalut).
+
+        n             : integer
+                        number of observations
+
+        k             : integer
+                        number of independent variables
+
+        mean_y        : float
+                        mean of y
+
+        std_y         : float
+                        standard deviation of y
+
+        fit_params    : dict
+                        parameters passed into fit method to define estimation
+                        routine
+
+        W             : array-like
+                        list of n*n arrays, spatial weights matrices for weighting all
+                        observations from each calibration point: one for each
+                        covariate (k)
 
     Examples
-    -------
-    TODO
+    --------
+    #basic model calibration
+
+    >>> import gwr
+    >>> import pysal
+    >>> from gwr.gwr import MGWR
+    >>> from gwr.sel_bw import Sel_BW
+    >>> data = pysal.open(pysal.examples.get_path('GData_utm.csv'))
+    >>> coords = zip(data.bycol('X'), data.by_col('Y')) 
+    >>> y = np.array(data.by_col('PctBach')).reshape((-1,1))
+    >>> rural = np.array(data.by_col('PctRural')).reshape((-1,1))
+    >>> fb = np.array(data.by_col('PctFB')).reshape((-1,1))
+    >>> african_amer = np.array(data.by_col('PctBlack')).reshape((-1,1))
+    >>> X = np.hstack([fb, african_amer, rural])
+    >>> selector = Sel_BW(coords, y, X, multi=True)
+    >>> selector.search(bw_min=2, bw_max=159)
+    >>> model = MGWR(coords, y, X, selector, fixed=False, kernel='bisquare', sigma2_v1=True)
+    >>> results = model.fit()
+    >>> print results.params.shape
+    (159, 4)
 
     """
-    def __init__(self, coords, y, X, selector, family=Gaussian(), offset=None,
-           sigma2_v1=False, kernel='bisquare', fixed=False, constant=True,
-           dmat=None, sorted_dmat=None, spherical=False):
+    def __init__(self, coords, y, X, selector, sigma2_v1=True, kernel='bisquare',
+            fixed=False, constant=True, dmat=None, sorted_dmat=None, spherical=False):
         """
         Initialize class
         """
-        self.coords = coords
-        self.y = y
-        self.X = X
-        self.family = family
-        self.offset = offset
+        self.selector = selector
+        self.bw = self.selector.bw[0]
+        self.family = Gaussian() #manually set since we only support Gassian MGWR for now
+        GWR.__init__(self, coords, y, X, self.bw, family=self.family,
+                sigma2_v1=sigma2_v1, kernel=kernel, fixed=fixed,
+                constant=constant, dmat=dmat, sorted_dmat=sorted_dmat, 
+                spherical=spherical)
         self.selector = selector
         self.sigma2_v1 = sigma2_v1
-        self.kernel = kernel
-        self.fixed = fixed
-        self.constant = constant
-        self.dmat = dmat
-        self.sorted_dmat = sorted_dmat
-        self.spherical = spherical
-        if constant:
-            self.X = USER.check_constant(self.X)
+        self.points = None
+        self.P = None
+        self.offset = None
+        self.exog_resid = None
+        self.exog_scale = None
+        self_fit_params = None
+    
+    #overwrite GWR method to handle multiple BW's
+    def _build_W(self, fixed, kernel, coords, bw, points=None):
+        Ws = []
+        for bw_i in bw:
+            if fixed:
+                try:
+                    W = fk[kernel](coords, bw_i, points, self.dmat, self.sorted_dmat,spherical=self.spherical)
+                except:
+                    raise #TypeError('Unsupported kernel function  ', kernel)
+            else:
+                try:
+                     W = ak[kernel](coords, bw_i, points, self.dmat, self.sorted_dmat,spherical=self.spherical)
+                except:
+                    raise #TypeError('Unsupported kernel function  ', kernel)
+            Ws.append(W)
+        return Ws
 
-    def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls'):
+    def fit(self):
         """
-        Method that fits a model with a particular estimation routine.
-
-        Parameters
-        ----------
-
-        ini_betas     : array
-                        k*1, initial coefficient values, including constant.
-                        Default is None, which calculates initial values during
-                        estimation
-        tol:            float
-                        Tolerence for estimation convergence
-        max_iter      : integer
-                        Maximum number of iterations if convergence not
-                        achieved
-        solve         : string
-                        Technique to solve MLE equations.
-                        'iwls' = iteratively (re)weighted least squares (default)
+        Method that extracts information from Sel_BW (selector) object and
+        prepares GAM estimation results for MGWRResults object.
 
         """
         S = self.selector.S
         R = self.selector.R
-        params = self.selector.est
-    
-        return MGWRResults(self, params, S, R)
+        params = self.selector.params
+        predy = np.dot(S, self.y)
+        CCT = np.zeros((self.n, self.k))
+        for j in range(self.k):
+            C = np.dot(np.linalg.inv(np.diag(self.X[:,j])), R[:,:,j])
+            CCT[:,j] = np.diag(np.dot(C,C.T))
+        w = np.ones(self.n) #manually set since we onlly support Gaussian MGWR for now
+        return MGWRResults(self, params, predy, S, CCT, R, w)
 
-class MGWRResults(object):
+    def predict(self):
+        raise NotImplementedError('N/A')
+
+class MGWRResults(GWRResults):
     """
     Parameters
     ----------
-        model               : GWR object
+        model               : MGWR object
                               pointer to MGWR object with estimation parameters
 
         params              : array
                               n*k, estimated coefficients
 
+        predy               : array
+                              n*1, predicted y values
+
+        S                   : array
+                              n*n, hat matrix
+
+        R                   : array
+                              n*n*k, partial hat matrices for each covariate
+
+        CCT                 : array
+                              n*k, scaled variance-covariance matrix
+        
+        w                   : array
+                              n*1, final weight used for iteratively re-weighted least
+                              sqaures; default is None
+
     Attributes
     ----------
         model               : GWR Object
-                              points to MGWR object for which parameters have been
+                              points to GWR object for which parameters have been
                               estimated
 
         params              : array
@@ -1318,74 +1487,340 @@ class MGWRResults(object):
         X                   : array
                               n*k, independent variable, including constant
 
-                            : array
-        resid_response        n*1, residuals of response
+        family              : family object
+                              underlying probability model; provides
+                              distribution-specific calculations
+
+        n                   : integer
+                              number of observations
+
+        k                   : integer
+                              number of independent variables
+
+        df_model            : integer
+                              model degrees of freedom
+
+        df_resid            : integer
+                              residual degrees of freedom
+
+        scale               : float
+                              sigma squared used for subsequent computations
+
+        w                   : array
+                              n*1, final weights from iteratively re-weighted least
+                              sqaures routine
+
+        resid_response      : array
+                              n*1, residuals of the repsonse
 
         resid_ss            : scalar
                               residual sum of sqaures
 
-    Examples
-    -------
-    TODO
+        W                   : array-like
+                              list of n*n arrays, spatial weights matrices for weighting all
+                              observations from each calibration point: one for each
+                              covariate (k)
+
+        S                   : array
+                              n*n, hat matrix
+        
+        R                   : array
+                              n*n*k, partial hat matrices for each covariate
+
+        CCT                 : array
+                              n*k, scaled variance-covariance matrix
+        
+        ENP                 : scalar
+                              effective number of paramters, which depends on
+                              sigma2, for the entire model
+
+        ENP_j               : array-like
+                              effective number of paramters, which depends on
+                              sigma2, for each covariate in the model
+
+        adj_alpha           : array
+                              3*1, corrected alpha values to account for multiple
+                              hypothesis testing for the 90%, 95%, and 99% confidence
+                              levels; tvalues with an absolute value larger than the
+                              corrected alpha are considered statistically
+                              significant.
+        
+        adj_alpha_j         : array
+                              k*3, corrected alpha values to account for multiple
+                              hypothesis testing for the 90%, 95%, and 99% confidence
+                              levels; tvalues with an absolute value larger than the
+                              corrected alpha are considered statistically
+                              significant. A set of alpha calues is computed for
+                              each covariate in the model.
+        
+        tr_S                : float
+                              trace of S (hat) matrix
+
+        tr_STS              : float
+                              trace of STS matrix
+
+        R2                  : float
+                              R-squared for the entire model (1- RSS/TSS)
+        
+        aic                 : float
+                              Akaike information criterion
+
+        aicc                : float
+                              corrected Akaike information criterion to account
+                              to account for model complexity (smaller
+                              bandwidths)
+
+        bic                 : float
+                              Bayesian information criterio
+
+        sigma2              : float
+                              sigma squared (residual variance) that has been
+                              corrected to account for the ENP
+
+        std_res             : array
+                              n*1, standardised residuals
+
+        bse                 : array
+                              n*k, standard errors of parameters (betas)
+
+        influ               : array
+                              n*1, leading diagonal of S matrix
+
+        CooksD              : array
+                              n*1, Cook's D
+
+        tvalues             : array
+                              n*k, local t-statistics
+
+        llf                 : scalar
+                              log-likelihood of the full model; see
+                              pysal.contrib.glm.family for damily-sepcific
+                              log-likelihoods
+
+        mu                  : array
+                              n*, flat one dimensional array of predicted mean
+                              response value from estimator
 
     """
-    def __init__(self, model, params, S, R):
+    def __init__(self, model, params, predy, S, CCT, R, w):
         """
         Initialize class
         """
-        self.model = model
-        self.params = params
-        self.X = model.X
-        self.y = model.y
-        self.S = S
+        GWRResults.__init__(self, model, params, predy, S, CCT, w)
         self.R = R
-        self.n = self.y.shape[0]
-        self._cache = {}
 
     @cache_readonly
-    def predy(self):
-        return np.dot(self.S,self.y)
+    def ENP_j(self):
+        return [np.trace(self.R[:,:,j]) for j in range(self.R.shape[2])] 
+    
+    @cache_readonly
+    def adj_alpha_j(self):
+        """
+        Corrected alpha (critical) values to account for multiple testing during hypothesis
+        testing. Includes corrected value for 90% (.1), 95% (.05), and 99%
+        (.01) confidence levels. Correction comes from:
 
-    @cache_readonly
-    def resid_response(self):
-        return (self.y - self.predy).reshape(-1)
+        da Silva, A. R., & Fotheringham, A. S. (2015). The Multiple Testing Issue in
+        Geographically Weighted Regression. Geographical Analysis.
 
-    @cache_readonly
-    def resid_ss(self):
-        return np.sum(self.resid_response**2)
-    
-    @cache_readonly
-    def tr_S(self):
-        return np.trace(self.S)
-    
-    @cache_readonly
-    def sigma2(self):
-        return self.resid_ss / (self.n - self.tr_S)
-    
-    @cache_readonly
-    def aicc(self):
+        """
+        alpha = np.array([.1, .05, .001])
+        pe = np.array(self.ENP_j).reshape((-1,1))
+        p = 1.
+        return (alpha*p)/pe
+
+    def critical_tval(self, alpha=None):
+        """
+        Utility function to derive the critial t-value based on given alpha
+        that are needed for hypothesis testing
+
+        Parameters
+        ----------
+        alpha           : scalar
+                          critical value to determine which tvalues are
+                          associated with statistically significant parameter
+                          estimates. Default to None in which case the adjusted
+                          alpha value at the 95 percent CI is automatically
+                          used.
+
+        Returns
+        -------
+        critical        : scalar
+                          critical t-val based on alpha
+        """
         n = self.n
-        tr_S = self.tr_S
-        aicc = n*np.log(self.sigma2) + n*np.log(2*np.pi) + n*(n+tr_S)/(n-tr_S-2.0)
-        return aicc
+        if alpha is not None:
+            alpha = np.abs(alpha)/2.0
+            critical = t.ppf(1-alpha, n-1)
+        else:
+            alpha = np.abs(self.adj_alpha_j[:,1])/2.0
+            critical = t.ppf(1-alpha, n-1)
+        return critical
     
-    @cache_readonly
-    def ENPj(self):
-        k = self.params.shape[1]
-        ENPj = np.zeros(k)
-        for j in range(k):
-            Rj = self.R[:,:,j]
-            ENPj[j] = np.trace(Rj)
-        return ENPj
-    
-    @cache_readonly
-    def bse(self):
-        n = self.n
-        k = self.params.shape[1]
-        bse = np.zeros((n,k))
-        for j in range(k):
-            Rj = self.R[:,:,j]
-            Cj = Rj/self.X[:,j].reshape(-1,1)
-            bse[:,j] = np.sqrt(np.diag(np.dot(Cj, Cj.T)*self.sigma2))
+    def filter_tvals(self, critical_t=None, alpha=None):
+        """
+        Utility function to set tvalues with an absolute value smaller than the
+        absolute value of the alpha (critical) value to 0. If critical_t
+        is supplied than it is used directly to filter. If alpha is provided
+        than the critical t value will be derived and used to filter. If neither
+        are critical_t nor alpha are provided, an adjusted alpha at the 95
+        percent CI will automatically be used to define the critical t-value and
+        used to filter. If both critical_t and alpha are supplied then the alpha
+        value will be ignored. 
 
-        return bse
+        Parameters
+        ----------
+        critical        : scalar
+                          critical t-value to determine whether parameters are
+                          statistically significant
+                        
+        alpha           : scalar
+                          alpha value to determine which tvalues are
+                          associated with statistically significant parameter
+                          estimates
+
+        Returns
+        -------
+        filtered       : array
+                          n*k; new set of n tvalues for each of k variables
+                          where absolute tvalues less than the absolute value of
+                          alpha have been set to 0.
+        """
+        n = self.n
+        if critical_t is not None:
+        	critical = np.array(critical_t)
+        elif alpha is not None and critical_t is None:
+            critical = self.critical_tval(alpha=alpha)
+        elif alpha is None and critical_t is None:
+            critical = self.critical_tval()
+        
+        subset = (self.tvalues < critical) & (self.tvalues > -1.0*critical)
+        tvalues = self.tvalues.copy()
+        tvalues[subset] = 0
+        return tvalues
+    
+    @cache_readonly
+    def RSS(self):
+        raise NotImplementedError('Not yet implemented for multiple bandwidths')
+    
+    @cache_readonly
+    def TSS(self):
+        raise NotImplementedError('Not yet implemented for multiple bandwidths')
+    
+    @cache_readonly
+    def localR2(self):
+        raise NotImplementedError('Not yet implemented for multiple bandwidths')
+    
+    @cache_readonly
+    def y_bar(self):
+        raise NotImplementedError('Not yet implemented for multiple bandwidths')
+    
+    @cache_readonly
+    def predictions(self):
+        raise NotImplementedError('Not yet implemented for MGWR')
+    
+    def local_collinearity(self):
+        """
+        Computes several indicators of multicollinearity within a geographically
+        weighted design matrix, including:
+        
+        local condition number (n, 1)
+        local variance-decomposition proportions (n, p) 
+        
+        Returns four arrays with the order and dimensions listed above where n
+        is the number of locations used as calibrations points and p is the
+        nubmer of explanatory variables 
+
+        """
+        x = self.X
+        w = self.W 
+        nvar = x.shape[1]
+        nrow = self.n
+        vdp_idx = np.ndarray((nrow, nvar))
+        vdp_pi = np.ndarray((nrow, nvar, nvar))
+
+        for i in range(nrow):
+            xw = np.zeros((x.shape))
+            for j in range(nvar):
+                wi = w[j][i]
+                sw = np.sum(wi)
+                wi = wi/sw
+                xw[:,j] = x[:,j] * wi
+
+            sxw = np.sqrt(np.sum(xw**2, axis=0))
+            sxw = np.transpose(xw.T / sxw.reshape((nvar,1))) 
+            svdx = np.linalg.svd(sxw)    
+            vdp_idx[i,] = svdx[1][0]/svdx[1]
+            
+            phi = np.dot(svdx[2].T, np.diag(1/svdx[1]))
+            phi = np.transpose(phi**2)
+            pi_ij = phi / np.sum(phi, axis=0)
+            vdp_pi[i,:,:] = pi_ij
+        
+        local_CN = vdp_idx[:, nvar-1].reshape((-1,1))
+        VDP = vdp_pi[:,nvar-1,:]
+        
+        return local_CN, VDP
+   
+    def spatial_variability(self, selector, n_iters=1000, seed=None):
+        """
+        Method to compute a Monte Carlo test of spatial variability for each
+        estimated coefficient surface.
+
+        WARNING: This test is very computationally demanding!
+
+        Parameters
+        ----------
+        selector        : sel_bw object
+                          should be the sel_bw object used to select a bandwidth
+                          for the gwr model that produced the surfaces that are
+                          being tested for spatial variation
+        
+        n_iters         : int
+                          the number of Monte Carlo iterations to include for
+                          the tests of spatial variability.
+
+       seed             : int
+                          optional parameter to select a custom seed to ensure
+                          stochastic results are replicable. Default is none
+                          which automatically sets the seed to 5536
+
+       Returns
+       -------
+
+       p values         : list
+                          a list of psuedo p-values that correspond to the model
+                          parameter surfaces. Allows us to assess the
+                          probability of obtaining the observed spatial
+                          variation of a given surface by random chance. 
+
+
+        """
+        temp_sel = copy.deepcopy(selector)
+
+        if seed is None:
+        	np.random.seed(5536)
+        else:
+            np.random.seed(seed)
+
+        search_params = temp_sel.search_params
+
+        if self.model.constant:
+            X = self.X[:,1:]
+        else:
+            X = self.X
+
+        init_sd =  np.std(self.params, axis=0)
+        SDs = []
+    
+        for x in range(n_iters):
+            temp_coords = np.random.permutation(self.model.coords)
+            temp_sel.coords = temp_coords
+            temp_sel._build_dMat()
+            temp_sel.search(**search_params)
+            temp_params = temp_sel.params
+            temp_sd = np.std(temp_params, axis=0)
+            SDs.append(temp_sd)
+        
+        p_vals = (np.sum(np.array(SDs) > init_sd, axis=0) / float(n_iters))
+        return p_vals

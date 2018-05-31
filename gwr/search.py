@@ -152,22 +152,21 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False):
 
     return opt_val, opt_score, output
 
-MGWR_BW_Result = namedtuple('MGWR_BW_RESULT', ['bws_','bw_trace', 'scores',
-                                               'parameter_estimates','model_residuals',
-                                               'hat_matrix','covariate_specific_hat_matrices'])
-
 def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         gwr_func, bw_func, sel_func):
+    """
+    Multiscale GWR bandwidth search procedure using iterative GAM backfitting
+    """
     if init:
         bw = sel_func(bw_func(y, X))
         optim_model = gwr_func(y, X, bw)
         S = optim_model.S
         err = optim_model.resid_response.reshape((-1,1))
-        est = optim_model.params
+        param = optim_model.params
     else:
         model = GLM(y, X, family=family, constant=False).fit()
         err = model.resid_response.reshape((-1,1))
-        est = np.repeat(model.params.T, n, axis=0)
+        param = np.repeat(model.params.T, n, axis=0)
     
     R = np.zeros((n,n,k))
     
@@ -178,7 +177,7 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
             P = np.dot(np.linalg.inv(np.dot(xT, X)), xT)
             R[i,:,j] = X[i,j]*P[j]
 
-    XB = np.multiply(est, X)
+    XB = np.multiply(param, X)
     if rss_score:
         rss = np.sum((err)**2)
     iters = 0
@@ -199,7 +198,7 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         vals = []
         funcs = []
         current_partial_residuals = []
-        ests = np.zeros_like(X)
+        params = np.zeros_like(X)
         f_XB = XB.copy()
         f_err = err.copy()
         
@@ -217,11 +216,11 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
             R[:,:,j] = new_Rj
             
             err = optim_model.resid_response.reshape((-1,1))
-            est = optim_model.params.reshape((-1,))
+            param = optim_model.params.reshape((-1,))
 
             new_XB[:,j] = optim_model.predy.reshape(-1)
             bws.append(copy.deepcopy(bw))
-            ests[:,j] = est
+            params[:,j] = param
             vals.append(bw_class.bw[1])
             current_partial_residuals.append(err.copy())
 
@@ -231,7 +230,7 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         XB = new_XB
 
         if rss_score:
-            predy = np.sum(np.multiply(ests, X), axis=1).reshape((-1,1))
+            predy = np.sum(np.multiply(params, X), axis=1).reshape((-1,1))
             new_rss = np.sum((y - predy)**2)
             score = np.abs((new_rss - rss)/new_rss)
             rss = new_rss
@@ -244,6 +243,6 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
             break
 
     opt_bws = BWs[-1]
-    return MGWR_BW_Result(opt_bws, np.array(BWs),
-                          np.array(scores), ests,
+    return (opt_bws, np.array(BWs),
+                          np.array(scores), params,
                           err, S, R)

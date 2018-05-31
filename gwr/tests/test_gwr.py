@@ -3,35 +3,33 @@ GWR is tested against results from GWR4
 """
 
 import os
-import pysal
-import numpy as np
 import libpysal
+import numpy as np
 import unittest
 import pickle as pk
-from ..gwr import GWR, MGWR
+from ..gwr import GWR, MGWR, MGWRResults
 from ..sel_bw import Sel_BW
 from ..diagnostics import get_AICc, get_AIC, get_BIC, get_CV
 from spglm.family import Gaussian, Poisson, Binomial
 
 class TestGWRGaussian(unittest.TestCase):
     def setUp(self):
-        data = pysal.open(pysal.examples.get_path('GData_utm.csv'))
+        data_path = os.path.join(os.path.dirname(__file__),'georgia/GData_utm.csv')
+        data = libpysal.open(data_path)
         self.coords = list(zip(data.by_col('X'), data.by_col('Y')))
         self.y = np.array(data.by_col('PctBach')).reshape((-1,1))
         rural  = np.array(data.by_col('PctRural')).reshape((-1,1))
         pov = np.array(data.by_col('PctPov')).reshape((-1,1)) 
         black = np.array(data.by_col('PctBlack')).reshape((-1,1))
+        fb = np.array(data.by_col('PctFB')).reshape((-1,1))
         self.X = np.hstack([rural, pov, black])
-        self.BS_F = pysal.open(pysal.examples.get_path('georgia_BS_F_listwise.csv'))
-        self.BS_NN = pysal.open(pysal.examples.get_path('georgia_BS_NN_listwise.csv'))
-        self.GS_F = pysal.open(pysal.examples.get_path('georgia_GS_F_listwise.csv'))
-        self.GS_NN = pysal.open(pysal.examples.get_path('georgia_GS_NN_listwise.csv'))
-        MGWR_path = os.path.join(os.path.dirname(__file__),'FB.p')
+        self.mgwr_X = np.hstack([fb, black, rural])
+        self.BS_F = libpysal.open(os.path.join(os.path.dirname(__file__),'georgia/georgia_BS_F_listwise.csv'))
+        self.BS_NN = libpysal.open(os.path.join(os.path.dirname(__file__),'georgia/georgia_BS_NN_listwise.csv'))
+        self.GS_F = libpysal.open(os.path.join(os.path.dirname(__file__),'georgia/georgia_GS_F_listwise.csv'))
+        self.GS_NN =libpysal.open(os.path.join(os.path.dirname(__file__),'georgia/georgia_GS_NN_listwise.csv'))
+        MGWR_path = os.path.join(os.path.dirname(__file__),'mgwr_example.p')
         self.MGWR = pk.load(open(MGWR_path, 'r'))
-        XB_path = os.path.join(os.path.dirname(__file__),'XB.p')
-        self.XB = pk.load(open(XB_path, 'r'))
-        err_path = os.path.join(os.path.dirname(__file__),'err.p')
-        self.err = pk.load(open(err_path, 'r'))
 
     def test_BS_F(self):
         est_Int = self.BS_F.by_col(' est_Intercept')
@@ -53,7 +51,8 @@ class TestGWRGaussian(unittest.TestCase):
         inf = np.array(self.BS_F.by_col(' influence')).reshape((-1,1))
         cooksD = np.array(self.BS_F.by_col(' CooksD')).reshape((-1,1))
 
-        model = GWR(self.coords, self.y, self.X, bw=209267.689, fixed=True)
+        model = GWR(self.coords, self.y, self.X, bw=209267.689, fixed=True,
+                sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -104,27 +103,36 @@ class TestGWRGaussian(unittest.TestCase):
         inf = np.array(self.BS_NN.by_col(' influence')).reshape((-1,1))
         cooksD = np.array(self.BS_NN.by_col(' CooksD')).reshape((-1,1))
         local_corr = os.path.join(os.path.dirname(__file__),'local_corr.csv')
-        corr1 = np.array(pysal.open(local_corr))
+        corr1 = np.array(libpysal.open(local_corr))
         local_vif = os.path.join(os.path.dirname(__file__),'local_vif.csv')
-        vif1 = np.array(pysal.open(local_vif))
+        vif1 = np.array(libpysal.open(local_vif))
         local_cn = os.path.join(os.path.dirname(__file__),'local_cn.csv')
-        cn1 = np.array(pysal.open(local_cn))
+        cn1 = np.array(libpysal.open(local_cn))
         local_vdp = os.path.join(os.path.dirname(__file__),'local_vdp.csv')
-        vdp1 = np.array(pysal.open(local_vdp), dtype=np.float64)
-        spat_var_p_vals = [0. , 0. , 0.5, 0.2 ]
+        vdp1 = np.array(libpysal.open(local_vdp), dtype=np.float64)
+        spat_var_p_vals = [0. , 0.0 , 0.5, 0.2]
 
-        model = GWR(self.coords, self.y, self.X, bw=90.000, fixed=False)
+        model = GWR(self.coords, self.y, self.X, bw=90.000, fixed=False,
+                sigma2_v1=False)
         rslt = model.fit()
         
+
+        adj_alpha = rslt.adj_alpha
+        alpha = 0.01017489
+        critical_t = rslt.critical_tval(alpha)
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
         BIC = get_BIC(rslt)
         CV = get_CV(rslt)
         
-        corr2, vif2, cn2, vdp2 = rslt.local_collinearity
+        corr2, vif2, cn2, vdp2 = rslt.local_collinearity()
 
         R2 = rslt.R2
 
+        
+        np.testing.assert_allclose(adj_alpha, np.array([ 0.02034978,  0.01017489,
+            0.0002035 ]), rtol=1e-04)
+        self.assertAlmostEquals(critical_t, 2.6011011542649394)
         self.assertAlmostEquals(np.around(R2, 4), 0.5924)
         self.assertAlmostEquals(np.floor(AICc), 896.0)
         self.assertAlmostEquals(np.floor(AIC), 892.0)
@@ -160,7 +168,6 @@ class TestGWRGaussian(unittest.TestCase):
         result = model.fit()
 
         p_vals = result.spatial_variability(sel, 10)
-
         np.testing.assert_allclose(spat_var_p_vals, p_vals, rtol=1e-04)
 
 
@@ -185,7 +192,7 @@ class TestGWRGaussian(unittest.TestCase):
         cooksD = np.array(self.GS_F.by_col(' CooksD')).reshape((-1,1))
         
         model = GWR(self.coords, self.y, self.X, bw=87308.298,
-                kernel='gaussian', fixed=True)
+                kernel='gaussian', fixed=True, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -237,7 +244,7 @@ class TestGWRGaussian(unittest.TestCase):
         cooksD = np.array(self.GS_NN.by_col(' CooksD')).reshape((-1,1))
 
         model = GWR(self.coords, self.y, self.X, bw=49.000,
-                kernel='gaussian', fixed=False)
+                kernel='gaussian', fixed=False, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -245,7 +252,7 @@ class TestGWRGaussian(unittest.TestCase):
         BIC = get_BIC(rslt)
         CV = get_CV(rslt)
         
-        self.assertAlmostEquals(np.floor(AICc),  896)
+        self.assertAlmostEquals(np.floor(AICc),  896.0)
         self.assertAlmostEquals(np.floor(AIC), 894.0)
         self.assertAlmostEquals(np.floor(BIC), 922.0)
         self.assertAlmostEquals(np.around(CV, 2), 17.91)
@@ -269,15 +276,31 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(cooksD, rslt.cooksD, rtol=1e-00)
     
     def test_MGWR(self):
-        selector = Sel_BW(self.coords, self.y, self.X,multi=True)
-        
-        model = MGWR(self.coords, self.y, self.X, selector=selector, constant=False)
+        std_y = (self.y - self.y.mean()) / self.y.std()
+        std_X = (self.mgwr_X - self.mgwr_X.mean(axis=0)) / self.mgwr_X.std(axis=0)
+        selector = Sel_BW(self.coords, std_y, std_X, multi=True,
+                constant=True)
+        selector.search(bw_min=2, bw_max=159)
+        model = MGWR(self.coords, std_y, std_X, selector=selector,
+                constant=True)
         rslt = model.fit()
 
-        np.testing.assert_allclose(rslt.predy, self.MGWR['predy'], atol=1e-07)
-        np.testing.assert_allclose(rslt.params, self.MGWR['params'], atol=1e-07)
-        np.testing.assert_allclose(rslt.resid_response, self.MGWR['u'], atol=1e-05)
-        np.testing.assert_almost_equal(rslt.resid_ss, 6339.3497144025841)
+        np.testing.assert_allclose(rslt.predy, self.MGWR.predy, atol=1e-07)
+        np.testing.assert_allclose(rslt.params, self.MGWR.params, atol=1e-07)
+        np.testing.assert_allclose(rslt.bse, self.MGWR.bse, atol=1e-07)
+        np.testing.assert_allclose(rslt.tvalues, self.MGWR.tvalues, atol=1e-07)
+        np.testing.assert_allclose(rslt.resid_response, self.MGWR.resid_response,
+                atol=1e-04, rtol=1e-04)
+        np.testing.assert_almost_equal(rslt.resid_ss, self.MGWR.resid_ss)
+        np.testing.assert_almost_equal(rslt.aicc, self.MGWR.aicc)
+        np.testing.assert_almost_equal(rslt.ENP, self.MGWR.ENP)
+        np.testing.assert_allclose(rslt.ENP_j, self.MGWR.ENP_j)
+        np.testing.assert_allclose(rslt.adj_alpha_j, self.MGWR.adj_alpha_j)
+        np.testing.assert_allclose(rslt.critical_tval(),
+                self.MGWR.critical_tval())
+        np.testing.assert_allclose(rslt.filter_tvals(), self.MGWR.filter_tvals())
+        np.testing.assert_allclose(rslt.local_collinearity()[0],
+                self.MGWR.local_collinearity()[0])
     
     def test_Prediction(self):
         coords =np.array(self.coords)
@@ -289,7 +312,7 @@ class TestGWRGaussian(unittest.TestCase):
 
 
         model = GWR(self.coords, self.y, self.X, 93, family=Gaussian(),
-                fixed=False, kernel='bisquare')
+                fixed=False, kernel='bisquare', sigma2_v1=False)
         results = model.predict(coords_test, X_test)
         
         params = np.array([22.77198, -0.10254,    -0.215093,   -0.01405,
@@ -356,7 +379,7 @@ class TestGWRGaussian(unittest.TestCase):
 
     def test_BS_NN_longlat(self):
         GA_longlat = os.path.join(os.path.dirname(__file__),'ga_bs_nn_longlat_listwise.csv')
-        self.BS_NN_longlat = pysal.open(GA_longlat)
+        self.BS_NN_longlat = libpysal.open(GA_longlat)
         
         coords_longlat = list(zip(self.BS_NN_longlat.by_col(' x_coord'), self.BS_NN_longlat.by_col(' y_coord')))
         est_Int = self.BS_NN_longlat.by_col(' est_Intercept')
@@ -378,7 +401,8 @@ class TestGWRGaussian(unittest.TestCase):
         inf = np.array(self.BS_NN_longlat.by_col(' influence')).reshape((-1,1))
         cooksD = np.array(self.BS_NN_longlat.by_col(' CooksD')).reshape((-1,1))
         
-        model = GWR(coords_longlat, self.y, self.X, bw=90.000, fixed=False,spherical=True)
+        model = GWR(coords_longlat, self.y, self.X, bw=90.000, fixed=False,
+                spherical=True, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -415,7 +439,8 @@ class TestGWRGaussian(unittest.TestCase):
 
 class TestGWRPoisson(unittest.TestCase):
     def setUp(self):
-        data = pysal.open(pysal.examples.get_path('Tokyomortality.csv'), mode='Ur')
+        data_path = os.path.join(os.path.dirname(__file__),'tokyo/Tokyomortality.csv')
+        data = libpysal.open(data_path, mode='Ur')
         self.coords = list(zip(data.by_col('X_CENTROID'), data.by_col('Y_CENTROID')))
         self.y = np.array(data.by_col('db2564')).reshape((-1,1))
         self.off = np.array(data.by_col('eb2564')).reshape((-1,1))
@@ -424,11 +449,11 @@ class TestGWRPoisson(unittest.TestCase):
         POP = np.array(data.by_col('POP65')).reshape((-1,1))
         UNEMP = np.array(data.by_col('UNEMP')).reshape((-1,1))
         self.X = np.hstack([OCC,OWN,POP,UNEMP])
-        self.BS_F = pysal.open(pysal.examples.get_path('tokyo_BS_F_listwise.csv'))
-        self.BS_NN = pysal.open(pysal.examples.get_path('tokyo_BS_NN_listwise.csv'))
-        self.GS_F = pysal.open(pysal.examples.get_path('tokyo_GS_F_listwise.csv'))
-        self.GS_NN = pysal.open(pysal.examples.get_path('tokyo_GS_NN_listwise.csv'))
-        self.BS_NN_OFF = pysal.open(pysal.examples.get_path('tokyo_BS_NN_OFF_listwise.csv'))
+        self.BS_F = libpysal.open(os.path.join(os.path.dirname(__file__),'tokyo/tokyo_BS_F_listwise.csv'))
+        self.BS_NN = libpysal.open(os.path.join(os.path.dirname(__file__),'tokyo/tokyo_BS_NN_listwise.csv'))
+        self.GS_F = libpysal.open(os.path.join(os.path.dirname(__file__),'tokyo/tokyo_GS_F_listwise.csv'))
+        self.GS_NN = libpysal.open(os.path.join(os.path.dirname(__file__),'tokyo/tokyo_GS_NN_listwise.csv'))
+        self.BS_NN_OFF = libpysal.open(os.path.join(os.path.dirname(__file__),'tokyo/tokyo_BS_NN_OFF_listwise.csv'))
 
     def test_BS_F(self):
         est_Int = self.BS_F.by_col(' est_Intercept')
@@ -450,7 +475,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.BS_F.by_col(' localpdev')).reshape((-1,1))
         
         model = GWR(self.coords, self.y, self.X, bw=26029.625, family=Poisson(), 
-                kernel='bisquare', fixed=True)
+                kernel='bisquare', fixed=True, sigma2_v1=False)
         rslt = model.fit()
 
         AICc = get_AICc(rslt)
@@ -499,7 +524,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.BS_NN.by_col(' localpdev')).reshape((-1,1))
 
         model = GWR(self.coords, self.y, self.X, bw=50, family=Poisson(), 
-                kernel='bisquare', fixed=False)
+                kernel='bisquare', fixed=False, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -547,7 +572,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.BS_NN_OFF.by_col(' localpdev')).reshape((-1,1))
 
         model = GWR(self.coords, self.y, self.X, bw=100, offset=self.off, family=Poisson(), 
-                kernel='bisquare', fixed=False)
+                kernel='bisquare', fixed=False, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -606,7 +631,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.GS_F.by_col(' localpdev')).reshape((-1,1))
         
         model = GWR(self.coords, self.y, self.X, bw=8764.474, family=Poisson(), 
-                kernel='gaussian', fixed=True)
+                kernel='gaussian', fixed=True, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -654,7 +679,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.GS_NN.by_col(' localpdev')).reshape((-1,1))
         
         model = GWR(self.coords, self.y, self.X, bw=50, family=Poisson(), 
-                kernel='gaussian', fixed=False)
+                kernel='gaussian', fixed=False, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -684,7 +709,8 @@ class TestGWRPoisson(unittest.TestCase):
 
 class TestGWRBinomial(unittest.TestCase):
     def setUp(self):
-        data = pysal.open(pysal.examples.get_path('landslides.csv'))
+        data_path = os.path.join(os.path.dirname(__file__),'clearwater/landslides.csv')
+        data = libpysal.open(data_path)
         self.coords = list(zip(data.by_col('X'), data.by_col('Y')))
         self.y = np.array(data.by_col('Landslid')).reshape((-1,1))
         ELEV  = np.array(data.by_col('Elev')).reshape((-1,1))
@@ -694,10 +720,10 @@ class TestGWRBinomial(unittest.TestCase):
         SOUTH = np.array(data.by_col('AbsSouth')).reshape((-1,1))
         DIST = np.array(data.by_col('DistStrm')).reshape((-1,1))
         self.X = np.hstack([ELEV, SLOPE, SIN, COS, SOUTH, DIST])
-        self.BS_F = pysal.open(pysal.examples.get_path('clearwater_BS_F_listwise.csv'))
-        self.BS_NN = pysal.open(pysal.examples.get_path('clearwater_BS_NN_listwise.csv'))
-        self.GS_F = pysal.open(pysal.examples.get_path('clearwater_GS_F_listwise.csv'))
-        self.GS_NN = pysal.open(pysal.examples.get_path('clearwater_GS_NN_listwise.csv'))
+        self.BS_F = libpysal.open(os.path.join(os.path.dirname(__file__),'clearwater/clearwater_BS_F_listwise.csv'))
+        self.BS_NN = libpysal.open(os.path.join(os.path.dirname(__file__),'clearwater/clearwater_BS_NN_listwise.csv'))
+        self.GS_F = libpysal.open(os.path.join(os.path.dirname(__file__),'clearwater/clearwater_GS_F_listwise.csv'))
+        self.GS_NN = libpysal.open(os.path.join(os.path.dirname(__file__),'clearwater/clearwater_GS_NN_listwise.csv'))
 
     def test_BS_F(self):
         est_Int = self.BS_F.by_col(' est_Intercept')
@@ -725,7 +751,7 @@ class TestGWRBinomial(unittest.TestCase):
         pdev = np.array(self.BS_F.by_col(' localpdev')).reshape((-1,1))
 
         model = GWR(self.coords, self.y, self.X, bw=19642.170, family=Binomial(), 
-                kernel='bisquare', fixed=True)
+                kernel='bisquare', fixed=True, sigma2_v1=False)
         rslt = model.fit()
 
         AICc = get_AICc(rslt)
@@ -788,7 +814,7 @@ class TestGWRBinomial(unittest.TestCase):
         pdev = self.BS_NN.by_col(' localpdev')
         
         model = GWR(self.coords, self.y, self.X, bw=158, family=Binomial(), 
-                kernel='bisquare', fixed=False)
+                kernel='bisquare', fixed=False, sigma2_v1=False)
         rslt = model.fit()
 
         AICc = get_AICc(rslt)
@@ -851,7 +877,7 @@ class TestGWRBinomial(unittest.TestCase):
         pdev = self.GS_F.by_col(' localpdev')
 
         model = GWR(self.coords, self.y, self.X, bw=8929.061, family=Binomial(), 
-                kernel='gaussian', fixed=True)
+                kernel='gaussian', fixed=True, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -914,7 +940,7 @@ class TestGWRBinomial(unittest.TestCase):
         pdev = self.GS_NN.by_col(' localpdev')
         
         model = GWR(self.coords, self.y, self.X, bw=64, family=Binomial(), 
-                kernel='gaussian', fixed=False)
+                kernel='gaussian', fixed=False, sigma2_v1=False)
         rslt = model.fit()
 
         AICc = get_AICc(rslt)

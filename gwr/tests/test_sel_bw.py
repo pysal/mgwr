@@ -3,7 +3,6 @@ GWR is tested against results from GWR4
 """
 
 import os
-import pysal
 import numpy as np
 import libpysal
 import unittest
@@ -14,24 +13,27 @@ from numpy.testing import assert_allclose
 
 class TestSelBW(unittest.TestCase):
     def setUp(self):
-        data = pysal.open(pysal.examples.get_path('GData_utm.csv'))
+        data_path = os.path.join(os.path.dirname(__file__),'georgia/GData_utm.csv')
+        data = libpysal.open(data_path)
         self.coords = list(zip(data.by_col('X'), data.by_col('Y')))
         self.y = np.array(data.by_col('PctBach')).reshape((-1,1))
         rural  = np.array(data.by_col('PctRural')).reshape((-1,1))
         pov = np.array(data.by_col('PctPov')).reshape((-1,1)) 
         black = np.array(data.by_col('PctBlack')).reshape((-1,1))
+        fb = np.array(data.by_col('PctFB')).reshape((-1,1))
         self.X = np.hstack([rural, pov, black])
         XB_path = os.path.join(os.path.dirname(__file__),'XB.p')
         self.XB = pk.load(open(XB_path,'rb'))
         err_path = os.path.join(os.path.dirname(__file__),'err.p')
         self.err = pk.load(open(err_path,'rb'))
+        self.mgwr_X = np.hstack([fb, black, rural])
   
     def test_golden_fixed_AICc(self):
         bw1 = 211020.83
         bw2 = Sel_BW(self.coords, self.y, self.X, kernel='bisquare',
                 fixed=True).search(criterion='AICc')
         assert_allclose(bw1, bw2)
-        scipy_known = 211025.26
+        scipy_known = 211025.26298
         scipy = Sel_BW(self.coords, self.y, self.X, kernel='bisquare',
                 fixed=True).search(criterion='AICc', search_method='scipy')
         assert_allclose(scipy_known, scipy, atol=1)
@@ -92,7 +94,7 @@ class TestSelBW(unittest.TestCase):
         assert_allclose(bw1, bw2)
    
     def test_interval_fixed_AICc(self):
-        bw1 = 211025.0#211027.00
+        bw1 = 211025.0
         bw2 = Sel_BW(self.coords, self.y, self.X, kernel='bisquare',
                 fixed=True).search(criterion='AICc', search_method='interval',
                         bw_min=211001.0, bw_max=211035.0, interval=2)
@@ -147,14 +149,14 @@ class TestSelBW(unittest.TestCase):
                         bw_max=76.0 , interval=2)
         assert_allclose(bw1, bw2)
 
-    def test_MGWR_AIC(self):
-        bw1 = [157.0, 65.0, 52.0]
-        sel = Sel_BW(self.coords, self.y, self.X, multi=True, kernel='bisquare',
-                constant=False)
-        bw2 = sel.search(tol_multi=1e-03)
+    def test_MGWR_AICc(self):
+        bw1 = [101.0, 101.0, 117.0, 157.0]
+        std_y = (self.y - self.y.mean()) / self.y.std()
+        std_X = (self.mgwr_X - self.mgwr_X.mean(axis=0)) / self.mgwr_X.std(axis=0)
+        selector = Sel_BW(self.coords, std_y, std_X, multi=True,
+                constant=True)
+        bw2 = selector.search()
         np.testing.assert_allclose(bw1, bw2)
-        np.testing.assert_allclose(sel.XB, self.XB, atol=1e-05)
-        np.testing.assert_allclose(sel.err, self.err, atol=1e-05)
 
 if __name__ == '__main__':
 	unittest.main()

@@ -5,7 +5,7 @@
 
 __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
-import pysal.spreg.user_output as USER
+import spreg.user_output as USER
 import numpy as np
 from scipy.spatial.distance import pdist,squareform
 from scipy.optimize import minimize_scalar
@@ -41,8 +41,11 @@ class Sel_BW(object):
                      (x,y) of points used in bandwidth selection
     family         : string
                      GWR model type: 'Gaussian', 'logistic, 'Poisson''
-    offset         : array
-                     n*1, offset variable for Poisson model
+    offset        : array
+                    n*1, the offset variable at the ith location. For Poisson model
+                    this term is often the size of the population at risk or
+                    the expected size of the outcome in spatial epidemiology
+                    Default is None where Ni becomes 1.0 for all locations
     kernel         : string
                      kernel function: 'gaussian', 'bisquare', 'exponetial'
     fixed          : boolean
@@ -53,6 +56,9 @@ class Sel_BW(object):
     constant       : boolean
                      True to include intercept (default) in model and False to exclude
                      intercept.
+    spherical     : boolean
+                    True for shperical coordinates (long-lat),
+                    False for projected coordinates (defalut).
 
     Attributes
     ----------
@@ -68,6 +74,8 @@ class Sel_BW(object):
                      GWR model type: 'Gaussian', 'logistic, 'Poisson''
     kernel         : string
                      type of kernel used and wether fixed or adaptive
+    fixed          : boolean
+                     True for fixed bandwidth and False for adaptive (NN)
     criterion      : string
                      bw selection criterion: 'AICc', 'AIC', 'BIC', 'CV'
     search_method  : string
@@ -88,6 +96,45 @@ class Sel_BW(object):
     constant       : boolean
                      True to include intercept (default) in model and False to exclude
                      intercept.
+    offset        : array
+                    n*1, the offset variable at the ith location. For Poisson model
+                    this term is often the size of the population at risk or
+                    the expected size of the outcome in spatial epidemiology
+                    Default is None where Ni becomes 1.0 for all locations
+    dmat          : array
+                    n*n, distance matrix between calibration locations used
+                    to compute weight matrix
+                        
+    sorted_dmat   : array
+                    n*n, sorted distance matrix between calibration locations used
+                    to compute weight matrix. Will be None for fixed bandwidths
+        
+    spherical     : boolean
+                    True for shperical coordinates (long-lat),
+                    False for projected coordinates (defalut).
+    search_params : dict
+                    stores search arguments
+    int_score     : boolan
+                    True if adaptive bandwidth is being used and bandwdith
+                    selection should be discrete. False
+                    if fixed bandwidth is being used and bandwidth does not have
+                    to be discrete.
+    bw            : scalar or array-like
+                    Derived optimal bandwidth(s). Will be a scalar for GWR
+                    (multi=False) and a list of scalars for MGWR (multi=True)
+                    with one bandwidth for each covariate.
+    S             : array
+                    n*n, hat matrix derived from the iterative backfitting
+                    algorthim for MGWR during bandwidth selection
+    R             : array
+                    n*n*k, partial hat matrices derived from the iterative
+                    backfitting algoruthm for MGWR during bandwidth selection.
+                    There is one n*n matrix for each of the k covariates.
+    params        : array
+                    n*k, calibrated parameter estimates for MGWR based on the
+                    iterative backfitting algorithm - computed and saved here to
+                    avoid having to do it again in the MGWR object.
+
     Examples
     ________
 
@@ -242,8 +289,7 @@ class Sel_BW(object):
 
         if self.multi:
             self._mbw()
-            self.est = self.bw[3] #params
-            self.err = self.bw[4] #residual
+            self.params = self.bw[3] #params
             self.S = self.bw[-2] #(n,n)
             self.R = self.bw[-1] #(n,n,k)
         else:
@@ -264,8 +310,9 @@ class Sel_BW(object):
     def _bw(self):
 
         gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, 
-            self.X_loc, bw, family=self.family, kernel=self.kernel, fixed=self.fixed, 
-            constant=self.constant,dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit(searching = True))
+            self.X_loc, bw, family=self.family, kernel=self.kernel,
+            fixed=self.fixed, constant=self.constant,
+            dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit(searching = True))
         
         self._optimized_function = gwr_func
 
