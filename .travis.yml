@@ -35,7 +35,7 @@ install:
 
 script:
   - python setup.py sdist >/dev/null
-  - nosetests --with-coverage --cover-package=gwr;
+  - nosetests --with-coverage --cover-package=mgwr;
 
 notifications:
     email:
