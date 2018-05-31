@@ -907,10 +907,8 @@ class GWRResults(GLMResults):
         n = self.n
         if critical_t is not None:
         	critical = critical_t
-        elif alpha is not None and critical_t is None:
+        else:
             critical = self.critical_tval(alpha=alpha)
-        elif alpha is None and critical_t is None:
-            critical = self.critical_tval()
         
         subset = (self.tvalues < critical) & (self.tvalues > -1.0*critical)
         tvalues = self.tvalues.copy()
