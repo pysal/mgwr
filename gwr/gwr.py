@@ -55,7 +55,7 @@ class GWR(GLM):
                         only for Poisson models
 
         sigma2_v1     : boolean
-                        specify form of denominator of sigma squared to use for
+                        specify form of corrected denominator of sigma squared to use for
                         model diagnostics; Acceptable options are:
                         
                         'True':       n-tr(S) (defualt)
@@ -120,7 +120,7 @@ class GWR(GLM):
                         Default is None where Ni becomes 1.0 for all locations
 
         sigma2_v1     : boolean
-                        specify form of denominator of sigma squared to use for
+                        specify form of corrected denominator of sigma squared to use for
                         model diagnostics; Acceptable options are:
                         
                         'True':       n-tr(S) (defualt)
@@ -516,7 +516,8 @@ class GWRResults(GLMResults):
                               n*1, local R square
 
         sigma2              : float
-                              sigma squared (residual variance)
+                              sigma squared (residual variance) that has been
+                              corrected to account for the ENP
 
         std_res             : array
                               n*1, standardised residuals
@@ -1242,7 +1243,7 @@ class MGWR(GWR):
                         distribution-specific calculations
 
         sigma2_v1     : boolean
-                        specify form of denominator of sigma squared to use for
+                        specify form of corrected denominator of sigma squared to use for
                         model diagnostics; Acceptable options are:
                         
                         'True':       n-tr(S) (defualt)
@@ -1307,7 +1308,7 @@ class MGWR(GWR):
                         distribution-specific calculations
 
         sigma2_v1     : boolean
-                        specify form of denominator of sigma squared to use for
+                        specify form of corrected denominator of sigma squared to use for
                         model diagnostics; Acceptable options are:
                         
                         'True':       n-tr(S) (defualt)
@@ -1577,7 +1578,8 @@ class MGWRResults(GWRResults):
                               Bayesian information criterio
 
         sigma2              : float
-                              sigma squared (residual variance)
+                              sigma squared (residual variance) that has been
+                              corrected to account for the ENP
 
         std_res             : array
                               n*1, standardised residuals
