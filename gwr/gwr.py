@@ -54,13 +54,12 @@ class GWR(GLM):
                         Default is None where Ni becomes 1.0 for all locations;
                         only for Poisson models
 
-        sigma2        : string
+        sigma2_v1     : boolean
                         specify form of denominator of sigma squared to use for
                         model diagnostics; Acceptable options are:
                         
-                        'v1':       n-tr(S) (defualt)
-                        'v1v2':     n-2(tr(S)+tr(S'S))
-                        'ML':       n
+                        'True':       n-tr(S) (defualt)
+                        'False':     n-2(tr(S)+tr(S'S))
 
         kernel        : string
                         type of kernel function used to weight observations;
@@ -120,13 +119,12 @@ class GWR(GLM):
                         the expected size of the outcome in spatial epidemiology
                         Default is None where Ni becomes 1.0 for all locations
 
-        sigma2        : string
+        sigma2_v1     : boolean
                         specify form of denominator of sigma squared to use for
                         model diagnostics; Acceptable options are:
                         
-                        'v1':       n-tr(S) (defualt)
-                        'v1v2':     n-2(tr(S)+tr(S'S))
-                        'ML':       n
+                        'True':       n-tr(S) (defualt)
+                        'False':     n-2(tr(S)+tr(S'S))
 
         kernel        : string
                         type of kernel function used to weight observations;
@@ -228,17 +226,14 @@ class GWR(GLM):
 
     """
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
-            sigma2='v1', kernel='bisquare', fixed=False, constant=True, 
+            sigma2_v1=True, kernel='bisquare', fixed=False, constant=True, 
             dmat=None, sorted_dmat=None, spherical=False):
         """
         Initialize class
         """
         GLM.__init__(self, y, X, family, constant=constant)
         self.constant = constant
-        if sigma2.lower() in ['v1', 'v1v2', 'ml']:
-            self.sigma2 = sigma2.lower()
-        else:
-            raise AttributeError("sigma2 must be one of: 'v1', 'v1v2', 'ML'")
+        self.sigma2_v1 = sigma2_v1
         self.coords = coords
         self.bw = bw
         self.kernel = kernel
@@ -645,9 +640,9 @@ class GWRResults(GLMResults):
 
         and the form depends on the specification of sigma2
         """
-        if self.model.sigma2 == 'v1':
+        if self.model.sigma2_v1:
             return self.tr_S
-        elif self.model.sigma2 == 'v1v2':
+        else:
             return 2*self.tr_S - self.tr_STS      
     
     @cache_readonly
@@ -730,7 +725,7 @@ class GWRResults(GLMResults):
         """
         residual variance
 
-        v1: onlu use n-tr(S) in denominator
+        if sigma2_v1 is True: only use n-tr(S) in denominator
 
         Methods: p214, (9.6),
         Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
@@ -739,25 +734,19 @@ class GWRResults(GLMResults):
 
         and as defined  in Yu et. al. (2018) Inference in Multiscale GWR
 
-        v1v2: use n-2(tr(S)+tr(S'S)) in denominator
+        if sigma2_v1 is False (v1v2): use n-2(tr(S)+tr(S'S)) in denominator
 
         Methods: p55 (2.16)-(2.18)
         Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
         Geographically weighted regression: the analysis of spatially varying
         relationships.
 
-        ML: use only n in denominator
-
-        Follows from maximum likelihood estimation
-        
         """
-        if self.model.sigma2 == 'v1':
+        if self.model.sigma2_v1:
             return (self.resid_ss / (self.n-self.tr_S))
-        elif self.model.sigma2 == 'v1v2':
+        else:
             return self.resid_ss / (self.n - 2.0*self.tr_S +
                   self.tr_STS) #could be changed to SWSTW - nothing to test against
-        else:
-            return self.resid_ss / self.n
 
     @cache_readonly
     def std_res(self):
@@ -1200,9 +1189,6 @@ class GWRResultsLite(object):
     resid_ss            : scalar
                           residual sum of sqaures
 
-    sigma2              : float
-                          sigma squared (residual variance)
-
     """
 
     def __init__(self, model, resid, influ):
@@ -1230,40 +1216,6 @@ class GWRResultsLite(object):
         u = self.resid_response.flatten()
         return np.dot(u, u.T)
     
-    @cache_readonly
-    def sigma2(self):
-        """
-        residual variance
-
-        v1: onlu use n-tr(S) in denominator
-
-        Methods: p214, (9.6),
-        Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
-        Geographically weighted regression: the analysis of spatially varying
-        relationships.
-
-        and as defined in Yu et. al. (2018) Inference in Multiscale GWR
-
-        v1v2: use n-2(tr(S)+tr(S'S)) in denominator
-
-        Methods: p55 (2.16)-(2.18)
-        Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
-        Geographically weighted regression: the analysis of spatially varying
-        relationships.
-
-        ML: use only n in denominator
-
-        Follows from maximum likelihood estimation
-        
-        """
-        if self.model.sigma2 == 'v1':
-            return (self.resid_ss / (self.n-self.tr_S))
-        elif self.model.sigma2 == 'v1v2':
-            return self.resid_ss / (self.n - 2.0*self.tr_S +
-                  self.tr_STS) #could be changed to SWSTW - nothing to test against
-        else:
-            return self.resid_ss / self.n
-
 class MGWR(GWR):
     """
     Parameters
@@ -1289,13 +1241,12 @@ class MGWR(GWR):
                         underlying probability model; provides
                         distribution-specific calculations
 
-        sigma2        : string
+        sigma2_v1     : boolean
                         specify form of denominator of sigma squared to use for
                         model diagnostics; Acceptable options are:
                         
-                        'v1':       n-tr(S) (defualt)
-                        'v1v2':     n-2(tr(S)+tr(S'S))
-                        'ml':       n
+                        'True':       n-tr(S) (defualt)
+                        'False':     n-2(tr(S)+tr(S'S))
 
         kernel        : string
                         type of kernel function used to weight observations;
@@ -1355,13 +1306,12 @@ class MGWR(GWR):
                         underlying probability model; provides
                         distribution-specific calculations
 
-        sigma2        : string
+        sigma2_v1     : boolean
                         specify form of denominator of sigma squared to use for
                         model diagnostics; Acceptable options are:
                         
-                        'v1':       n-tr(S) (defualt)
-                        'v1v2':     n-2(tr(S)+tr(S'S))
-                        'ml':       n
+                        'True':       n-tr(S) (defualt)
+                        'False':     n-2(tr(S)+tr(S'S))
 
         kernel        : string
                         type of kernel function used to weight observations;
@@ -1430,15 +1380,15 @@ class MGWR(GWR):
     >>> fb = np.array(data.by_col('PctFB')).reshape((-1,1))
     >>> african_amer = np.array(data.by_col('PctBlack')).reshape((-1,1))
     >>> X = np.hstack([fb, african_amer, rural])
-    >>> selector = Sel_BW(coords, y, X, multi=True, sigma2='ml')
+    >>> selector = Sel_BW(coords, y, X, multi=True)
     >>> selector.search(bw_min=2, bw_max=159)
-    >>> model = MGWR(coords, y, X, selector, fixed=False, kernel='bisquare', sigma2='v1')
+    >>> model = MGWR(coords, y, X, selector, fixed=False, kernel='bisquare', sigma2_v1=True)
     >>> results = model.fit()
     >>> print results.params.shape
     (159, 4)
 
     """
-    def __init__(self, coords, y, X, selector, sigma2='v1', kernel='bisquare',
+    def __init__(self, coords, y, X, selector, sigma2_v1=True, kernel='bisquare',
             fixed=False, constant=True, dmat=None, sorted_dmat=None, spherical=False):
         """
         Initialize class
@@ -1447,10 +1397,11 @@ class MGWR(GWR):
         self.bw = self.selector.bw[0]
         self.family = Gaussian() #manually set since we only support Gassian MGWR for now
         GWR.__init__(self, coords, y, X, self.bw, family=self.family,
-                sigma2=sigma2, kernel=kernel, fixed=fixed,
+                sigma2_v1=sigma2_v1, kernel=kernel, fixed=fixed,
                 constant=constant, dmat=dmat, sorted_dmat=sorted_dmat, 
                 spherical=spherical)
         self.selector = selector
+        self.sigma2_v1 = sigma2_v1
         self.points = None
         self.P = None
         self.offset = None

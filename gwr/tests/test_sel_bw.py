@@ -29,17 +29,17 @@ class TestSelBW(unittest.TestCase):
         self.mgwr_X = np.hstack([fb, black, rural])
   
     def test_golden_fixed_AICc(self):
-        bw1 = 290934.29
+        bw1 = 211020.83
         bw2 = Sel_BW(self.coords, self.y, self.X, kernel='bisquare',
                 fixed=True).search(criterion='AICc')
         assert_allclose(bw1, bw2)
-        scipy_known = 290944.41239
+        scipy_known = 211025.26298
         scipy = Sel_BW(self.coords, self.y, self.X, kernel='bisquare',
                 fixed=True).search(criterion='AICc', search_method='scipy')
         assert_allclose(scipy_known, scipy, atol=1)
 
     def test_golden_adapt_AICc(self):
-        bw1 = 117.0
+        bw1 = 93.0
         bw2 = Sel_BW(self.coords, self.y, self.X, kernel='bisquare',
                 fixed=False).search(criterion='AICc')
         assert_allclose(bw1, bw2)
@@ -94,7 +94,7 @@ class TestSelBW(unittest.TestCase):
         assert_allclose(bw1, bw2)
    
     def test_interval_fixed_AICc(self):
-        bw1 = 211035.0
+        bw1 = 211025.0
         bw2 = Sel_BW(self.coords, self.y, self.X, kernel='bisquare',
                 fixed=True).search(criterion='AICc', search_method='interval',
                         bw_min=211001.0, bw_max=211035.0, interval=2)
@@ -150,7 +150,7 @@ class TestSelBW(unittest.TestCase):
         assert_allclose(bw1, bw2)
 
     def test_MGWR_AICc(self):
-        bw1 = [116.0, 104.0, 157.0, 157.0]
+        bw1 = [101.0, 101.0, 117.0, 157.0]
         std_y = (self.y - self.y.mean()) / self.y.std()
         std_X = (self.mgwr_X - self.mgwr_X.mean(axis=0)) / self.mgwr_X.std(axis=0)
         selector = Sel_BW(self.coords, std_y, std_X, multi=True,

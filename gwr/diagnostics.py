@@ -17,11 +17,11 @@ def get_AICc(gwr):
     """
     n = gwr.n
     k = gwr.tr_S
-    sigma2 = gwr.sigma2
+    #sigma2 = gwr.sigma2
     if isinstance(gwr.family, Gaussian):
-        #aicc = -2.0*gwr.llf + 2.0*n*(k + 1.0)/(n-k-2.0) #equivalent to below but
+        aicc = -2.0*gwr.llf + 2.0*n*(k + 1.0)/(n-k-2.0) #equivalent to below but
         #can't control denominator of sigma without altering GLM familt code
-        aicc = n*np.log(sigma2) + n*np.log(2.0*np.pi) + n*(n+k)/(n-k-2.0)
+        #aicc = n*np.log(sigma2) + n*np.log(2.0*np.pi) + n*(n+k)/(n-k-2.0)
     elif isinstance(gwr.family, (Poisson, Binomial)):
         aicc = get_AIC(gwr) + 2.0 * k * (k+1.0) / (n - k - 1.0) 
     return aicc

@@ -56,13 +56,6 @@ class Sel_BW(object):
     constant       : boolean
                      True to include intercept (default) in model and False to exclude
                      intercept.
-    sigma2        : string
-                    specify form of denominator of sigma squared to use for
-                    model diagnostics; Acceptable options are:
-                        
-                    'v1':       n-tr(S) (defualt)
-                    'ML':       n
-        
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
@@ -108,13 +101,6 @@ class Sel_BW(object):
                     this term is often the size of the population at risk or
                     the expected size of the outcome in spatial epidemiology
                     Default is None where Ni becomes 1.0 for all locations
-
-    sigma2        : string
-                    specify form of denominator of sigma squared to use for
-                    model diagnostics; Acceptable options are:
-                        
-                    'v1':       n-tr(S) (defualt)
-                    'ML':       n
     dmat          : array
                     n*n, distance matrix between calibration locations used
                     to compute weight matrix
@@ -190,7 +176,7 @@ class Sel_BW(object):
 
     """
     def __init__(self, coords, y, X_loc, X_glob=None, family=Gaussian(),
-            offset=None, kernel='bisquare', fixed=False, sigma2='v1', multi=False,
+            offset=None, kernel='bisquare', fixed=False, multi=False,
             constant=True, spherical=False):
         self.coords = coords
         self.y = y
@@ -201,10 +187,6 @@ class Sel_BW(object):
             self.X_glob = []
         self.family=family
         self.fixed = fixed
-        if sigma2.lower() in ['v1', 'ml']: #v1v2 not included here because GWRResultsLight does not compute tr_STS
-            self.sigma2 = sigma2.lower()
-        else:
-            raise AttributeError("sigma2 must be one of: 'v1', 'ML'")
         self.kernel = kernel
         if offset is None:
           self.offset = np.ones((len(y), 1))
@@ -329,7 +311,7 @@ class Sel_BW(object):
 
         gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, 
             self.X_loc, bw, family=self.family, kernel=self.kernel,
-            fixed=self.fixed, sigma2=self.sigma2, constant=self.constant,
+            fixed=self.fixed, constant=self.constant,
             dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit(searching = True))
         
         self._optimized_function = gwr_func
@@ -366,7 +348,6 @@ class Sel_BW(object):
         offset = self.offset
         kernel = self.kernel
         fixed = self.fixed
-        sigma2 = self.sigma2
         coords = self.coords
         search_method = self.search_method
         criterion = self.criterion
@@ -377,10 +358,10 @@ class Sel_BW(object):
         max_iter = self.max_iter
         def gwr_func(y,X,bw):
             return GWR(coords, y,X,bw,family=family, kernel=kernel, fixed=fixed,
-                    offset=offset, sigma2=sigma2, constant=False).fit()
+                    offset=offset, constant=False).fit()
         def bw_func(y,X):
             return Sel_BW(coords, y,X,X_glob=[], family=family, kernel=kernel,
-                    fixed=fixed, sigma2=sigma2, offset=offset, constant=False)
+                    fixed=fixed, offset=offset, constant=False)
         def sel_func(bw_func):
             return bw_func.search(search_method=search_method, criterion=criterion,
                     bw_min=bw_min, bw_max=bw_max, interval=interval, tol=tol, max_iter=max_iter)
