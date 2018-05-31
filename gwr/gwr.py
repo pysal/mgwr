@@ -384,11 +384,11 @@ class GWR(GLM):
 
     @cache_readonly
     def df_model(self):
-        raise NotImplementedError('Only computed for fitted model in GWRResults')
+        return None
 
     @cache_readonly
     def df_resid(self):
-        raise NotImplementedError('Only computed for fitted model in GWRResults')
+        return None
 
 class GWRResults(GLMResults):
     """
@@ -927,35 +927,35 @@ class GWRResults(GLMResults):
 
     @cache_readonly
     def normalized_cov_params(self):
-        raise NotImplementedError('N/A')
+        return None
 
     @cache_readonly
     def resid_pearson(self):
-        raise NotImplementedError('N/A')
+        return None
 
     @cache_readonly
     def resid_working(self):
-        raise NotImplementedError('N/A')
+        return None
 
     @cache_readonly
     def resid_anscombe(self):
-        raise NotImplementedError('N/A')
+        return None
 
     @cache_readonly
     def pearson_chi2(self):
-        raise NotImplementedError('N/A')
+        return None
 
     @cache_readonly
     def null(self):
-        raise NotImplementedError('N/A')
+        return None
 
     @cache_readonly
     def llnull(self):
-        raise NotImplementedError('N/A')
+        return None
 
     @cache_readonly
     def null_deviance(self):
-        raise NotImplementedError('N/A')
+        return None
     
     @cache_readonly
     def R2(self):
@@ -981,31 +981,31 @@ class GWRResults(GLMResults):
 
     @cache_readonly
     def D2(self):
-        raise NotImplementedError('N/A')
+        return None
 
     @cache_readonly
     def adj_D2(self):
-        raise NotImplementedError('N/A')
+        return None
 
     @cache_readonly
     def pseudoR2(self):
-        raise NotImplementedError('N/A')
+        return None
 
     @cache_readonly
     def adj_pseudoR2(self):
-        raise NotImplementedError('N/A')
+        return None
 
     @cache_readonly
     def pvalues(self):
-        raise NotImplementedError('N/A')
+        return None
 
     @cache_readonly
     def conf_int(self):
-        raise NotImplementedError('N/A')
+        return None
 
     @cache_readonly
     def use_t(self):
-        raise NotImplementedError('N/A')
+        return None
     
     def local_collinearity(self):
         """
@@ -1703,19 +1703,19 @@ class MGWRResults(GWRResults):
     
     @cache_readonly
     def RSS(self):
-        raise NotImplementedError('N/A')
+        raise NotImplementedError('Not yet implemented for multiple bandwidths')
     
     @cache_readonly
     def TSS(self):
-        raise NotImplementedError('N/A')
+        raise NotImplementedError('Not yet implemented for multiple bandwidths')
     
     @cache_readonly
     def localR2(self):
-        raise NotImplementedError('N/A')
+        raise NotImplementedError('Not yet implemented for multiple bandwidths')
     
     @cache_readonly
     def y_bar(self):
-        raise NotImplementedError('N/A')
+        raise NotImplementedError('Not yet implemented for multiple bandwidths')
     
     @cache_readonly
     def predictions(self):
