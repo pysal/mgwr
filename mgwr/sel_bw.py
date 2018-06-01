@@ -200,8 +200,9 @@ class Sel_BW(object):
         self.search_params = {}
 
     def search(self, search_method='golden_section', criterion='AICc',
-            bw_min=None, bw_max=None, interval=0.0, tol=1.0e-6, max_iter=200, init_multi=True,
-            tol_multi=1.0e-5, rss_score=False, max_iter_multi=200):
+            bw_min=None, bw_max=None, interval=0.0, tol=1.0e-6, max_iter=200,
+            init_multi=None, tol_multi=1.0e-5, rss_score=False,
+            max_iter_multi=200, multi_bw_min=[None], multi_bw_max=[None]):
         """
         Parameters
         ----------
@@ -213,16 +214,24 @@ class Sel_BW(object):
                          min value used in bandwidth search
         bw_max         : float
                          max value used in bandwidth search
+        multi_bw_min   : list 
+                         min values used for each covariate in mgwr bandwidth search.
+                         Must be either a single value or have one value for
+                         each covariate including the intercept
+        multi_bw_max   : list
+                         max values used for each covariate in mgwr bandwidth
+                         search. Must be either a single value or have one value
+                         for each covariate including the intercept
         interval       : float
                          interval increment used in interval search
         tol            : float
                          tolerance used to determine convergence
         max_iter       : integer
                          max iterations if no convergence to tol
-        init_multi     : True to initialize multipke bandwidth search with
-                         esitmates from a traditional GWR and False to
-                         initialize multiple bandwidth search with global
-                         regression estimates
+        init_multi     : float
+                         None (default) to initialize MGWR with a bandwidth
+                         derived from GWR. Otherwise this option will choose the
+                         bandwidth to initialize MGWR with.
         tol_multi      : convergence tolerence for the multiple bandwidth
                          backfitting algorithm; a larger tolerance may stop the
                          algorith faster though it may result in a less optimal
@@ -242,17 +251,32 @@ class Sel_BW(object):
                          matches the ordering of the covariates (columns) of the
                          designs matrix, X
         """
+        k = self.X_loc.shape[1]
+        if self.constant: #k is the number of covariates
+            k +=1
         self.search_method = search_method
-        self.search_params['search_method'] = search_method
-        self.search_params['criterion'] = criterion
-        self.search_params['bw_min'] = bw_min
-        self.search_params['bw_max'] = bw_max
-        self.search_params['interval'] = interval
-        self.search_params['tol'] = tol
-        self.search_params['max_iter'] = max_iter
         self.criterion = criterion
         self.bw_min = bw_min
         self.bw_max = bw_max
+        
+        if len(multi_bw_min) == k:
+            self.multi_bw_min = multi_bw_min
+        elif len(multi_bw_min) == 1:
+            self.multi_bw_min = multi_bw_min*k
+        else:
+            raise AttributeError("multi_bw_min must be either a list containing"
+            " a single entry or a list containing an entry for each of k"
+            " covariates including the intercept")
+        
+        if len(multi_bw_max) == k:
+            self.multi_bw_max = multi_bw_max
+        elif len(multi_bw_max) == 1:
+            self.multi_bw_max = multi_bw_max*k
+        else:
+            raise AttributeError("multi_bw_max must be either a list containing"
+            " a single entry or a list containing an entry for each of k"
+            " covariates including the intercept")
+        
         self.interval = interval
         self.tol = tol
         self.max_iter = max_iter
@@ -260,7 +284,14 @@ class Sel_BW(object):
         self.tol_multi = tol_multi
         self.rss_score = rss_score
         self.max_iter_multi = max_iter_multi
-
+        self.search_params['search_method'] = search_method
+        self.search_params['criterion'] = criterion
+        self.search_params['bw_min'] = bw_min
+        self.search_params['bw_max'] = bw_max
+        self.search_params['interval'] = interval
+        self.search_params['tol'] = tol
+        self.search_params['max_iter'] = max_iter
+        #self._check_min_max()
 
         if self.fixed:
             if self.kernel == 'gaussian':
@@ -296,8 +327,7 @@ class Sel_BW(object):
             self._bw()
 
         return self.bw[0]
-            
-
+    
     def _build_dMat(self):
         if self.fixed:
             self.dmat = cdist(self.coords,self.coords,self.spherical)
@@ -353,6 +383,8 @@ class Sel_BW(object):
         criterion = self.criterion
         bw_min = self.bw_min
         bw_max = self.bw_max
+        multi_bw_min = self.multi_bw_min
+        multi_bw_max = self.multi_bw_max
         interval = self.interval
         tol = self.tol
         max_iter = self.max_iter
@@ -362,12 +394,12 @@ class Sel_BW(object):
         def bw_func(y,X):
             return Sel_BW(coords, y,X,X_glob=[], family=family, kernel=kernel,
                     fixed=fixed, offset=offset, constant=False)
-        def sel_func(bw_func):
+        def sel_func(bw_func, bw_min=None, bw_max=None):
             return bw_func.search(search_method=search_method, criterion=criterion,
                     bw_min=bw_min, bw_max=bw_max, interval=interval, tol=tol, max_iter=max_iter)
         self.bw = multi_bw(self.init_multi, y, X, n, k, family,
                 self.tol_multi, self.max_iter_multi, self.rss_score, gwr_func,
-                bw_func, sel_func)
+                bw_func, sel_func, multi_bw_min, multi_bw_max)
 
     def _init_section(self, X_glob, X_loc, coords, constant):
         if len(X_glob) > 0:
