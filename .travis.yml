@@ -6,6 +6,7 @@ only:
 python:
   - "3.5"
   - "3.6"
+  - "2.7"
 
 env:
   - PYSAL_PLUS=false
