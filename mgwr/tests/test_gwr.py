@@ -280,7 +280,7 @@ class TestGWRGaussian(unittest.TestCase):
         std_X = (self.mgwr_X - self.mgwr_X.mean(axis=0)) / self.mgwr_X.std(axis=0)
         selector = Sel_BW(self.coords, std_y, std_X, multi=True,
                 constant=True)
-        selector.search(bw_min=2, bw_max=159)
+        selector.search(multi_bw_min=[2], multi_bw_max=[159])
         model = MGWR(self.coords, std_y, std_X, selector=selector,
                 constant=True)
         rslt = model.fit()
