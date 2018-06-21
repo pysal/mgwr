@@ -44,9 +44,12 @@ def summaryGWR(self):
         summary += "%-54s %20s\n" % ('Spatial kernel:', 'Adaptive ' + self.model.kernel)
 
     summary += "%-62s %12.3f\n" % ('Bandwidth used:', self.model.bw)
+
+    summary += "\n%s\n" % ('Diagnostic information')
+    summary += '-' * 75 + '\n'
     summary += "%-62s %12.3f\n" % ('Residual sum of squares:', self.resid_ss)
     summary += "%-62s %12.3f\n" % ('Effective number of parameters (trace(S)):', self.tr_S)
-    summary += "%-62s %12.3f\n" % ('Residual Degree of freedom (n - trace(S)):', self.df_model)
+    summary += "%-62s %12.3f\n" % ('Degree of freedom (n - trace(S)):', self.df_model)
     summary += "%-62s %12.3f\n" % ('Sigma estimate:', np.sqrt(self.sigma2))
     summary += "%-62s %12.3f\n" % ('Log-likelihood:', self.llf)
     summary += "%-62s %12.3f\n" % ('AIC:', self.aic)
@@ -62,8 +65,8 @@ def summaryGWR(self):
         #summary += "%-60s %12.6f\n" % ('Residual deviance:', 0)
         #summary += "%-60s %12.6f\n" % ('Percent deviance explained:', 0)
 
-    summary += "%-62s %12.3f\n" % ('Adj. alpha at 95%:', self.adj_alpha[1])
-    #summary += "%-60s %12.6f\n" % ('Adj. t-value at 95%:', self.critical_tval(self.adj_alpha[1]))
+    summary += "%-62s %12.3f\n" % ('Adj. alpha (95%):', self.adj_alpha[1])
+    summary += "%-62s %12.3f\n" % ('Adj. t-value(95%):', self.critical_tval(self.adj_alpha[1]))
 
     summary += "\n"
 
@@ -81,6 +84,9 @@ def summaryGWR(self):
 
 
 def summaryMGWR(self):
+    
+    XNames = ["X"+str(i) for i in range(self.k)]
+    
     summary = ''
     summary += "%s\n" %('Multi-Scale Geographically Weighted Regression (MGWR) Results')
     
@@ -91,33 +97,33 @@ def summaryMGWR(self):
     else:
         summary += "%-54s %20s\n" % ('Spatial kernel:', 'Adaptive ' + self.model.kernel)
 
-    summary += "%s\n" % ('Model settings')
-    summary += '-' * 75 + '\n'
+    summary += "%-54s %20s\n" % ('Criterion for optimal bandwidth:', self.model.selector.criterion)
 
-    summary += "%-45s %s\n" % ('Criterion for optimal bandwidth:', self.optimCriDropdown.currentText())
-    summary += "%-45s %s\n" % ('Initialization choice:', self.initBeta)
-    summary += "%-45s %s\n" % ('Score of Change (SOC) type:', self.SOC)
-    summary += "%-45s %s\n\n" % ('Termination criterion for MGWR:', self.tol_multi)
+    if self.model.selector.rss_score:
+        summary += "%-54s %20s\n" % ('Score of Change (SOC) type:', 'RSS')
+    else:
+        summary += "%-54s %20s\n" % ('Score of Change (SOC) type:', 'Smoothing f')
+    summary += "%-54s %20s\n\n" % ('Termination criterion for MGWR:', self.model.selector.tol_multi)
 
-    summary += "\n%s\n" %('MGWR bandwidth selection')
+    summary += "%s\n" %('MGWR bandwidths')
     summary += '-' * 75 + '\n'
-    summary += "%-20s %30s %20s\n" % ('Variable', 'Optimal Bandwidth', 'ENP')
-    for j in range(len(self.XNames)):
-        summary += "%-20s %30.3f %20.3f\n" % (self.XNames[j], self.bws[j], self.results.ENP_j[j])
+    summary += "%-23s %30s %20s\n" % ('Variable', 'Optimal Bandwidth', 'ENP_j')
+    for j in range(self.k):
+        summary += "%-23s %30.3f %20.3f\n" % (XNames[j], self.model.bw[j], self.ENP_j[j])
 
     summary += "\n%s\n" % ('Diagnostic information')
     summary += '-' * 75 + '\n'
-    summary += "%-60s %12.6f\n" % ('Residual sum of squares:', self.resid_ss)
-    summary += "%-60s %12.6f\n" % ('Effective number of parameters (trace(S)):', self.tr_S)
-    summary += "%-60s %12.6f\n" % ('Residual Degree of freedom (n - trace(S)):', self.df_model)
-    summary += "%-60s %12.6f\n" % ('Sigma estimate:', np.sqrt(self.sigma2))
-    summary += "%-60s %12.6f\n" % ('-2Log-likelihood:', -2*self.llf)
-    summary += "%-60s %12.6f\n" % ('Classic AIC:', self.aic)
-    summary += "%-60s %12.6f\n" % ('AICc:', self.aicc)
-    summary += "%-60s %12.6f\n" % ('BIC:', self.bic)
+    summary += "%-62s %12.3f\n" % ('Residual sum of squares:', self.resid_ss)
+    summary += "%-62s %12.3f\n" % ('Effective number of parameters (trace(S)):', self.tr_S)
+    summary += "%-62s %12.3f\n" % ('Degree of freedom (n - trace(S)):', self.df_model)
+    summary += "%-62s %12.3f\n" % ('Sigma estimate:', np.sqrt(self.sigma2))
+    summary += "%-62s %12.3f\n" % ('Log-likelihood:', self.llf)
+    summary += "%-62s %12.3f\n" % ('AIC:', self.aic)
+    summary += "%-62s %12.3f\n" % ('AICc:', self.aicc)
+    summary += "%-62s %12.3f\n" % ('BIC:', self.bic)
     
     
-    summary += "%s\n" % ('Summary Statistics For Varying (Local) Parameter Estimates')
+    summary += "\n%s\n" % ('Summary Statistics For Varying (Local) Parameter Estimates')
     summary += '-' * 75 + '\n'
     summary += "%-20s %10s %10s %10s %10s %10s\n" % ('Variable', 'Mean' ,'STD', 'Min' ,'Median', 'Max')
     summary += "%-20s %10s %10s %10s %10s %10s\n" % ('-'*20, '-'*10 ,'-'*10, '-'*10 ,'-'*10, '-'*10)

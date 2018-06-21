@@ -1156,7 +1156,7 @@ class GWRResults(GLMResults):
 
     def summary(self):
         """
-        Print out summary
+        Print out GWR summary
         """
         summary = summaryModel(self) + summaryGLM(self) + summaryGWR(self)
         print(summary)
@@ -1791,15 +1791,15 @@ class MGWRResults(GWRResults):
                           the number of Monte Carlo iterations to include for
                           the tests of spatial variability.
 
-       seed             : int
+        seed            : int
                           optional parameter to select a custom seed to ensure
                           stochastic results are replicable. Default is none
                           which automatically sets the seed to 5536
 
-       Returns
-       -------
+        Returns
+        -------
 
-       p values         : list
+        p values        : list
                           a list of psuedo p-values that correspond to the model
                           parameter surfaces. Allows us to assess the
                           probability of obtaining the observed spatial
@@ -1835,3 +1835,11 @@ class MGWRResults(GWRResults):
         
         p_vals = (np.sum(np.array(SDs) > init_sd, axis=0) / float(n_iters))
         return p_vals
+    
+    def summary(self):
+        """
+        Print out MGWR summary
+        """
+        summary = summaryModel(self) + summaryGLM(self) + summaryMGWR(self)
+        print(summary)
+        return
