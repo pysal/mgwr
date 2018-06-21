@@ -2,7 +2,6 @@ import numpy as np
 from spglm.family import Gaussian, Binomial, Poisson
 from spglm.glm import GLM
 
-
 def summaryModel(self):
     summary = '=' * 75 + '\n'
     summary += "%-54s %20s\n" % ('Model type', self.family.__class__.__name__)
@@ -17,13 +16,23 @@ def summaryGLM(self):
 
     summary = "%s\n" %('Global Regression Results')
     summary += '-' * 75 + '\n'
-    summary += "%-62s %12.3f\n" %  ('Residual sum of squares:', glm_rslt.deviance)
-    summary += "%-62s %12.3f\n" %  ('Log-likelihood:', glm_rslt.llf)
-    summary += "%-62s %12.3f\n" %  ('AIC:', glm_rslt.aic)
-    #summary += "%-62s %12.3f\n" %  ('AICc:', glm_rslt.aicc)
-    summary += "%-62s %12.3f\n" %  ('BIC:', glm_rslt.bic)
-    summary += "%-62s %12.3f\n" %  ('R2:', glm_rslt.D2)
-    summary += "%-62s %12.3f\n\n" % ('Adj. R2:', glm_rslt.adj_D2)
+    
+    if isinstance(self.family, Gaussian):
+        summary += "%-62s %12.3f\n" %  ('Residual sum of squares:', glm_rslt.deviance)
+        summary += "%-62s %12.3f\n" %  ('Log-likelihood:', glm_rslt.llf)
+        summary += "%-62s %12.3f\n" %  ('AIC:', glm_rslt.aic)
+        #summary += "%-62s %12.3f\n" %  ('AICc:', glm_rslt.aicc)
+        summary += "%-62s %12.3f\n" %  ('BIC:', glm_rslt.bic)
+        summary += "%-62s %12.3f\n" %  ('R2:', glm_rslt.D2)
+        summary += "%-62s %12.3f\n\n" % ('Adj. R2:', glm_rslt.adj_D2)
+    else:
+        summary += "%-62s %12.3f\n" %  ('Deviance:', glm_rslt.deviance)
+        summary += "%-62s %12.3f\n" %  ('Log-likelihood:', glm_rslt.llf)
+        summary += "%-62s %12.3f\n" %  ('AIC:', glm_rslt.aic)
+        #summary += "%-62s %12.3f\n" %  ('AICc:', glm_rslt.aicc)
+        summary += "%-62s %12.3f\n" %  ('BIC:', glm_rslt.bic)
+        summary += "%-62s %12.3f\n" %  ('Percent deviance explained:', glm_rslt.D2)
+        summary += "%-62s %12.3f\n\n" % ('Adj. percent deviance explained:', glm_rslt.adj_D2)
     
     summary += "%-31s %10s %10s %10s %10s\n" % ('Variable', 'Est.', 'SE' ,'t(Est/SE)', 'p-value')
     summary += "%-31s %10s %10s %10s %10s\n" % ('-'*31, '-'*10 ,'-'*10, '-'*10,'-'*10)
@@ -47,30 +56,32 @@ def summaryGWR(self):
 
     summary += "\n%s\n" % ('Diagnostic information')
     summary += '-' * 75 + '\n'
-    summary += "%-62s %12.3f\n" % ('Residual sum of squares:', self.resid_ss)
-    summary += "%-62s %12.3f\n" % ('Effective number of parameters (trace(S)):', self.tr_S)
-    summary += "%-62s %12.3f\n" % ('Degree of freedom (n - trace(S)):', self.df_model)
-    summary += "%-62s %12.3f\n" % ('Sigma estimate:', np.sqrt(self.sigma2))
-    summary += "%-62s %12.3f\n" % ('Log-likelihood:', self.llf)
-    summary += "%-62s %12.3f\n" % ('AIC:', self.aic)
-    summary += "%-62s %12.3f\n" % ('AICc:', self.aicc)
-    summary += "%-62s %12.3f\n" % ('BIC:', self.bic)
-
+    
     if isinstance(self.family, Gaussian):
-        #summary += "%-60s %12.6f\n" % ('CV:', 1.0)
+        
+        summary += "%-62s %12.3f\n" % ('Residual sum of squares:', self.resid_ss)
+        summary += "%-62s %12.3f\n" % ('Effective number of parameters (trace(S)):', self.tr_S)
+        summary += "%-62s %12.3f\n" % ('Degree of freedom (n - trace(S)):', self.df_model)
+        summary += "%-62s %12.3f\n" % ('Sigma estimate:', np.sqrt(self.sigma2))
+        summary += "%-62s %12.3f\n" % ('Log-likelihood:', self.llf)
+        summary += "%-62s %12.3f\n" % ('AIC:', self.aic)
+        summary += "%-62s %12.3f\n" % ('AICc:', self.aicc)
+        summary += "%-62s %12.3f\n" % ('BIC:', self.bic)
         summary += "%-62s %12.3f\n" % ('R2:', self.R2)
-        #summary += "%-60s %12.6f\n" % ('Adj. R2:', self.adjR2)
-
-        #summary += "%-60s %12.6f\n" % ('Null deviance:', 0)
-        #summary += "%-60s %12.6f\n" % ('Residual deviance:', 0)
+    else:
+        summary += "%-62s %12.3f\n" % ('Effective number of parameters (trace(S)):', self.tr_S)
+        summary += "%-62s %12.3f\n" % ('Degree of freedom (n - trace(S)):', self.df_model)
+        summary += "%-62s %12.3f\n" % ('Log-likelihood:', self.llf)
+        summary += "%-62s %12.3f\n" % ('AIC:', self.aic)
+        summary += "%-62s %12.3f\n" % ('AICc:', self.aicc)
+        summary += "%-62s %12.3f\n" % ('BIC:', self.bic)
         #summary += "%-60s %12.6f\n" % ('Percent deviance explained:', 0)
+
 
     summary += "%-62s %12.3f\n" % ('Adj. alpha (95%):', self.adj_alpha[1])
     summary += "%-62s %12.3f\n" % ('Adj. t-value(95%):', self.critical_tval(self.adj_alpha[1]))
 
-    summary += "\n"
-
-    summary += "%s\n" % ('Summary Statistics For Varying (Local) Parameter Estimates')
+    summary += "\n%s\n" % ('Summary Statistics For GWR Parameter Estimates')
     summary += '-' * 75 + '\n'
     summary += "%-20s %10s %10s %10s %10s %10s\n" % ('Variable', 'Mean' ,'STD', 'Min' ,'Median', 'Max')
     summary += "%-20s %10s %10s %10s %10s %10s\n" % ('-'*20, '-'*10 ,'-'*10, '-'*10 ,'-'*10, '-'*10)
@@ -89,7 +100,6 @@ def summaryMGWR(self):
     
     summary = ''
     summary += "%s\n" %('Multi-Scale Geographically Weighted Regression (MGWR) Results')
-    
     summary += '-' * 75 + '\n'
     
     if self.model.fixed:
@@ -103,6 +113,7 @@ def summaryMGWR(self):
         summary += "%-54s %20s\n" % ('Score of Change (SOC) type:', 'RSS')
     else:
         summary += "%-54s %20s\n" % ('Score of Change (SOC) type:', 'Smoothing f')
+
     summary += "%-54s %20s\n\n" % ('Termination criterion for MGWR:', self.model.selector.tol_multi)
 
     summary += "%s\n" %('MGWR bandwidths')
@@ -113,17 +124,18 @@ def summaryMGWR(self):
 
     summary += "\n%s\n" % ('Diagnostic information')
     summary += '-' * 75 + '\n'
+    
     summary += "%-62s %12.3f\n" % ('Residual sum of squares:', self.resid_ss)
     summary += "%-62s %12.3f\n" % ('Effective number of parameters (trace(S)):', self.tr_S)
     summary += "%-62s %12.3f\n" % ('Degree of freedom (n - trace(S)):', self.df_model)
+    
     summary += "%-62s %12.3f\n" % ('Sigma estimate:', np.sqrt(self.sigma2))
     summary += "%-62s %12.3f\n" % ('Log-likelihood:', self.llf)
     summary += "%-62s %12.3f\n" % ('AIC:', self.aic)
     summary += "%-62s %12.3f\n" % ('AICc:', self.aicc)
     summary += "%-62s %12.3f\n" % ('BIC:', self.bic)
-    
-    
-    summary += "\n%s\n" % ('Summary Statistics For Varying (Local) Parameter Estimates')
+
+    summary += "\n%s\n" % ('Summary Statistics For MGWR Parameter Estimates')
     summary += '-' * 75 + '\n'
     summary += "%-20s %10s %10s %10s %10s %10s\n" % ('Variable', 'Mean' ,'STD', 'Min' ,'Median', 'Max')
     summary += "%-20s %10s %10s %10s %10s %10s\n" % ('-'*20, '-'*10 ,'-'*10, '-'*10 ,'-'*10, '-'*10)
@@ -132,20 +144,6 @@ def summaryMGWR(self):
 
     summary += '=' * 75 + '\n'
     return summary
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
