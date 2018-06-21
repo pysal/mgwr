@@ -5,17 +5,17 @@ from spglm.glm import GLM
 
 def summaryModel(self):
     summary = '=' * 75 + '\n'
-    summary += "%-45s %s\n" % ('Model type', self.family.__class__.__name__)
-    summary += "%-45s %d\n" % ('Number of observations:', self.n)
-    summary += "%-45s %d\n" % ('Number of covariates:', self.k)
+    summary += "%-54s %20s\n" % ('Model type', self.family.__class__.__name__)
+    summary += "%-60s %14d\n" % ('Number of observations:', self.n)
+    summary += "%-60s %14d\n\n" % ('Number of covariates:', self.k)
     return summary
 
 def summaryGLM(self):
-    summary = ''
+    
     XNames = ["X"+str(i) for i in range(self.k)]
     glm_rslt = GLM(self.model.y,self.model.X,constant=False,family=self.family).fit()
 
-    summary += "\n%s\n" %('Global Regression Results')
+    summary = "%s\n" %('Global Regression Results')
     summary += '-' * 75 + '\n'
     summary += "%-62s %12.3f\n" %  ('Residual sum of squares:', glm_rslt.deviance)
     summary += "%-62s %12.3f\n" %  ('Log-likelihood:', glm_rslt.llf)
@@ -33,9 +33,9 @@ def summaryGLM(self):
     return summary
 
 def summaryGWR(self):
-    summary = ''
-    summary += "%s\n" %('Geographically Weighted Regression (GWR) Results')
-
+    XNames = ["X"+str(i) for i in range(self.k)]
+    
+    summary = "%s\n" %('Geographically Weighted Regression (GWR) Results')
     summary += '-' * 75 + '\n'
 
     if self.model.fixed:
@@ -47,7 +47,7 @@ def summaryGWR(self):
     summary += "%-62s %12.3f\n" % ('Residual sum of squares:', self.resid_ss)
     summary += "%-62s %12.3f\n" % ('Effective number of parameters (trace(S)):', self.tr_S)
     summary += "%-62s %12.3f\n" % ('Residual Degree of freedom (n - trace(S)):', self.df_model)
-    summary += "%-62s %12.3f\n" % ('Sigma estimate:', np.sqrt(self.sigma2_v1))
+    summary += "%-62s %12.3f\n" % ('Sigma estimate:', np.sqrt(self.sigma2))
     summary += "%-62s %12.3f\n" % ('Log-likelihood:', self.llf)
     summary += "%-62s %12.3f\n" % ('AIC:', self.aic)
     summary += "%-62s %12.3f\n" % ('AICc:', self.aicc)

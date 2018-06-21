@@ -15,6 +15,7 @@ from spglm.iwls import iwls,_compute_betas_gwr
 from spglm.utils import cache_readonly
 from .diagnostics import get_AIC, get_AICc, get_BIC, corr
 from .kernels import *
+from .summary import *
 
 fk = {'gaussian': fix_gauss, 'bisquare': fix_bisquare, 'exponential': fix_exp}
 ak = {'gaussian': adapt_gauss, 'bisquare': adapt_bisquare, 'exponential': adapt_exp}
@@ -1152,6 +1153,16 @@ class GWRResults(GLMResults):
         else:
             predictions = np.sum(P*self.params, axis=1).reshape((-1,1))
         return predictions
+
+    def summary(self):
+        """
+        Print out summary
+        """
+        summary = summaryModel(self) + summaryGLM(self) + summaryGWR(self)
+        print(summary)
+        return
+
+
 
 class GWRResultsLite(object):
     """
