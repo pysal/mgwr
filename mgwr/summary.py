@@ -1,6 +1,7 @@
 import numpy as np
 from spglm.family import Gaussian, Binomial, Poisson
 from spglm.glm import GLM
+from .diagnostics import get_AICc
 
 def summaryModel(self):
     summary = '=' * 75 + '\n'
@@ -21,7 +22,7 @@ def summaryGLM(self):
         summary += "%-62s %12.3f\n" %  ('Residual sum of squares:', glm_rslt.deviance)
         summary += "%-62s %12.3f\n" %  ('Log-likelihood:', glm_rslt.llf)
         summary += "%-62s %12.3f\n" %  ('AIC:', glm_rslt.aic)
-        #summary += "%-62s %12.3f\n" %  ('AICc:', glm_rslt.aicc)
+        summary += "%-62s %12.3f\n" %  ('AICc:', get_AICc(glm_rslt))
         summary += "%-62s %12.3f\n" %  ('BIC:', glm_rslt.bic)
         summary += "%-62s %12.3f\n" %  ('R2:', glm_rslt.D2)
         summary += "%-62s %12.3f\n\n" % ('Adj. R2:', glm_rslt.adj_D2)
@@ -29,7 +30,7 @@ def summaryGLM(self):
         summary += "%-62s %12.3f\n" %  ('Deviance:', glm_rslt.deviance)
         summary += "%-62s %12.3f\n" %  ('Log-likelihood:', glm_rslt.llf)
         summary += "%-62s %12.3f\n" %  ('AIC:', glm_rslt.aic)
-        #summary += "%-62s %12.3f\n" %  ('AICc:', glm_rslt.aicc)
+        summary += "%-62s %12.3f\n" %  ('AICc:', get_AICc(glm_rslt))
         summary += "%-62s %12.3f\n" %  ('BIC:', glm_rslt.bic)
         summary += "%-62s %12.3f\n" %  ('Percent deviance explained:', glm_rslt.D2)
         summary += "%-62s %12.3f\n\n" % ('Adj. percent deviance explained:', glm_rslt.adj_D2)
