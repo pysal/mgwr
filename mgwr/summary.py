@@ -80,7 +80,7 @@ def summaryGWR(self):
 
 
     summary += "%-62s %12.3f\n" % ('Adj. alpha (95%):', self.adj_alpha[1])
-    summary += "%-62s %12.3f\n" % ('Adj. t-value(95%):', self.critical_tval(self.adj_alpha[1]))
+    summary += "%-62s %12.3f\n" % ('Adj. critical t value (95%):', self.critical_tval(self.adj_alpha[1]))
 
     summary += "\n%s\n" % ('Summary Statistics For GWR Parameter Estimates')
     summary += '-' * 75 + '\n'
@@ -119,9 +119,9 @@ def summaryMGWR(self):
 
     summary += "%s\n" %('MGWR bandwidths')
     summary += '-' * 75 + '\n'
-    summary += "%-23s %30s %20s\n" % ('Variable', 'Optimal Bandwidth', 'ENP_j')
+    summary += "%-15s %14s %10s %16s %16s\n" % ('Variable', 'Bandwidth', 'ENP_j','Adj t-val(95%)','Adj alpha(95%)')
     for j in range(self.k):
-        summary += "%-23s %30.3f %20.3f\n" % (XNames[j], self.model.bw[j], self.ENP_j[j])
+        summary += "%-14s %15.3f %10.3f %16.3f %16.3f\n" % (XNames[j], self.model.bw[j], self.ENP_j[j],self.critical_tval()[j],self.adj_alpha_j[j,1])
 
     summary += "\n%s\n" % ('Diagnostic information')
     summary += '-' * 75 + '\n'
