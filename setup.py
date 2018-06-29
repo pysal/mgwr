@@ -5,8 +5,13 @@ try:
 except ImportError:
     from distutils.command.build_py import build_py
 
+Major = 1
+Feature = 0
+Bug = 1
+version = '%d.%d.%d' % (Major, Feature, Bug)
+
 setup(name='mgwr', #name of package
-      version='1.0.0',
+      version=version,
       description='multiscale geographically weighted regression', #short <80chr description
       url='https://github.com/TaylorOshan/mgwr', #github repo
       maintainer='Taylor M. Oshan', 
