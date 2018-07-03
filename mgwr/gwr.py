@@ -15,6 +15,7 @@ from spglm.iwls import iwls,_compute_betas_gwr
 from spglm.utils import cache_readonly
 from .diagnostics import get_AIC, get_AICc, get_BIC, corr
 from .kernels import *
+from .summary import *
 
 fk = {'gaussian': fix_gauss, 'bisquare': fix_bisquare, 'exponential': fix_exp}
 ak = {'gaussian': adapt_gauss, 'bisquare': adapt_bisquare, 'exponential': adapt_exp}
@@ -1153,6 +1154,16 @@ class GWRResults(GLMResults):
             predictions = np.sum(P*self.params, axis=1).reshape((-1,1))
         return predictions
 
+    def summary(self):
+        """
+        Print out GWR summary
+        """
+        summary = summaryModel(self) + summaryGLM(self) + summaryGWR(self)
+        print(summary)
+        return
+
+
+
 class GWRResultsLite(object):
     """
     Lightweight GWR that computes the minimum diagnostics needed for bandwidth
@@ -1780,15 +1791,15 @@ class MGWRResults(GWRResults):
                           the number of Monte Carlo iterations to include for
                           the tests of spatial variability.
 
-       seed             : int
+        seed            : int
                           optional parameter to select a custom seed to ensure
                           stochastic results are replicable. Default is none
                           which automatically sets the seed to 5536
 
-       Returns
-       -------
+        Returns
+        -------
 
-       p values         : list
+        p values        : list
                           a list of psuedo p-values that correspond to the model
                           parameter surfaces. Allows us to assess the
                           probability of obtaining the observed spatial
@@ -1824,3 +1835,11 @@ class MGWRResults(GWRResults):
         
         p_vals = (np.sum(np.array(SDs) > init_sd, axis=0) / float(n_iters))
         return p_vals
+    
+    def summary(self):
+        """
+        Print out MGWR summary
+        """
+        summary = summaryModel(self) + summaryGLM(self) + summaryMGWR(self)
+        print(summary)
+        return
