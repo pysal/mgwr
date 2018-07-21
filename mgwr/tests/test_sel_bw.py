@@ -6,7 +6,6 @@ import os
 import numpy as np
 import libpysal
 import unittest
-import pickle as pk
 from spglm.family import Gaussian, Poisson, Binomial
 from ..sel_bw import Sel_BW
 from numpy.testing import assert_allclose

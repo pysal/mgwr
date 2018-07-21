@@ -7,6 +7,7 @@ import libpysal
 import numpy as np
 import unittest
 import pickle as pk
+from types import SimpleNamespace
 from ..gwr import GWR, MGWR, MGWRResults
 from ..sel_bw import Sel_BW
 from ..diagnostics import get_AICc, get_AIC, get_BIC, get_CV
@@ -297,10 +298,11 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(rslt.ENP_j, self.MGWR.ENP_j)
         np.testing.assert_allclose(rslt.adj_alpha_j, self.MGWR.adj_alpha_j)
         np.testing.assert_allclose(rslt.critical_tval(),
-                self.MGWR.critical_tval())
-        np.testing.assert_allclose(rslt.filter_tvals(), self.MGWR.filter_tvals())
+                                   self.MGWR.critical_tval)
+        np.testing.assert_allclose(rslt.filter_tvals(), 
+                                   self.MGWR.filter_tvals)
         np.testing.assert_allclose(rslt.local_collinearity()[0],
-                self.MGWR.local_collinearity()[0])
+                                   self.MGWR.local_collinearity)
     
     def test_Prediction(self):
         coords =np.array(self.coords)
