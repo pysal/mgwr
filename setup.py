@@ -7,7 +7,7 @@ except ImportError:
 
 Major = 1
 Feature = 0
-Bug = 1
+Bug = 2
 version = '%d.%d.%d' % (Major, Feature, Bug)
 
 setup(name='mgwr', #name of package
