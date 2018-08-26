@@ -27,7 +27,7 @@ setup(name='mgwr', #name of package
         'Programming Language :: Python :: 3.5'
         'Programming Language :: Python :: 3.6'
         ],
-      license='3-Clause BSD',
+      license='2-Clause BSD',
       packages=['mgwr'],
       install_requires=['numpy', 'scipy', 'libpysal', 'spglm', 'spreg'],
       zip_safe=False,
