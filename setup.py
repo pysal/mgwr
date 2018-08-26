@@ -1,10 +1,10 @@
 from setuptools import setup
 from distutils.command.build_py import build_py
 
-Major = 1
-Feature = 0
-Bug = 2
-version = '%d.%d.%d' % (Major, Feature, Bug)
+# Get __version__ from PACKAGE_NAME/__init__.py without importing the package
+# __version__ has to be defined in the first line
+with open('spaghetti/__init__.py', 'r') as f:
+    exec(f.readline())
 
 setup(name='mgwr', #name of package
       version=version,
