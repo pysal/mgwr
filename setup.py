@@ -7,7 +7,7 @@ with open('mgwr/__init__.py', 'r') as f:
     exec(f.readline())
 
 setup(name='mgwr', #name of package
-      version=version,
+      version=__version__,
       description='multiscale geographically weighted regression', #short <80chr description
       url='https://github.com/pysal/mgwr', #github repo
       maintainer='Taylor M. Oshan', 
