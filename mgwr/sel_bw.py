@@ -138,10 +138,10 @@ class Sel_BW(object):
     Examples
     ________
 
-    >>> import pysal
-    >>> from pysal.contrib.gwr.sel_bw import Sel_BW
-    >>> data = pysal.open(pysal.examples.get_path('GData_utm.csv'))
-    >>> coords = zip(data.bycol('X'), data.by_col('Y')) 
+    >>> import libpysal as ps
+    >>> from mgwr.sel_bw import Sel_BW
+    >>> data = ps.io.open(ps.examples.get_path('GData_utm.csv'))
+    >>> coords = list(zip(data.by_col('X'), data.by_col('Y')))
     >>> y = np.array(data.by_col('PctBach')).reshape((-1,1))
     >>> rural = np.array(data.by_col('PctRural')).reshape((-1,1))
     >>> pov = np.array(data.by_col('PctPov')).reshape((-1,1))
@@ -150,28 +150,28 @@ class Sel_BW(object):
     
     #Golden section search AICc - adaptive bisquare
     >>> bw = Sel_BW(coords, y, X).search(criterion='AICc')
-    >>> print bw
+    >>> print(bw)
     93.0
 
     #Golden section search AIC - adaptive Gaussian
     >>> bw = Sel_BW(coords, y, X, kernel='gaussian').search(criterion='AIC')
-    >>> print bw
+    >>> print(bw)
     50.0
 
     #Golden section search BIC - adaptive Gaussian
     >>> bw = Sel_BW(coords, y, X, kernel='gaussian').search(criterion='BIC')
-    >>> print bw
+    >>> print(bw)
     62.0
 
     #Golden section search CV - adaptive Gaussian
     >>> bw = Sel_BW(coords, y, X, kernel='gaussian').search(criterion='CV')
-    >>> print bw
+    >>> print(bw)
     68.0
 
     #Interval AICc - fixed bisquare
-    >>>  sel = Sel_BW(coords, y, X, fixed=True).
-    >>>  bw = sel.search(search_method='interval', bw_min=211001.0, bw_max=211035.0, interval=2) 
-    >>> print bw
+    >>> sel = Sel_BW(coords, y, X, fixed=True)
+    >>> bw = sel.search(search_method='interval', bw_min=211001.0, bw_max=211035.0, interval=2)
+    >>> print(bw)
     211025.0
 
     """
