@@ -4,7 +4,7 @@ GWR is tested against results from GWR4
 
 import os
 import numpy as np
-import libpysal
+from libpysal import io
 import unittest
 from spglm.family import Gaussian, Poisson, Binomial
 from ..sel_bw import Sel_BW
@@ -13,7 +13,8 @@ from numpy.testing import assert_allclose
 class TestSelBW(unittest.TestCase):
     def setUp(self):
         data_path = os.path.join(os.path.dirname(__file__),'georgia/GData_utm.csv')
-        data = libpysal.open(data_path)
+        #data = libpysal.open(data_path)
+        data = io.open(data_path)
         self.coords = list(zip(data.by_col('X'), data.by_col('Y')))
         self.y = np.array(data.by_col('PctBach')).reshape((-1,1))
         rural  = np.array(data.by_col('PctRural')).reshape((-1,1))
