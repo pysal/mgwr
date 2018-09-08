@@ -260,36 +260,23 @@ class GWR(GLM):
     def _build_W(self, fixed, kernel, coords, bw, points=None):
         if fixed:
             try:
-                W = fk[kernel](
-                    coords,
-                    bw,
-                    points,
-                    self.dmat,
-                    self.sorted_dmat,
-                    spherical=self.spherical)
+                W = fk[kernel](coords, bw, points, self.dmat,
+                               self.sorted_dmat,
+                               spherical=self.spherical)
             except BaseException:
                 raise  # TypeError('Unsupported kernel function  ', kernel)
         else:
             try:
-                W = ak[kernel](
-                    coords,
-                    bw,
-                    points,
-                    self.dmat,
-                    self.sorted_dmat,
-                    spherical=self.spherical)
+                W = ak[kernel](coords, bw, points, self.dmat,
+                               self.sorted_dmat,
+                               spherical=self.spherical)
             except BaseException:
                 raise  # TypeError('Unsupported kernel function  ', kernel)
 
         return W
 
-    def fit(
-            self,
-            ini_params=None,
-            tol=1.0e-5,
-            max_iter=20,
-            solve='iwls',
-            searching=False):
+    def fit(self, ini_params=None, tol=1.0e-5, max_iter=20,
+            solve='iwls',searching = False):
         """
         Method that fits a model with a particular estimation routine.
 
@@ -329,19 +316,12 @@ class GWR(GLM):
                         predy = np.dot(self.X[i], betas)[0]
                         resid[i] = self.y[i] - predy
                     elif isinstance(self.family, (Poisson, Binomial)):
-                        rslt = iwls(
-                            self.y,
-                            self.X,
-                            self.family,
-                            self.offset,
-                            None,
-                            ini_params,
-                            tol,
-                            max_iter,
-                            wi=wi)
+                        rslt = iwls(self.y, self.X, self.family,
+                                    self.offset, None, ini_params, tol,
+                                    max_iter, wi=wi)
                         inv_xtx_xt = rslt[5]
-                        influ[i] = np.dot(
-                            self.X[i], inv_xtx_xt[:, i]) * rslt[3][i][0]
+                        influ[i] = np.dot(self.X[i], inv_xtx_xt[:, i]) * \
+                                   rslt[3][i][0]
                         predy = rslt[1][i]
                         resid[i] = self.y[i] - predy
                 return GWRResultsLite(self, resid, influ)
@@ -354,16 +334,9 @@ class GWR(GLM):
                 CCT = np.zeros((m, self.k))
                 for i in range(m):
                     wi = self.W[i].reshape((-1, 1))
-                    rslt = iwls(
-                        self.y,
-                        self.X,
-                        self.family,
-                        self.offset,
-                        None,
-                        ini_params,
-                        tol,
-                        max_iter,
-                        wi=wi)
+                    rslt = iwls(self.y, self.X, self.family,
+                                self.offset, None, ini_params, tol,
+                                max_iter, wi=wi)
                     params[i, :] = rslt[0].T
                     predy[i] = rslt[1][i]
                     w[i] = rslt[3][i]
@@ -375,13 +348,8 @@ class GWR(GLM):
                     CCT[i] = np.diag(np.dot(rslt[5], rslt[5].T))
                 return GWRResults(self, params, predy, S, CCT, w)
 
-    def predict(
-            self,
-            points,
-            P,
-            exog_scale=None,
-            exog_resid=None,
-            fit_params={}):
+    def predict(self, points, P, exog_scale=None, exog_resid=None,
+                fit_params={}):
         """
         Method that predicts values of the dependent variable at un-sampled
         locations
@@ -1456,19 +1424,10 @@ class MGWR(GWR):
 
     """
 
-    def __init__(
-            self,
-            coords,
-            y,
-            X,
-            selector,
-            sigma2_v1=True,
-            kernel='bisquare',
-            fixed=False,
-            constant=True,
-            dmat=None,
-            sorted_dmat=None,
-            spherical=False):
+    def __init__(self, coords, y, X, selector, sigma2_v1=True,
+                 kernel='bisquare',
+                 fixed=False, constant=True, dmat=None,
+                 sorted_dmat=None, spherical=False):
         """
         Initialize class
         """
@@ -1494,24 +1453,16 @@ class MGWR(GWR):
         for bw_i in bw:
             if fixed:
                 try:
-                    W = fk[kernel](
-                        coords,
-                        bw_i,
-                        points,
-                        self.dmat,
-                        self.sorted_dmat,
-                        spherical=self.spherical)
+                    W = fk[kernel](coords, bw_i, points, self.dmat,
+                                   self.sorted_dmat,
+                                   spherical=self.spherical)
                 except BaseException:
                     raise  # TypeError('Unsupported kernel function  ', kernel)
             else:
                 try:
-                    W = ak[kernel](
-                        coords,
-                        bw_i,
-                        points,
-                        self.dmat,
-                        self.sorted_dmat,
-                        spherical=self.spherical)
+                    W = ak[kernel](coords, bw_i, points, self.dmat,
+                                   self.sorted_dmat,
+                                   spherical=self.spherical)
                 except BaseException:
                     raise  # TypeError('Unsupported kernel function  ', kernel)
             Ws.append(W)
