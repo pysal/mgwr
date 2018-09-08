@@ -18,8 +18,7 @@ from .kernels import *
 from .summary import *
 
 fk = {'gaussian': fix_gauss, 'bisquare': fix_bisquare, 'exponential': fix_exp}
-ak = {'gaussian': adapt_gauss,
-      'bisquare': adapt_bisquare,
+ak = {'gaussian': adapt_gauss, 'bisquare': adapt_bisquare,
       'exponential': adapt_exp}
 
 
