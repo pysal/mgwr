@@ -8,7 +8,6 @@ import numpy.linalg as la
 from scipy.stats import t
 from scipy.special import factorial
 from itertools import combinations as combo
-import spreg.user_output as USER
 from spglm.family import Gaussian, Binomial, Poisson
 from spglm.glm import GLM, GLMResults
 from spglm.iwls import iwls, _compute_betas_gwr
