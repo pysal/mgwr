@@ -136,7 +136,7 @@ class Sel_BW(object):
                     avoid having to do it again in the MGWR object.
 
     Examples
-    ________
+    --------
 
     >>> import libpysal as ps
     >>> from mgwr.sel_bw import Sel_BW
@@ -148,27 +148,32 @@ class Sel_BW(object):
     >>> african_amer = np.array(data.by_col('PctBlack')).reshape((-1,1))
     >>> X = np.hstack([rural, pov, african_amer])
     
-    #Golden section search AICc - adaptive bisquare
+    Golden section search AICc - adaptive bisquare
+
     >>> bw = Sel_BW(coords, y, X).search(criterion='AICc')
     >>> print(bw)
     93.0
 
-    #Golden section search AIC - adaptive Gaussian
+    Golden section search AIC - adaptive Gaussian
+
     >>> bw = Sel_BW(coords, y, X, kernel='gaussian').search(criterion='AIC')
     >>> print(bw)
     50.0
 
-    #Golden section search BIC - adaptive Gaussian
+    Golden section search BIC - adaptive Gaussian
+
     >>> bw = Sel_BW(coords, y, X, kernel='gaussian').search(criterion='BIC')
     >>> print(bw)
     62.0
 
-    #Golden section search CV - adaptive Gaussian
+    Golden section search CV - adaptive Gaussian
+
     >>> bw = Sel_BW(coords, y, X, kernel='gaussian').search(criterion='CV')
     >>> print(bw)
     68.0
 
-    #Interval AICc - fixed bisquare
+    Interval AICc - fixed bisquare
+
     >>> sel = Sel_BW(coords, y, X, fixed=True)
     >>> bw = sel.search(search_method='interval', bw_min=211001.0, bw_max=211035.0, interval=2)
     >>> print(bw)
@@ -204,6 +209,9 @@ class Sel_BW(object):
             init_multi=None, tol_multi=1.0e-5, rss_score=False,
             max_iter_multi=200, multi_bw_min=[None], multi_bw_max=[None]):
         """
+        Method to select one unique bandwidth for a gwr model or a
+        bandwidth vector for a mgwr model.
+
         Parameters
         ----------
         criterion      : string
