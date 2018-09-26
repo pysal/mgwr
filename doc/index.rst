@@ -18,7 +18,7 @@ available for both approaches.
         <div class="col-sm-1 col-xs-hidden">
         </div>
         <div class="col-sm-10 col-xs-12">
-            <a href="https://github.com/weikang9009/mgwr/blob/master/notebooks/MGWR_Georgia_example.ipynb" class="thumbnail">
+            <a href="https://github.com/pysal/mgwr/blob/master/notebooks/MGWR_Georgia_example.ipynb" class="thumbnail">
                 <img src="_static/images/gwr-mgwr.png" class="img-responsive center-block">
                 <div class="caption text-center">
                 <h6>GWR-MGWR Estimated Parameter Surface (Georgia Dataset)</h6>
