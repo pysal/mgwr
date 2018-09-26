@@ -31,11 +31,23 @@ MGWR Estimation and Inference
 Utility Functions
 -----------------
 
-Kernal Specifications
-~~~~~~~~~~~~~~~~~~~~~
+Kernel Specification
+~~~~~~~~~~~~~~~~~~~~
 
 .. autosummary::
    :toctree: generated/
 
-    mgwr.kernel.fix_gauss
-    mgwr.kernel.
+    mgwr.kernels.fix_gauss
+    mgwr.kernels.adapt_gauss
+    mgwr.kernels.fix_bisquare
+    mgwr.kernels.adapt_bisquare
+    mgwr.kernels.fix_exp
+    mgwr.kernels.adapt_exp
+
+Bandwidth Selection
+~~~~~~~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
+    mgwr.sel_bw.Sel_BW
