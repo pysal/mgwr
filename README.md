@@ -1,6 +1,9 @@
 **M**ultiscale **G**eographically **W**eighted **R**egression (MGWR)
 =======================================
 
+[![Build Status](https://travis-ci.org/pysal/mgwr.svg?branch=master)](https://travis-ci.org/pysal/mgwr)
+
+
 This module provides functionality to calibrate multiscale (M)GWR as well as traditional GWR. It is
 built upon the sparse generalized linear modeling (spglm) module. 
 
