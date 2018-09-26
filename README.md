@@ -2,6 +2,7 @@
 =======================================
 
 [![Build Status](https://travis-ci.org/pysal/mgwr.svg?branch=master)](https://travis-ci.org/pysal/mgwr)
+[![Documentation Status](https://readthedocs.org/projects/mgwr/badge/?version=latest)](https://mgwr.readthedocs.io/en/latest/?badge=latest)
 
 
 This module provides functionality to calibrate multiscale (M)GWR as well as traditional GWR. It is
