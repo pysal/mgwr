@@ -282,18 +282,34 @@ class GWR(GLM):
         Parameters
         ----------
 
-        ini_betas     : array
+        ini_betas     : array, optional
                         k*1, initial coefficient values, including constant.
                         Default is None, which calculates initial values during
-                        estimation
-        tol:            float
-                        Tolerence for estimation convergence
-        max_iter      : integer
+                        estimation.
+        tol:            float, optional
+                        Tolerence for estimation convergence.
+                        Default is 1.0e-5.
+        max_iter      : integer, optional
                         Maximum number of iterations if convergence not
-                        achieved
-        solve         : string
+                        achieved. Default is 20.
+        solve         : string, optional
                         Technique to solve MLE equations.
-                        'iwls' = iteratively (re)weighted least squares (default)
+                        Default is 'iwls', meaning iteratively (
+                        re)weighted least squares.
+        searching     : bool, optional
+                        Whether to estimate a lightweight GWR that
+                        computes the minimum diagnostics needed for
+                        bandwidth selection (could speed up
+                        bandwidth selection for GWR) or to estimate
+                        a full GWR. Default is False.
+
+        Returns
+        -------
+                      :
+                        If searching=True, return a GWRResult
+                        instance; otherwise, return a GWRResultLite
+                        instance.
+
         """
         self.fit_params['ini_params'] = ini_params
         self.fit_params['tol'] = tol
@@ -619,6 +635,7 @@ class GWRResults(GLMResults):
     def cov_params(self, cov, exog_scale=None):
         """
         Returns scaled covariance parameters
+
         Parameters
         ----------
         cov         : array
@@ -1251,6 +1268,8 @@ class GWRResultsLite(object):
 
 class MGWR(GWR):
     """
+    Multiscale GWR estimation and inference.
+
     Parameters
     ----------
     coords        : array-like
@@ -1310,6 +1329,7 @@ class MGWR(GWR):
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
+
     Attributes
     ----------
     coords        : array-like
@@ -1400,7 +1420,9 @@ class MGWR(GWR):
 
     Examples
     --------
+
     #basic model calibration
+
     >>> import libpysal as ps
     >>> from mgwr.gwr import MGWR
     >>> from mgwr.sel_bw import Sel_BW
@@ -1486,11 +1508,16 @@ class MGWR(GWR):
         return MGWRResults(self, params, predy, S, CCT, R, w)
 
     def predict(self):
+        '''
+        Not implemented.
+        '''
         raise NotImplementedError('N/A')
 
 
 class MGWRResults(GWRResults):
     """
+    Class including common properties for a MGWR model.
+
     Parameters
     ----------
     model               : MGWR object

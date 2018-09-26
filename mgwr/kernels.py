@@ -12,6 +12,9 @@ from math import radians, sin, cos, sqrt, asin
 #implementation. That is, pysal counts self neighbors with knn automatically.
 
 def fix_gauss(coords, bw, points=None, dmat=None,sorted_dmat=None,spherical=False):
+    """
+    Fixed Gaussian
+    """
     w = _Kernel(coords, function='gwr_gaussian', bandwidth=bw,
             truncate=False, points=points, dmat=dmat,sorted_dmat=sorted_dmat,spherical=spherical)
     return w.kernel
@@ -43,8 +46,8 @@ from scipy.spatial.distance import cdist
 
 #Customized Kernel class user for GWR because the default PySAL kernel class
 #favors memory optimization over speed optimizations and GWR often needs the 
-#speed optimization since it is not always assume points far awar are truncated
-#to zero
+#speed optimization since it is not always assume points far awary
+# are truncated #to zero
 
 def cdist(coords1,coords2,spherical):
     def _haversine(lon1, lat1, lon2, lat2):
@@ -71,6 +74,7 @@ def cdist(coords1,coords2,spherical):
 
 class _Kernel(object):
     """
+    GWR kernel function specifications.
 
     """
     def __init__(self, data, bandwidth=None, fixed=True, k=None,
