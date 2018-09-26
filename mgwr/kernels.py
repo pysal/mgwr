@@ -13,31 +13,46 @@ from math import radians, sin, cos, sqrt, asin
 
 def fix_gauss(coords, bw, points=None, dmat=None,sorted_dmat=None,spherical=False):
     """
-    Fixed Gaussian
+    Fixed Gaussian kernel.
     """
     w = _Kernel(coords, function='gwr_gaussian', bandwidth=bw,
             truncate=False, points=points, dmat=dmat,sorted_dmat=sorted_dmat,spherical=spherical)
     return w.kernel
 
 def adapt_gauss(coords, nn, points=None, dmat=None,sorted_dmat=None,spherical=False):
+    """
+    Spatially adaptive Gaussian kernel.
+    """
     w = _Kernel(coords, fixed=False, k=nn-1, function='gwr_gaussian',
             truncate=False, points=points, dmat=dmat,sorted_dmat=sorted_dmat,spherical=spherical)
     return w.kernel
 
 def fix_bisquare(coords, bw, points=None, dmat=None,sorted_dmat=None,spherical=False):
+    """
+    Fixed bisquare kernel.
+    """
     w = _Kernel(coords, function='bisquare', bandwidth=bw, points=points, dmat=dmat,sorted_dmat=sorted_dmat,spherical=spherical)
     return w.kernel
 
 def adapt_bisquare(coords, nn, points=None, dmat=None,sorted_dmat=None,spherical=False):
+    """
+    Spatially adaptive bisquare kernel.
+    """
     w = _Kernel(coords, fixed=False, k=nn-1, function='bisquare', points=points, dmat=dmat,sorted_dmat=sorted_dmat,spherical=spherical)
     return w.kernel
 
 def fix_exp(coords, bw, points=None, dmat=None,sorted_dmat=None,spherical=False):
+    """
+    Fixed exponential kernel.
+    """
     w = _Kernel(coords, function='exponential', bandwidth=bw,
             truncate=False, points=points, dmat=dmat,sorted_dmat=sorted_dmat,spherical=spherical)
     return w.kernel
 
 def adapt_exp(coords, nn, points=None, dmat=None,sorted_dmat=None,spherical=False):
+    """
+    Spatially adaptive exponential kernel.
+    """
     w = _Kernel(coords, fixed=False, k=nn-1, function='exponential',
             truncate=False, points=points, dmat=dmat,sorted_dmat=sorted_dmat,spherical=spherical)
     return w.kernel
