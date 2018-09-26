@@ -24,7 +24,7 @@
     }
     .row.equal-height > [class*='col-'] > .thumbnail > img {
         width: 100%;
-        height: 200px; /* force image's height */
+        height: 400px; /* force image's height */
 
         /* force image fit inside it's "box" */
         -webkit-object-fit: cover;
