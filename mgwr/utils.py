@@ -9,20 +9,20 @@ def shift_colormap(cmap, start=0, midpoint=0.5, stop=1.0, name='shiftedcmap'):
     middle of the colormap's dynamic range to be at zero
 
     Parameters
-    -----
-      cmap : The matplotlib colormap to be altered
-      start : Offset from lowest point in the colormap's range.
-          Defaults to 0.0 (no lower ofset). Should be between
-          0.0 and `midpoint`.
-      midpoint : The new center of the colormap. Defaults to 
-          0.5 (no shift). Should be between 0.0 and 1.0. In
-          general, this should be  1 - vmax/(vmax + abs(vmin))
-          For example if your data range from -15.0 to +5.0 and
-          you want the center of the colormap at 0.0, `midpoint`
-          should be set to  1 - 5/(5 + 15)) or 0.75
-      stop : Offset from highets point in the colormap's range.
-          Defaults to 1.0 (no upper ofset). Should be between
-          `midpoint` and 1.0.
+    ----------
+    cmap : The matplotlib colormap to be altered
+    start : Offset from lowest point in the colormap's range.
+      Defaults to 0.0 (no lower ofset). Should be between
+      0.0 and `midpoint`.
+    midpoint : The new center of the colormap. Defaults to
+      0.5 (no shift). Should be between 0.0 and 1.0. In
+      general, this should be  1 - vmax/(vmax + abs(vmin))
+      For example if your data range from -15.0 to +5.0 and
+      you want the center of the colormap at 0.0, `midpoint`
+      should be set to  1 - 5/(5 + 15)) or 0.75
+    stop : Offset from highets point in the colormap's range.
+      Defaults to 1.0 (no upper ofset). Should be between
+      `midpoint` and 1.0.
     
     Returns
     -------
@@ -66,12 +66,12 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
     '''
     Function to truncate a colormap by selecting a subset of the original colormap's values
 
-    Input
-    -----
-      cmap : Mmatplotlib colormap to be altered
-      minval : Minimum value of the original colormap to include in the truncated colormap
-      maxval : Maximum value of the original colormap to include in the truncated colormap
-      n : Number of intervals between the min and max values for the gradient of the truncated colormap
+    Parameters
+    ----------
+    cmap : Mmatplotlib colormap to be altered
+    minval : Minimum value of the original colormap to include in the truncated colormap
+    maxval : Maximum value of the original colormap to include in the truncated colormap
+    n : Number of intervals between the min and max values for the gradient of the truncated colormap
           
     Returns
     -------
