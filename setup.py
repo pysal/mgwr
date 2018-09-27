@@ -49,7 +49,7 @@ def setup_package():
             'Programming Language :: Python :: 3.5'
             'Programming Language :: Python :: 3.6'
             ],
-          license='2-Clause BSD',
+          license='3-Clause BSD',
           packages=find_packages(),
           install_requires=install_reqs,
           extras_require=extras_reqs,
