@@ -1,4 +1,4 @@
-__version__ = "1.0.4"
+__version__ = "2.0.0"
 
 from . import gwr
 from . import sel_bw

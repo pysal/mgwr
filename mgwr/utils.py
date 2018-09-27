@@ -88,7 +88,26 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
 @requires('matplotlib')
 @requires('geopandas')
 def compare_surfaces(data, var1, var2, gwr_t, gwr_bw, mgwr_t, mgwr_bw, name, kwargs1, kwargs2):
-    
+    '''
+    Function that creates comparative visualization of GWR and MGWR surfaces.
+
+    Parameters
+    ----------
+    data: pandas or geopandas frame with gwr/mgwr results
+    var1: name of gwr parameter estimate column in frame (string)
+    var2: name of mgwr parameter estimate column in frame (string)
+    gwr_t: name of gwr t-values column in frame associated with var1 (string)
+    gwr_bw: bandwith for gwr model for var1
+    mgwr_t: name of mgwr t-values column in frame associated with var2 (string)
+    mgwr_bw: bandwidth for mgwr model for var2
+    name: common variable name to use for title
+    kwargs1: additional plotting arguments for gwr surface
+    kwargs2: additional plotting arguments for mgwr surface
+
+    Returns
+    -------
+    None:  Functions generates a plot
+    '''
     import matplotlib.pyplot as plt
     import geopandas as gp
 
