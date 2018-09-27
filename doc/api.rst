@@ -60,3 +60,4 @@ Visualization
 
    utils.shift_colormap
    utils.truncate_colormap
+   utils.compare_surfaces

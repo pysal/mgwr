@@ -94,6 +94,7 @@ def compare_surfaces(data, var1, var2, gwr_t, gwr_bw, mgwr_t, mgwr_bw, name,
 
     Parameters
     ----------
+<<<<<<< HEAD
     data: pandas or geopandas frame with gwr/mgwr results
     var1: name of gwr parameter estimate column in frame (string)
     var2: name of mgwr parameter estimate column in frame (string)
@@ -109,6 +110,28 @@ def compare_surfaces(data, var1, var2, gwr_t, gwr_bw, mgwr_t, mgwr_bw, name,
     Returns
     -------
     None:  Functions generates a plot
+=======
+    data   : pandas or geopandas Dataframe
+             gwr/mgwr results
+    var1   : string
+             name of gwr parameter estimate column in frame
+    var2   : string
+             name of mgwr parameter estimate column in frame
+    gwr_t  : string
+             name of gwr t-values column in frame associated with var1
+    gwr_bw : float
+             bandwidth for gwr model for var1
+    mgwr_t : string
+             name of mgwr t-values column in frame associated with var2
+    mgwr_bw: float
+             bandwidth for mgwr model for var2
+    name   : string
+             common variable name to use for title
+    kwargs1:
+             additional plotting arguments for gwr surface
+    kwargs2:
+             additional plotting arguments for mgwr surface
+>>>>>>> 962069d887baec5141ac2a38e396608b357dbae5
     '''
     import matplotlib.pyplot as plt
     import geopandas as gp
