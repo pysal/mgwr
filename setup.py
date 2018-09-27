@@ -46,7 +46,7 @@ def setup_package():
             'Topic :: Scientific/Engineering :: GIS',
             'License :: OSI Approved :: BSD License',
             'Programming Language :: Python',
-            'Programming Language :: Python :: 3.5'
+            'Programming Language :: Python :: 3.5',
             'Programming Language :: Python :: 3.6'
             ],
           license='3-Clause BSD',
