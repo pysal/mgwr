@@ -51,3 +51,12 @@ Bandwidth Selection
    :toctree: generated/
 
     mgwr.sel_bw.Sel_BW
+
+
+Visualization
+~~~~~~~~~~~~~
+.. autosummary::
+   :toctree: generated/
+
+   utils.shift_colormap
+   utils.truncate_colormap
