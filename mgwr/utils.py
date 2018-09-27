@@ -87,7 +87,8 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
 
 @requires('matplotlib')
 @requires('geopandas')
-def compare_surfaces(data, var1, var2, gwr_t, gwr_bw, mgwr_t, mgwr_bw, name, kwargs1, kwargs2):
+def compare_surfaces(data, var1, var2, gwr_t, gwr_bw, mgwr_t, mgwr_bw, name,
+        kwargs1, kwargs2, savefig=None):
     '''
     Function that creates comparative visualization of GWR and MGWR surfaces.
 
@@ -103,6 +104,7 @@ def compare_surfaces(data, var1, var2, gwr_t, gwr_bw, mgwr_t, mgwr_bw, name, kwa
     name: common variable name to use for title
     kwargs1: additional plotting arguments for gwr surface
     kwargs2: additional plotting arguments for mgwr surface
+    savefig: string name of file to save figure (defaults to None and does not save)
 
     Returns
     -------
@@ -162,4 +164,6 @@ def compare_surfaces(data, var1, var2, gwr_t, gwr_bw, mgwr_t, mgwr_bw, name, kwa
     ax0.get_yaxis().set_visible(False)
     ax1.get_xaxis().set_visible(False)
     ax1.get_yaxis().set_visible(False)
+    if savefig is not None:
+    	plt.savefig(savefig)
     plt.show()
