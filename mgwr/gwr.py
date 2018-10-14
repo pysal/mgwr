@@ -81,6 +81,10 @@ class GWR(GLM):
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
+                    
+    hat_matrix    : boolean
+                    True to store full n by n hat matrix,
+                    False to not store full hat matrix to optimize memory footprint (defalut).
 
     Attributes
     ----------
@@ -134,6 +138,10 @@ class GWR(GLM):
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
+                    
+    hat_matrix    : boolean
+                    True to store full n by n hat matrix,
+                    False to not store full hat matrix to optimize memory footprint (defalut).
 
     n             : integer
                     number of observations
@@ -151,9 +159,6 @@ class GWR(GLM):
                     parameters passed into fit method to define estimation
                     routine
 
-    W             : array
-                    n*n, spatial weights matrix for weighting all
-                    observations from each calibration point
     points        : array-like
                     n*2, collection of n sets of (x,y) coordinates used for
                     calibration locations instead of all observations;
@@ -228,7 +233,6 @@ class GWR(GLM):
         self.P = None
         self.spherical = spherical
         self.hat_matrix = hat_matrix
-        #self.W = self._build_W(fixed, kernel, coords, bw)
         
     def _build_wi(self, i):
         if self.fixed:
@@ -485,7 +489,7 @@ class GWRResults(GLMResults):
                           calibration point
 
     S                   : array
-                          n*n, hat matrix
+                          n*n, hat matrix if hat_matrix is set True in GWR
 
     CCT                 : array
                           n*k, scaled variance-covariance matrix
@@ -1138,7 +1142,6 @@ class GWRResults(GLMResults):
 
         init_sd = np.std(self.params, axis=0)
         SDs = []
-        print(init_sd)
         for x in range(n_iters):
             temp_coords = np.random.permutation(self.model.coords)
             temp_sel.coords = temp_coords
@@ -1764,8 +1767,8 @@ class MGWRResults(GWRResults):
             for j in range(nvar):
                 wi = w[j][i]
                 sw = np.sum(wi)
-                wi = wi/sw
-                xw[:,j] = x[:,j] * wi
+                wi = wi / sw
+                xw[:, j] = x[:, j] * wi
 
             sxw = np.sqrt(np.sum(xw**2, axis=0))
             sxw = np.transpose(xw.T / sxw.reshape((nvar, 1)))
