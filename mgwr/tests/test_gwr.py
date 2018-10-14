@@ -310,7 +310,7 @@ class TestGWRGaussian(unittest.TestCase):
         test = index[-10:]
 
         X_test = self.X[test]
-        coords_test = list(coords[test])
+        coords_test = coords[test]
 
 
         model = GWR(self.coords, self.y, self.X, 93, family=Gaussian(),
