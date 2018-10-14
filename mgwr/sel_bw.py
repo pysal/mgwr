@@ -7,15 +7,13 @@ __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
 import spreg.user_output as USER
 import numpy as np
-from scipy.spatial.distance import pdist,squareform
+from scipy.spatial.distance import pdist
 from scipy.optimize import minimize_scalar
 from spglm.family import Gaussian, Poisson, Binomial
-from spglm.iwls import iwls,_compute_betas_gwr
 from .kernels import *
 from .gwr import GWR
 from .search import golden_section, equal_interval, multi_bw
 from .diagnostics import get_AICc, get_AIC, get_BIC, get_CV
-from functools import partial
 
 kernels = {1: fix_gauss, 2: adapt_gauss, 3: fix_bisquare, 4:
         adapt_bisquare, 5: fix_exp, 6:adapt_exp}
@@ -101,14 +99,6 @@ class Sel_BW(object):
                     this term is often the size of the population at risk or
                     the expected size of the outcome in spatial epidemiology
                     Default is None where Ni becomes 1.0 for all locations
-    dmat          : array
-                    n*n, distance matrix between calibration locations used
-                    to compute weight matrix
-                        
-    sorted_dmat   : array
-                    n*n, sorted distance matrix between calibration locations used
-                    to compute weight matrix. Will be None for fixed bandwidths
-        
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
@@ -201,7 +191,7 @@ class Sel_BW(object):
         self._functions = []
         self.constant = constant
         self.spherical = spherical
-        self._build_dMat()
+
         self.search_params = {}
 
     def search(self, search_method='golden_section', criterion='AICc',
@@ -336,21 +326,11 @@ class Sel_BW(object):
 
         return self.bw[0]
     
-    def _build_dMat(self):
-        if self.fixed:
-            self.dmat = cdist(self.coords,self.coords,self.spherical)
-            self.sorted_dmat = None
-        else:
-            self.dmat = cdist(self.coords,self.coords,self.spherical)
-            self.sorted_dmat = np.sort(self.dmat)
-
-
     def _bw(self):
 
         gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, 
             self.X_loc, bw, family=self.family, kernel=self.kernel,
-            fixed=self.fixed, constant=self.constant,
-            dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit(searching = True))
+            fixed=self.fixed, constant=self.constant).fit(searching = True))
         
         self._optimized_function = gwr_func
 
@@ -398,7 +378,7 @@ class Sel_BW(object):
         max_iter = self.max_iter
         def gwr_func(y,X,bw):
             return GWR(coords, y,X,bw,family=family, kernel=kernel, fixed=fixed,
-                    offset=offset, constant=False).fit()
+                    offset=offset, constant=False, hat_matrix=True).fit()
         def bw_func(y,X):
             return Sel_BW(coords, y,X,X_glob=[], family=family, kernel=kernel,
                     fixed=fixed, offset=offset, constant=False)
