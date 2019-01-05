@@ -3,10 +3,10 @@ GWR is tested against results from GWR4
 """
 
 import os
+import libpysal as ps
 from libpysal import io
 import numpy as np
 import unittest
-import pickle as pk
 import pandas
 from types import SimpleNamespace
 from ..gwr import GWR, MGWR, MGWRResults
@@ -17,8 +17,7 @@ from spglm.family import Gaussian, Poisson, Binomial
 
 class TestGWRGaussian(unittest.TestCase):
     def setUp(self):
-        data_path = os.path.join(os.path.dirname(
-            __file__), 'georgia/GData_utm.csv')
+        data_path = ps.examples.get_path("GData_utm.csv")
         data = io.open(data_path)
         self.coords = list(zip(data.by_col('X'), data.by_col('Y')))
         self.y = np.array(data.by_col('PctBach')).reshape((-1, 1))
@@ -28,20 +27,27 @@ class TestGWRGaussian(unittest.TestCase):
         fb = np.array(data.by_col('PctFB')).reshape((-1, 1))
         self.X = np.hstack([rural, pov, black])
         self.mgwr_X = np.hstack([fb, black, rural])
-        self.BS_F = io.open(os.path.join(os.path.dirname(
-            __file__), 'georgia/georgia_BS_F_listwise.csv'))
-        self.BS_NN = io.open(os.path.join(os.path.dirname(
-            __file__), 'georgia/georgia_BS_NN_listwise.csv'))
-        self.GS_F = io.open(os.path.join(os.path.dirname(
-            __file__), 'georgia/georgia_GS_F_listwise.csv'))
-        self.GS_NN = io.open(os.path.join(os.path.dirname(
-            __file__), 'georgia/georgia_GS_NN_listwise.csv'))
-        MGWR_path = os.path.join(os.path.dirname(
-            __file__), 'georgia_mgwr_model_frame.csv')
-        MGWRp_path = os.path.join(os.path.dirname(
-            __file__), 'georgia_mgwr_param_frame.csv')
-        self.MGWR_n = pandas.read_csv(MGWR_path)
-        self.MGWR_p = pandas.read_csv(MGWRp_path)
+        self.BS_F = io.open(ps.examples.get_path('georgia_BS_F_listwise.csv'))
+        self.BS_NN = io.open(ps.examples.get_path('georgia_BS_NN_listwise.csv'))
+        self.GS_F = io.open(ps.examples.get_path('georgia_GS_F_listwise.csv'))
+        self.GS_NN = io.open(ps.examples.get_path('georgia_GS_NN_listwise.csv'))
+        # self.BS_F = io.open(os.path.join(os.path.dirname(
+        #     __file__), 'georgia/georgia_BS_F_listwise.csv'))
+        # self.BS_NN = io.open(os.path.join(os.path.dirname(
+        #     __file__), 'georgia/georgia_BS_NN_listwise.csv'))
+        # self.GS_F = io.open(os.path.join(os.path.dirname(
+        #     __file__), 'georgia/georgia_GS_F_listwise.csv'))
+        # self.GS_NN = io.open(os.path.join(os.path.dirname(
+        #     __file__), 'georgia/georgia_GS_NN_listwise.csv'))
+        # MGWR_path = os.path.join(os.path.dirname(
+        #     __file__), 'georgia_mgwr_model_frame.csv')
+        # MGWRp_path = os.path.join(os.path.dirname(
+        #     __file__), 'georgia_mgwr_param_frame.csv')
+        # self.MGWR_n = pandas.read_csv(MGWR_path)
+        # self.MGWR_p = pandas.read_csv(MGWRp_path)
+        MGWR_path = os.path.join(os.path.dirname(__file__),
+                                 'georgia_mgwr_results.csv')
+        self.MGWR = pandas.read_csv(MGWR_path)
 
     def test_BS_F(self):
         est_Int = self.BS_F.by_col(' est_Intercept')
@@ -297,31 +303,40 @@ class TestGWRGaussian(unittest.TestCase):
 
         varnames = ['X0', 'X1', 'X2', 'X3']
 
-        def suffixed(x):
-            """ Quick anonymous function to suffix strings"""
-            return ['_'.join(x) for x in varnames]
+        # def suffixed(x):
+        #     """ Quick anonymous function to suffix strings"""
+        #     return ['_'.join(x) for x in varnames]
 
-        np.testing.assert_allclose(rslt.predy, self.MGWR_n.predy, atol=1e-07)
+        np.testing.assert_allclose(rslt.predy.flatten(), self.MGWR.predy,
+                                   atol=1e-07)
         np.testing.assert_allclose(rslt.params,
-                                   self.MGWR_n[varnames].values, atol=1e-07)
+                                   self.MGWR[varnames].values, atol=1e-07)
         np.testing.assert_allclose(rslt.bse,
-                                   self.MGWR_n[suffixed('bse')].values, atol=1e-07)
+                                   self.MGWR[[s + "_bse" for s in varnames]].values, atol=1e-07)
         np.testing.assert_allclose(rslt.tvalues,
-                                   self.MGWR_n[suffixed('tvalues')].values, atol=1e-07)
+                                   self.MGWR[[s + "_tvalues" for s in varnames]].values, atol=1e-07)
         np.testing.assert_allclose(rslt.resid_response,
-                                   self.MGWR_n.resid_response,
+                                   self.MGWR.resid_response,
                                    atol=1e-04, rtol=1e-04)
-        np.testing.assert_almost_equal(rslt.resid_ss, self.MGWR_n.resid_ss)
-        np.testing.assert_almost_equal(rslt.aicc, self.MGWR_n.aicc)
-        np.testing.assert_almost_equal(rslt.ENP, self.MGWR_n.ENP)
-        np.testing.assert_allclose(rslt.ENP_j, self.MGWR_p.ENP_j)
-        np.testing.assert_allclose(rslt.adj_alpha_j, self.MGWR_p.adj_alpha_j)
+        np.testing.assert_almost_equal(rslt.resid_ss, 50.899379467870425)
+        np.testing.assert_almost_equal(rslt.aicc, 297.12013812258783)
+        np.testing.assert_almost_equal(rslt.ENP, 11.36825087269831)
+        np.testing.assert_allclose(rslt.ENP_j, [3.844671080264143, 3.513770805151652,
+                                                2.2580525278898254, 1.7517564593926895])
+        np.testing.assert_allclose(rslt.adj_alpha_j, np.array([[0.02601003, 0.01300501, 0.0002601 ],
+                                                               [0.02845945, 0.01422973, 0.00028459],
+                                                               [0.04428595, 0.02214297, 0.00044286],
+                                                               [0.05708556,
+                                                                0.02854278,
+                                                                0.00057086]]),  atol=1e-07)
         np.testing.assert_allclose(rslt.critical_tval(),
-                                   self.MGWR_p.critical_tval)
+                                   np.array([2.51210749, 2.47888792,
+                                             2.31069113, 2.21000184]), atol=1e-07)
         np.testing.assert_allclose(rslt.filter_tvals(),
-                                   self.MGWR_n[suffixed('filter_tvalues')].values)
-        np.testing.assert_allclose(rslt.local_collinearity()[0],
-                                   self.MGWR_n.local_collinearity)
+                                   self.MGWR[[s + "_filter_tvalues" for s in
+                                              varnames]].values, atol=1e-07)
+        np.testing.assert_allclose(rslt.local_collinearity()[0].flatten(),
+                                   self.MGWR.local_collinearity, atol=1e-07)
 
     def test_Prediction(self):
         coords = np.array(self.coords)
