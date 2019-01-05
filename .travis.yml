@@ -49,6 +49,7 @@ notifications:
     email:
         recipients:
             - tayoshan@gmail.com
+            - jgaboardi@gmail.com
         on_change: change
         on_failure: always
 
