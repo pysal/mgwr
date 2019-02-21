@@ -17,6 +17,7 @@ class TestKernels(unittest.TestCase):
         np.random.shuffle(x)
         np.random.shuffle(y)
         self.coords = np.array(list(zip(x, y)))
+        self.n = 5
         self.fix_gauss_kern = np.array([
         [ 1.        ,  0.38889556,  0.48567179,  0.48567179,  0.89483932],
         [ 0.38889556,  1.        ,  0.89483932,  0.64118039,  0.48567179],
@@ -60,28 +61,28 @@ class TestKernels(unittest.TestCase):
         [ 0.67554721,  0.36787948,  0.36787948,  0.31868771,  1.        ]])
     
     def test_fix_gauss(self):
-        kern = fix_gauss(self.coords, 3)
+        kern = np.array([Kernel(i, self.coords, 3, function="gaussian",fixed=True).kernel for i in range(self.n)])
         np.testing.assert_allclose(kern, self.fix_gauss_kern)
 
     def test_adapt_gauss(self):
-        kern = adapt_gauss(self.coords, 3)
+        kern = np.array([Kernel(i, self.coords, 3, function="gaussian",fixed=False).kernel for i in range(self.n)])
         np.testing.assert_allclose(kern, self.adapt_gauss_kern)
 
     def test_fix_biqsquare(self):
-        kern = fix_bisquare(self.coords, 3)
+        kern = np.array([Kernel(i, self.coords, 3, function="bisquare",fixed=True).kernel for i in range(self.n)])
         np.testing.assert_allclose(kern, self.fix_bisquare_kern,
                 atol=1e-01)
 
     def test_adapt_bisqaure(self):
-        kern = adapt_bisquare(self.coords, 3)
+        kern = np.array([Kernel(i, self.coords, 3, function="bisquare",fixed=False).kernel for i in range(self.n)])
         np.testing.assert_allclose(kern, self.adapt_bisquare_kern, atol=1e-012)
     
     def test_fix_exp(self):
-        kern = fix_exp(self.coords, 3)
+        kern = np.array([Kernel(i, self.coords, 3, function="exponential",fixed=True).kernel for i in range(self.n)])
         np.testing.assert_allclose(kern, self.fix_exp_kern)
 
     def test_adapt_exp(self):
-        kern = adapt_exp(self.coords, 3)
+        kern = np.array([Kernel(i, self.coords, 3, function="exponential",fixed=False).kernel for i in range(self.n)])
         np.testing.assert_allclose(kern, self.adapt_exp_kern)
 
 if __name__ == '__main__':

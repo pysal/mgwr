@@ -5,7 +5,7 @@ __author__ = "Taylor Oshan Tayoshan@gmail.com"
 import copy
 import numpy as np
 import numpy.linalg as la
-from scipy.stats import t
+from scipy.stats import t,rankdata
 from scipy.special import factorial
 from itertools import combinations as combo
 from spglm.family import Gaussian, Binomial, Poisson
@@ -15,11 +15,7 @@ from spglm.utils import cache_readonly
 from .diagnostics import get_AIC, get_AICc, get_BIC, corr
 from .kernels import *
 from .summary import *
-
-fk = {'gaussian': fix_gauss, 'bisquare': fix_bisquare, 'exponential': fix_exp}
-ak = {'gaussian': adapt_gauss, 'bisquare': adapt_bisquare,
-      'exponential': adapt_exp}
-
+import multiprocessing as mp
 
 class GWR(GLM):
     """
@@ -78,21 +74,13 @@ class GWR(GLM):
                     True to include intercept (default) in model and False to exclude
                     intercept.
 
-    dmat          : array
-                    n*n, distance matrix between calibration locations used
-                    to compute weight matrix. Defaults to None and is
-                    primarily for avoiding duplicate computation during
-                    bandwidth selection.
-
-    sorted_dmat   : array
-                    n*n, sorted distance matrix between calibration locations used
-                    to compute weight matrix. Defaults to None and is
-                    primarily for avoiding duplicate computation during
-                    bandwidth selection.
-
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
+
+    hat_matrix    : boolean
+                    True to store full n by n hat matrix,
+                    False to not store full hat matrix to optimize memory footprint (defalut).
 
     Attributes
     ----------
@@ -143,21 +131,13 @@ class GWR(GLM):
                     True to include intercept (default) in model and False to exclude
                     intercept
 
-    dmat          : array
-                    n*n, distance matrix between calibration locations used
-                    to compute weight matrix. Defaults to None and is
-                    primarily for avoiding duplicate computation during
-                    bandwidth selection.
-
-    sorted_dmat   : array
-                    n*n, sorted distance matrix between calibration locations used
-                    to compute weight matrix. Defaults to None and is
-                    primarily for avoiding duplicate computation during
-                    bandwidth selection.
-
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
+
+    hat_matrix    : boolean
+                    True to store full n by n hat matrix,
+                    False to not store full hat matrix to optimize memory footprint (defalut).
 
     n             : integer
                     number of observations
@@ -175,9 +155,6 @@ class GWR(GLM):
                     parameters passed into fit method to define estimation
                     routine
 
-    W             : array
-                    n*n, spatial weights matrix for weighting all
-                    observations from each calibration point
     points        : array-like
                     n*2, collection of n sets of (x,y) coordinates used for
                     calibration locations instead of all observations;
@@ -229,7 +206,7 @@ class GWR(GLM):
 
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
                  sigma2_v1=True, kernel='bisquare', fixed=False, constant=True,
-                 dmat=None, sorted_dmat=None, spherical=False):
+                 spherical=False, hat_matrix=False):
         """
         Initialize class
         """
@@ -250,31 +227,39 @@ class GWR(GLM):
         self.exog_scale = None
         self.exog_resid = None
         self.P = None
-        self.dmat = dmat
-        self.sorted_dmat = sorted_dmat
         self.spherical = spherical
-        self.W = self._build_W(fixed, kernel, coords, bw)
+        self.hat_matrix = hat_matrix
 
-    def _build_W(self, fixed, kernel, coords, bw, points=None):
-        if fixed:
-            try:
-                W = fk[kernel](coords, bw, points, self.dmat,
-                               self.sorted_dmat,
-                               spherical=self.spherical)
-            except BaseException:
-                raise  # TypeError('Unsupported kernel function  ', kernel)
-        else:
-            try:
-                W = ak[kernel](coords, bw, points, self.dmat,
-                               self.sorted_dmat,
-                               spherical=self.spherical)
-            except BaseException:
-                raise  # TypeError('Unsupported kernel function  ', kernel)
+    def _build_wi(self, i, bw):
 
-        return W
+        try:
+            wi = Kernel(i, self.coords, bw, fixed=self.fixed, function=self.kernel, points=self.points, spherical=self.spherical).kernel
+        except BaseException:
+            raise  # TypeError('Unsupported kernel function  ', kernel)
+
+        return wi
+
+    def localfit(self, i):
+        wi = self._build_wi(i,self.bw).reshape((-1, 1))
+        betas, inv_xtx_xt = _compute_betas_gwr(self.y,self.X,wi)
+        influ = np.dot(self.X[i],inv_xtx_xt[:,i])
+        predy = np.dot(self.X[i],betas)[0]
+        resid = self.y[i] - predy
+        return influ,resid,predy,betas.reshape(-1)
+
+    def parafit(self, pool):
+        m = self.X.shape[0]
+        rslt = pool.map(self.localfit, range(m))
+        reduced = list(zip(*rslt))
+        influ = np.array(reduced[0]).reshape(-1,1)
+        resid = np.array(reduced[1]).reshape(-1,1)
+        predy = np.array(reduced[2]).reshape(-1,1)
+        params = np.array(reduced[3]).reshape(-1,1)
+        return GWRResultsLite(self, resid, influ, params)
+
 
     def fit(self, ini_params=None, tol=1.0e-5, max_iter=20,
-            solve='iwls',searching = False):
+            solve='iwls',searching = False, para=False):
         """
         Method that fits a model with a particular estimation routine.
 
@@ -315,20 +300,26 @@ class GWR(GLM):
         self.fit_params['max_iter'] = max_iter
         self.fit_params['solve'] = solve
         if solve.lower() == 'iwls':
-            m = self.W.shape[0]
+
+            if self.points is None:
+                m = self.y.shape[0]
+            else:
+                m = self.points.shape[0]
 
             # In bandwidth selection, return GWRResultsLite
             if searching:
                 resid = np.zeros((m, 1))
                 influ = np.zeros((m, 1))
+                params = np.zeros((m, self.k))
                 for i in range(m):
-                    wi = self.W[i].reshape((-1, 1))
+                    wi = self._build_wi(i,self.bw).reshape((-1, 1))
                     if isinstance(self.family, Gaussian):
                         betas, inv_xtx_xt = _compute_betas_gwr(
                             self.y, self.X, wi)
                         influ[i] = np.dot(self.X[i], inv_xtx_xt[:, i])
                         predy = np.dot(self.X[i], betas)[0]
                         resid[i] = self.y[i] - predy
+                        params[i, :] = betas.T
                     elif isinstance(self.family, (Poisson, Binomial)):
                         rslt = iwls(self.y, self.X, self.family,
                                     self.offset, None, ini_params, tol,
@@ -338,29 +329,40 @@ class GWR(GLM):
                                    rslt[3][i][0]
                         predy = rslt[1][i]
                         resid[i] = self.y[i] - predy
-                return GWRResultsLite(self, resid, influ)
+                        params[i, :] = rslt[0].T
+                return GWRResultsLite(self, resid, influ, params)
+
 
             else:
                 params = np.zeros((m, self.k))
                 predy = np.zeros((m, 1))
+                influ = np.zeros((m, 1))
+                tr_STS = 0
                 w = np.zeros((m, 1))
-                S = np.zeros((m, self.n))
+                if self.hat_matrix:
+                    S = np.zeros((m, self.n))
+                else:
+                    S = None
                 CCT = np.zeros((m, self.k))
                 for i in range(m):
-                    wi = self.W[i].reshape((-1, 1))
+                    wi = self._build_wi(i,self.bw).reshape((-1, 1))
                     rslt = iwls(self.y, self.X, self.family,
                                 self.offset, None, ini_params, tol,
                                 max_iter, wi=wi)
                     params[i, :] = rslt[0].T
                     predy[i] = rslt[1][i]
                     w[i] = rslt[3][i]
-                    S[i] = np.dot(self.X[i], rslt[5])
+                    Si = np.dot(self.X[i], rslt[5])
+                    influ[i] = Si[i]
+                    if self.hat_matrix:
+                        S[i] = Si
+                    tr_STS += np.sum(Si * Si * w[i][0] * w[i][0])
                     # dont need unless f is explicitly passed for
                     # prediction of non-sampled points
                     #cf = rslt[5] - np.dot(rslt[5], f)
                     #CCT[i] = np.diag(np.dot(cf, cf.T/rslt[3]))
                     CCT[i] = np.diag(np.dot(rslt[5], rslt[5].T))
-                return GWRResults(self, params, predy, S, CCT, w)
+                return GWRResults(self, params, predy, S, CCT, influ, tr_STS, w)
 
     def predict(self, points, P, exog_scale=None, exog_resid=None,
                 fit_params={}):
@@ -404,12 +406,6 @@ class GWR(GLM):
             self.P = P
         else:
             self.P = P
-        self.W = self._build_W(
-            self.fixed,
-            self.kernel,
-            self.coords,
-            self.bw,
-            points)
         gwr = self.fit(**fit_params)
 
         return gwr
@@ -507,7 +503,7 @@ class GWRResults(GLMResults):
                           calibration point
 
     S                   : array
-                          n*n, hat matrix
+                          n*n, hat matrix if hat_matrix is set True in GWR
 
     CCT                 : array
                           n*k, scaled variance-covariance matrix
@@ -604,16 +600,23 @@ class GWRResults(GLMResults):
                           unsampled points ()
     """
 
-    def __init__(self, model, params, predy, S, CCT, w=None):
+    def __init__(self, model, params, predy, S, CCT, influ, tr_STS=None, w=None):
         GLMResults.__init__(self, model, params, predy, w)
-        self.W = model.W
+        #self.W = model.W
         self.offset = model.offset
         if w is not None:
             self.w = w
         self.predy = predy
         self.S = S
+        self.tr_STS = tr_STS
+        self.influ = influ
         self.CCT = self.cov_params(CCT, model.exog_scale)
         self._cache = {}
+
+    @cache_readonly
+    def W(self):
+        W = np.array([self.model._build_wi(i,self.model.bw) for i in range(self.n)])
+        return W
 
     @cache_readonly
     def resid_ss(self):
@@ -655,14 +658,7 @@ class GWRResults(GLMResults):
         """
         trace of S (hat) matrix
         """
-        return np.trace(self.S * self.w)
-
-    @cache_readonly
-    def tr_STS(self):
-        """
-        trace of STS matrix
-        """
-        return np.trace(np.dot(self.S.T * self.w, self.S * self.w))
+        return np.sum(self.influ*self.w)
 
     @cache_readonly
     def ENP(self):
@@ -681,6 +677,7 @@ class GWRResults(GLMResults):
         else:
             return 2 * self.tr_S - self.tr_STS
 
+
     @cache_readonly
     def y_bar(self):
         """
@@ -693,7 +690,7 @@ class GWRResults(GLMResults):
         off = self.offset.reshape((-1, 1))
         arr_ybar = np.zeros(shape=(self.n, 1))
         for i in range(n):
-            w_i = np.reshape(np.array(self.W[i]), (-1, 1))
+            w_i = np.reshape(self.model._build_wi(i,self.model.bw), (-1, 1))
             sum_yw = np.sum(self.y.reshape((-1, 1)) * w_i)
             arr_ybar[i] = 1.0 * sum_yw / np.sum(w_i * off)
         return arr_ybar
@@ -715,7 +712,7 @@ class GWRResults(GLMResults):
             n = self.n
         TSS = np.zeros(shape=(n, 1))
         for i in range(n):
-            TSS[i] = np.sum(np.reshape(np.array(self.W[i]), (-1, 1)) *
+            TSS[i] = np.sum(np.reshape(self.model._build_wi(i,self.model.bw), (-1, 1)) *
                             (self.y.reshape((-1, 1)) - self.y_bar[i])**2)
         return TSS
 
@@ -737,8 +734,7 @@ class GWRResults(GLMResults):
             resid = self.resid_response.reshape((-1, 1))
         RSS = np.zeros(shape=(n, 1))
         for i in range(n):
-            RSS[i] = np.sum(np.reshape(np.array(self.W[i]), (-1, 1))
-                            * resid**2)
+            RSS[i] = np.sum(np.reshape(self.model._build_wi(i,self.model.bw), (-1, 1)) * resid**2)
         return RSS
 
     @cache_readonly
@@ -808,13 +804,6 @@ class GWRResults(GLMResults):
         relationships.
         """
         return np.sqrt(self.CCT)
-
-    @cache_readonly
-    def influ(self):
-        """
-        Influence: leading diagonal of S Matrix
-        """
-        return np.reshape(np.diag(self.S), (-1, 1))
 
     @cache_readonly
     def cooksD(self):
@@ -954,6 +943,40 @@ class GWRResults(GLMResults):
         tvalues[subset] = 0
         return tvalues
 
+    ###ZIQI
+    @cache_readonly
+    def pvalues(self):
+        n = self.n
+        return t.sf(np.abs(self.tvalues), n - 1) * 2
+
+    def pval_masks(self, method="None"):
+        k = self.k
+        n = self.n
+        ENP = self.ENP
+        if method == "None":
+            return (self.pvalues <= 0.05).astype(int)
+        elif method == "Bonferroni":
+            return (self.pvalues <= self.adj_alpha[1]).astype(int)
+        elif method == "Sidak":
+            adj_alpha = 1- (1 - 0.05) ** (1/(ENP/k))
+            return (self.pvalues <= adj_alpha).astype(int)
+        elif method == "FDR":
+            fdr_filter = np.empty((n,k))
+            for j in range(k):
+                a = self.pvalues[:,j]
+                rank = rankdata(a, method='min')
+                d = (n*k-ENP)/(n*k-1)
+                adj = rank * 0.05 /(n + d*(rank - n))
+                fdr_filter[:,j] = ((a <= adj).astype(int))
+            return fdr_filter.astype(int)
+        else:
+            raise NotImplementedError('Unknown method for multiple hypothesis testing correction')
+
+    ###ZIQI
+
+
+
+
     @cache_readonly
     def df_model(self):
         return self.n - self.tr_S
@@ -983,27 +1006,79 @@ class GWRResults(GLMResults):
         return None
 
     @cache_readonly
-    def null(self):
+    def llnull(self):
         return None
 
     @cache_readonly
-    def llnull(self):
+    def pseudoR2(self):
+        return None
+
+    @cache_readonly
+    def adj_pseudoR2(self):
+        return None
+
+    @cache_readonly
+    def conf_int(self):
+        return None
+
+    @cache_readonly
+    def use_t(self):
+        return None
+
+    '''
+    @cache_readonly
+    def null(self):
         return None
 
     @cache_readonly
     def null_deviance(self):
         return None
+    '''
+    @cache_readonly
+    def global_deviance(self):
+        deviance = np.sum(self.family.resid_dev(self.y, self.mu)**2)
+        return deviance
 
     @cache_readonly
+    def D2(self):
+        """
+        Percentage of deviance explanied. Equivalent to 1 - (deviance/null deviance)
+        """
+        D2 =  1.0 - (self.global_deviance / self.null_deviance)
+        return D2
+    
+    @cache_readonly
     def R2(self):
+        """
+        Global r-squared value for a Gaussian model.
+        """
         if isinstance(self.family, Gaussian):
-            TSS = np.sum((self.y.reshape((-1, 1)) -
-                          np.mean(self.y.reshape((-1, 1))))**2)
-            RSS = np.sum((self.y.reshape((-1, 1)) -
-                          self.predy.reshape((-1, 1)))**2)
-            return 1 - (RSS / TSS)
+            return self.D2
         else:
-            raise NotImplementedError('Only available for Gaussian GWR')
+            raise NotImplementedError('R2 only for Gaussian')
+
+    @cache_readonly
+    def adj_D2(self):
+        """
+        Adjusted percentage of deviance explanied.
+        """
+        adj_D2 = 1 - (1 - self.D2) * (self.n - 1)/(self.n - self.ENP - 1)
+        return adj_D2
+
+    @cache_readonly
+    def adj_R2(self):
+        """
+        Adjusted global r-squared for a Gaussian model.
+        """
+        if isinstance(self.family, Gaussian):
+            return self.adj_D2
+        else:
+            raise NotImplementedError('adjusted R2 only for Gaussian')
+    
+
+    @cache_readonly
+    def null_deviance(self):
+        return self.family.deviance(self.y, self.null)
 
     @cache_readonly
     def aic(self):
@@ -1017,33 +1092,6 @@ class GWRResults(GLMResults):
     def bic(self):
         return get_BIC(self)
 
-    @cache_readonly
-    def D2(self):
-        return None
-
-    @cache_readonly
-    def adj_D2(self):
-        return None
-
-    @cache_readonly
-    def pseudoR2(self):
-        return None
-
-    @cache_readonly
-    def adj_pseudoR2(self):
-        return None
-
-    @cache_readonly
-    def pvalues(self):
-        return None
-
-    @cache_readonly
-    def conf_int(self):
-        return None
-
-    @cache_readonly
-    def use_t(self):
-        return None
 
     def local_collinearity(self):
         """
@@ -1062,9 +1110,8 @@ class GWRResults(GLMResults):
 
         """
         x = self.X
-        w = self.W
         nvar = x.shape[1]
-        nrow = len(w)
+        nrow = self.n
         if self.model.constant:
             ncor = (((nvar - 1)**2 + (nvar - 1)) / 2) - (nvar - 1)
             jk = list(combo(range(1, nvar), 2))
@@ -1080,7 +1127,7 @@ class GWRResults(GLMResults):
         vdp_pi = np.ndarray((nrow, nvar, nvar))
 
         for i in range(nrow):
-            wi = w[i]
+            wi = self.model._build_wi(i,self.model.bw)
             sw = np.sum(wi)
             wi = wi / sw
             tag = 0
@@ -1169,16 +1216,13 @@ class GWRResults(GLMResults):
 
         init_sd = np.std(self.params, axis=0)
         SDs = []
-
         for x in range(n_iters):
             temp_coords = np.random.permutation(self.model.coords)
             temp_sel.coords = temp_coords
-            temp_sel._build_dMat()
             temp_bw = temp_sel.search(**search_params)
-
-            temp_gwr.W = temp_gwr._build_W(fixed, kernel, temp_coords, temp_bw)
+            temp_gwr.bw = temp_bw
+            temp_gwr.coords = temp_coords
             temp_params = temp_gwr.fit(**fit_params).params
-
             temp_sd = np.std(temp_params, axis=0)
             SDs.append(temp_sd)
 
@@ -1239,13 +1283,14 @@ class GWRResultsLite(object):
 
     """
 
-    def __init__(self, model, resid, influ):
+    def __init__(self, model, resid, influ, params):
         self.y = model.y
         self.family = model.family
         self.n = model.n
         self.influ = influ
         self.resid_response = resid
         self.model = model
+        self.params = params
 
     @cache_readonly
     def tr_S(self):
@@ -1257,6 +1302,10 @@ class GWRResultsLite(object):
 
     @cache_readonly
     def mu(self):
+        return self.y - self.resid_response
+
+    @cache_readonly
+    def predy(self):
         return self.y - self.resid_response
 
     @cache_readonly
@@ -1314,17 +1363,6 @@ class MGWR(GWR):
                     True to include intercept (default) in model and False to exclude
                     intercept.
 
-    dmat          : array
-                    n*n, distance matrix between calibration locations used
-                    to compute weight matrix. Defaults to None and is
-                    primarily for avoiding duplicate computation during
-                    bandwidth selection.
-
-    sorted_dmat   : array
-                    n*n, sorted distance matrix between calibration locations used
-                    to compute weight matrix. Defaults to None and is
-                    primarily for avoiding duplicate computation during
-                    bandwidth selection.
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
@@ -1380,18 +1418,6 @@ class MGWR(GWR):
                     True to include intercept (default) in model and False to exclude
                     intercept.
 
-    dmat          : array
-                    n*n, distance matrix between calibration locations used
-                    to compute weight matrix. Defaults to None and is
-                    primarily for avoiding duplicate computation during
-                    bandwidth selection.
-
-    sorted_dmat   : array
-                    n*n, sorted distance matrix between calibration locations used
-                    to compute weight matrix. Defaults to None and is
-                    primarily for avoiding duplicate computation during
-                    bandwidth selection.
-
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
@@ -1446,18 +1472,18 @@ class MGWR(GWR):
 
     def __init__(self, coords, y, X, selector, sigma2_v1=True,
                  kernel='bisquare',
-                 fixed=False, constant=True, dmat=None,
-                 sorted_dmat=None, spherical=False):
+                 fixed=False, constant=True, spherical=False):
         """
         Initialize class
         """
         self.selector = selector
-        self.bw = self.selector.bw[0]
+        self.bws = self.selector.bw[0]
+        self.bws_log = selector.bw[1]
+        self.bw_gwr = self.selector.bw_gwr
         self.family = Gaussian()  # manually set since we only support Gassian MGWR for now
-        GWR.__init__(self, coords, y, X, self.bw, family=self.family,
+        GWR.__init__(self, coords, y, X, self.bw_gwr, family=self.family,
                      sigma2_v1=sigma2_v1, kernel=kernel, fixed=fixed,
-                     constant=constant, dmat=dmat, sorted_dmat=sorted_dmat,
-                     spherical=spherical)
+                     constant=constant, spherical=spherical)
         self.selector = selector
         self.sigma2_v1 = sigma2_v1
         self.points = None
@@ -1467,44 +1493,79 @@ class MGWR(GWR):
         self.exog_scale = None
         self_fit_params = None
 
-    # overwrite GWR method to handle multiple BW's
-    def _build_W(self, fixed, kernel, coords, bw, points=None):
-        Ws = []
-        for bw_i in bw:
-            if fixed:
-                try:
-                    W = fk[kernel](coords, bw_i, points, self.dmat,
-                                   self.sorted_dmat,
-                                   spherical=self.spherical)
-                except BaseException:
-                    raise  # TypeError('Unsupported kernel function  ', kernel)
-            else:
-                try:
-                    W = ak[kernel](coords, bw_i, points, self.dmat,
-                                   self.sorted_dmat,
-                                   spherical=self.spherical)
-                except BaseException:
-                    raise  # TypeError('Unsupported kernel function  ', kernel)
-            Ws.append(W)
-        return Ws
 
-    def fit(self):
-        """
-        Method that extracts information from Sel_BW (selector) object and
-        prepares GAM estimation results for MGWRResults object.
+    def chunk_pR(self, chunk_id=0):
+        n=self.n
+        k=self.k
+        n_chunks = self.n_chunks
+        chunk_size = int(np.ceil(float(n / n_chunks)))
+        ENP_j = np.zeros(self.k)
+        CCT = np.zeros((self.n,self.k))
 
-        """
-        S = self.selector.S
-        R = self.selector.R
+        chunk_index = np.arange(n)[chunk_id*chunk_size:(chunk_id+1)*chunk_size]
+        init_pR = np.zeros((n,len(chunk_index)))
+        init_pR[chunk_index,:] = np.eye(len(chunk_index))
+        pR = np.zeros((n,len(chunk_index),k)) #partial R: n by chunk_size by k
+
+        for i in range(n):
+            wi = self._build_wi(i, self.bw_gwr).reshape(-1,1)
+            xw = self.X*wi
+            pR[i,:,:] = ((np.linalg.inv(xw.T.dot(self.X)).dot(xw.T).dot(init_pR)).T) * self.X[i]
+        err = init_pR - np.sum(pR, axis=2)
+        del(init_pR)
+
+        for iter in range(self.bws_log.shape[0]):
+            for j in range(k):
+                pRj_old = pR[:,:,j] + err
+                Xj = self.X[:,j]
+
+                for chunk_Aj in range(n_chunks):
+                    chunk_index_Aj = np.arange(n)[chunk_Aj*chunk_size:(chunk_Aj+1)*chunk_size]
+                    pSi = np.empty((len(chunk_index_Aj),n))
+                    cur = 0
+                    for index in chunk_index_Aj:
+                        wi = self._build_wi(index, self.bws_log[iter,j])
+                        xw = Xj * wi
+                        pSi[cur,:] = Xj[index]/np.sum(xw*Xj) * xw
+                        cur += 1
+                    pR[chunk_index_Aj,:,j] = pSi.dot(pRj_old)
+                err = pRj_old - pR[:,:,j]
+
+        for j in range(k):
+            CCT[:,j] += ((pR[:,:,j]/self.X[:, j].reshape(-1,1))**2).sum(axis=1)
+
+        for i in range(len(chunk_index)):
+            ENP_j += pR[chunk_index[i],i,:]
+
+        #ENP_j += np.trace(pR[chunk_index,:],axis1=0, axis2=1)
+        return ENP_j, CCT
+
+
+
+
+    def fit(self, n_chunks=1, pool=None):
         params = self.selector.params
-        predy = np.dot(S, self.y)
-        CCT = np.zeros((self.n, self.k))
-        for j in range(self.k):
-            C = np.dot(np.linalg.inv(np.diag(self.X[:, j])), R[:, :, j])
-            CCT[:, j] = np.diag(np.dot(C, C.T))
-        # manually set since we onlly support Gaussian MGWR for now
+        predy = np.sum(self.X * params, axis=1).reshape(-1,1)
+
+        self.n_chunks = n_chunks
+        if pool and n_chunks > 1:
+            rslt = pool.map(self.chunk_pR,range(n_chunks))
+            reduced = list(zip(*rslt))
+            ENP_j = np.sum(np.array(reduced[0]),axis=0)
+            CCT = np.sum(np.array(reduced[1]),axis=0)
+        else:
+            ENP_j = np.zeros(self.k)
+            CCT = np.zeros((self.n,self.k))
+            for chunk in range(n_chunks):
+                ENP_j_c, CCT_c = self.chunk_pR()
+                ENP_j += ENP_j_c
+                CCT += CCT_c
+
         w = np.ones(self.n)
-        return MGWRResults(self, params, predy, S, CCT, R, w)
+        if not self.hat_matrix:
+            pR = None
+        return MGWRResults(self, params, predy, CCT, ENP_j, w, pR)
+
 
     def predict(self):
         '''
@@ -1675,17 +1736,32 @@ class MGWRResults(GWRResults):
 
     """
 
-    def __init__(self, model, params, predy, S, CCT, R, w):
+    def __init__(self, model, params, predy, CCT, ENP_j, w, R):
         """
         Initialize class
         """
-        GWRResults.__init__(self, model, params, predy, S, CCT, w)
+        self.ENP_j = ENP_j
+        GWRResults.__init__(self, model, params, predy, None, CCT, None, w)
         self.R = R
 
+        self.predy = predy
+
+    @cache_readonly
+    def tr_S(self):
+        return np.sum(self.ENP_j)
+
+    @cache_readonly
+    def W(self):
+        Ws = []
+        for bw_j in self.model.bws:
+            W = np.array([self.model._build_wi(i, bw_j) for i in range(self.n)])
+            Ws.append(W)
+        return Ws
+    '''
     @cache_readonly
     def ENP_j(self):
         return [np.trace(self.R[:, :, j]) for j in range(self.R.shape[2])]
-
+    '''
     @cache_readonly
     def adj_alpha_j(self):
         """
@@ -1771,6 +1847,35 @@ class MGWRResults(GWRResults):
         tvalues = self.tvalues.copy()
         tvalues[subset] = 0
         return tvalues
+
+    ###ZIQI
+    def pval_masks(self, method="None"):
+        k = self.k
+        n = self.n
+        ENP_j = np.array(self.ENP_j)
+        if method == "None":
+            return (self.pvalues <= 0.05).astype(int)
+        elif method == "Bonferroni":
+            return (self.pvalues <= self.adj_alpha_j[:,1]).astype(int)
+        elif method == "Sidak":
+            adj_alpha = 1- (1 - 0.05) ** (1/ENP_j)
+            return (self.pvalues <= adj_alpha).astype(int)
+        elif method == "FDR":
+            fdr_filter = np.empty((n,k))
+            for j in range(k):
+                a = self.pvalues[:,j]
+                rank = rankdata(a, method='min')
+                d = (n-ENP_j[j])/(n-1)
+                adj = rank * 0.05 /(n + d*(rank - n))
+                fdr_filter[:,j] = ((a <= adj).astype(int))
+            return fdr_filter.astype(int)
+        else:
+            raise NotImplementedError('Unknown method for multiple hypothesis testing correction')
+    ###ZIQI
+
+
+
+
 
     @cache_readonly
     def RSS(self):
@@ -1893,7 +1998,6 @@ class MGWRResults(GWRResults):
         for x in range(n_iters):
             temp_coords = np.random.permutation(self.model.coords)
             temp_sel.coords = temp_coords
-            temp_sel._build_dMat()
             temp_sel.search(**search_params)
             temp_params = temp_sel.params
             temp_sd = np.std(temp_params, axis=0)

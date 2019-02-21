@@ -7,18 +7,16 @@ __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
 import spreg.user_output as USER
 import numpy as np
-from scipy.spatial.distance import pdist,squareform
+import multiprocessing as mp
+from scipy.spatial.distance import pdist
+from scipy.spatial.distance import cdist as cdist_scipy
 from scipy.optimize import minimize_scalar
 from spglm.family import Gaussian, Poisson, Binomial
-from spglm.iwls import iwls,_compute_betas_gwr
 from .kernels import *
 from .gwr import GWR
 from .search import golden_section, equal_interval, multi_bw
 from .diagnostics import get_AICc, get_AIC, get_BIC, get_CV
-from functools import partial
 
-kernels = {1: fix_gauss, 2: adapt_gauss, 3: fix_bisquare, 4:
-        adapt_bisquare, 5: fix_exp, 6:adapt_exp}
 getDiag = {'AICc': get_AICc,'AIC':get_AIC, 'BIC': get_BIC, 'CV': get_CV}
 
 class Sel_BW(object):
@@ -101,14 +99,6 @@ class Sel_BW(object):
                     this term is often the size of the population at risk or
                     the expected size of the outcome in spatial epidemiology
                     Default is None where Ni becomes 1.0 for all locations
-    dmat          : array
-                    n*n, distance matrix between calibration locations used
-                    to compute weight matrix
-                        
-    sorted_dmat   : array
-                    n*n, sorted distance matrix between calibration locations used
-                    to compute weight matrix. Will be None for fixed bandwidths
-        
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
@@ -201,13 +191,12 @@ class Sel_BW(object):
         self._functions = []
         self.constant = constant
         self.spherical = spherical
-        self._build_dMat()
         self.search_params = {}
 
     def search(self, search_method='golden_section', criterion='AICc',
             bw_min=None, bw_max=None, interval=0.0, tol=1.0e-6, max_iter=200,
             init_multi=None, tol_multi=1.0e-5, rss_score=False,
-            max_iter_multi=200, multi_bw_min=[None], multi_bw_max=[None]):
+            max_iter_multi=200, multi_bw_min=[None], multi_bw_max=[None], pool=None):
         """
         Method to select one unique bandwidth for a gwr model or a
         bandwidth vector for a mgwr model.
@@ -266,6 +255,7 @@ class Sel_BW(object):
         self.criterion = criterion
         self.bw_min = bw_min
         self.bw_max = bw_max
+        self.pool = pool
         
         if len(multi_bw_min) == k:
             self.multi_bw_min = multi_bw_min
@@ -301,56 +291,23 @@ class Sel_BW(object):
         self.search_params['max_iter'] = max_iter
         #self._check_min_max()
 
-        if self.fixed:
-            if self.kernel == 'gaussian':
-                ktype = 1
-            elif self.kernel == 'bisquare':
-                ktype = 3
-            elif self.kernel == 'exponential':
-                ktype = 5
-            else:
-                raise TypeError('Unsupported kernel function ', self.kernel)
-        else:
-            if self.kernel == 'gaussian':
-              ktype = 2
-            elif self.kernel == 'bisquare':
-                ktype = 4
-            elif self.kernel == 'exponential':
-                ktype = 6
-            else:
-                raise TypeError('Unsupported kernel function ', self.kernel)
-
-        if ktype % 2 == 0:
-            int_score = True
-        else:
-            int_score = False
-        self.int_score = int_score #isn't this just self.fixed?
+        self.int_score = not self.fixed
 
         if self.multi:
             self._mbw()
-            self.params = self.bw[3] #params
-            self.S = self.bw[-2] #(n,n)
-            self.R = self.bw[-1] #(n,n,k)
+            self.params = self.bw[3] #params n by k
+            self.bw_gwr = self.bw[-1] #scalar
         else:
             self._bw()
-
+        
+        self.pool=None
         return self.bw[0]
     
-    def _build_dMat(self):
-        if self.fixed:
-            self.dmat = cdist(self.coords,self.coords,self.spherical)
-            self.sorted_dmat = None
-        else:
-            self.dmat = cdist(self.coords,self.coords,self.spherical)
-            self.sorted_dmat = np.sort(self.dmat)
-
-
     def _bw(self):
-
-        gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, 
-            self.X_loc, bw, family=self.family, kernel=self.kernel,
-            fixed=self.fixed, constant=self.constant,
-            dmat=self.dmat,sorted_dmat=self.sorted_dmat).fit(searching = True))
+        if self.pool:
+            gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel,fixed=self.fixed, constant=self.constant, offset=self.offset,spherical=self.spherical).parafit(self.pool))
+        else:
+            gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel,fixed=self.fixed, constant=self.constant, offset=self.offset,spherical=self.spherical).fit(searching = True))
         
         self._optimized_function = gwr_func
 
@@ -386,6 +343,7 @@ class Sel_BW(object):
         offset = self.offset
         kernel = self.kernel
         fixed = self.fixed
+        spherical = self.spherical
         coords = self.coords
         search_method = self.search_method
         criterion = self.criterion
@@ -398,13 +356,16 @@ class Sel_BW(object):
         max_iter = self.max_iter
         def gwr_func(y,X,bw):
             return GWR(coords, y,X,bw,family=family, kernel=kernel, fixed=fixed,
-                    offset=offset, constant=False).fit()
+                    offset=offset, constant=False,spherical=self.spherical, hat_matrix=False)
         def bw_func(y,X):
-            return Sel_BW(coords, y,X,X_glob=[], family=family, kernel=kernel,
-                    fixed=fixed, offset=offset, constant=False)
+            selector = Sel_BW(coords, y,X,X_glob=[], family=family, kernel=kernel,
+                    fixed=fixed, offset=offset, constant=False, spherical=self.spherical)
+            return selector
+
         def sel_func(bw_func, bw_min=None, bw_max=None):
             return bw_func.search(search_method=search_method, criterion=criterion,
-                    bw_min=bw_min, bw_max=bw_max, interval=interval, tol=tol, max_iter=max_iter)
+                    bw_min=bw_min, bw_max=bw_max, interval=interval, tol=tol, max_iter=max_iter, pool=self.pool)
+        
         self.bw = multi_bw(self.init_multi, y, X, n, k, family,
                 self.tol_multi, self.max_iter_multi, self.rss_score, gwr_func,
                 bw_func, sel_func, multi_bw_min, multi_bw_max)

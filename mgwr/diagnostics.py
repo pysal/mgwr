@@ -4,7 +4,6 @@ Diagnostics for estimated gwr models
 __author__ = "Taylor Oshan tayoshan@gmail.com"
 
 import numpy as np
-from scipy import linalg
 from spglm.family import Gaussian, Poisson, Binomial
 
 def get_AICc(gwr):
@@ -84,6 +83,7 @@ def get_CV(gwr):
     return cv
 
 def corr(cov):
-    invsd = np.diag(1/np.sqrt(np.diag(cov)))
+    sd = np.diag(np.sqrt(np.diag(cov)))
+    invsd = np.linalg.inv(sd)
     cors = np.dot(np.dot(invsd, cov), invsd)
     return cors
