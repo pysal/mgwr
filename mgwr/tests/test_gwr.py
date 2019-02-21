@@ -4,9 +4,10 @@ GWR is tested against results from GWR4
 
 import os
 from libpysal import io
+import libpysal as ps
 import numpy as np
 import unittest
-import pickle as pk
+import pandas
 from types import SimpleNamespace
 from ..gwr import GWR, MGWR, MGWRResults
 from ..sel_bw import Sel_BW
@@ -15,22 +16,22 @@ from spglm.family import Gaussian, Poisson, Binomial
 
 class TestGWRGaussian(unittest.TestCase):
     def setUp(self):
-        data_path = os.path.join(os.path.dirname(__file__),'georgia/GData_utm.csv')
+        data_path = ps.examples.get_path("GData_utm.csv")
         data = io.open(data_path)
         self.coords = np.array(list(zip(data.by_col('X'), data.by_col('Y'))))
-        self.y = np.array(data.by_col('PctBach')).reshape((-1,1))
-        rural  = np.array(data.by_col('PctRural')).reshape((-1,1))
-        pov = np.array(data.by_col('PctPov')).reshape((-1,1)) 
-        black = np.array(data.by_col('PctBlack')).reshape((-1,1))
-        fb = np.array(data.by_col('PctFB')).reshape((-1,1))
+        self.y = np.array(data.by_col('PctBach')).reshape((-1, 1))
+        rural  = np.array(data.by_col('PctRural')).reshape((-1, 1))
+        pov = np.array(data.by_col('PctPov')).reshape((-1, 1))
+        black = np.array(data.by_col('PctBlack')).reshape((-1, 1))
+        fb = np.array(data.by_col('PctFB')).reshape((-1, 1))
         self.X = np.hstack([rural, pov, black])
         self.mgwr_X = np.hstack([fb, black, rural])
-        self.BS_F = io.open(os.path.join(os.path.dirname(__file__),'georgia/georgia_BS_F_listwise.csv'))
-        self.BS_NN = io.open(os.path.join(os.path.dirname(__file__),'georgia/georgia_BS_NN_listwise.csv'))
-        self.GS_F = io.open(os.path.join(os.path.dirname(__file__),'georgia/georgia_GS_F_listwise.csv'))
-        self.GS_NN = io.open(os.path.join(os.path.dirname(__file__),'georgia/georgia_GS_NN_listwise.csv'))
-        MGWR_path = os.path.join(os.path.dirname(__file__),'mgwr_example.p')
-        self.MGWR = pk.load(open(MGWR_path, 'rb'))
+        self.BS_F = io.open(ps.examples.get_path('georgia_BS_F_listwise.csv'))
+        self.BS_NN = io.open(ps.examples.get_path('georgia_BS_NN_listwise.csv'))
+        self.GS_F = io.open(ps.examples.get_path('georgia_GS_F_listwise.csv'))
+        self.GS_NN = io.open(ps.examples.get_path('georgia_GS_NN_listwise.csv'))
+        MGWR_path = os.path.join(os.path.dirname(__file__),'georgia_mgwr_results.csv')
+        self.MGWR = pandas.read_csv(MGWR_path)
 
     def test_BS_F(self):
         est_Int = self.BS_F.by_col(' est_Intercept')
@@ -47,10 +48,10 @@ class TestGWRGaussian(unittest.TestCase):
         t_black = self.BS_F.by_col(' t_PctBlack')
         yhat = self.BS_F.by_col(' yhat')
         res = np.array(self.BS_F.by_col(' residual'))
-        std_res = np.array(self.BS_F.by_col(' std_residual')).reshape((-1,1))
-        localR2 = np.array(self.BS_F.by_col(' localR2')).reshape((-1,1))
-        inf = np.array(self.BS_F.by_col(' influence')).reshape((-1,1))
-        cooksD = np.array(self.BS_F.by_col(' CooksD')).reshape((-1,1))
+        std_res = np.array(self.BS_F.by_col(' std_residual')).reshape((-1, 1))
+        localR2 = np.array(self.BS_F.by_col(' localR2')).reshape((-1, 1))
+        inf = np.array(self.BS_F.by_col(' influence')).reshape((-1, 1))
+        cooksD = np.array(self.BS_F.by_col(' CooksD')).reshape((-1, 1))
 
         model = GWR(self.coords, self.y, self.X, bw=209267.689, fixed=True,
                 sigma2_v1=False)
