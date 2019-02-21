@@ -3,8 +3,8 @@ GWR is tested against results from GWR4
 """
 
 import os
-from libpysal import io
 import libpysal as ps
+from libpysal import io
 import numpy as np
 import unittest
 import pandas
@@ -20,7 +20,7 @@ class TestGWRGaussian(unittest.TestCase):
         data = io.open(data_path)
         self.coords = np.array(list(zip(data.by_col('X'), data.by_col('Y'))))
         self.y = np.array(data.by_col('PctBach')).reshape((-1, 1))
-        rural  = np.array(data.by_col('PctRural')).reshape((-1, 1))
+        rural = np.array(data.by_col('PctRural')).reshape((-1, 1))
         pov = np.array(data.by_col('PctPov')).reshape((-1, 1))
         black = np.array(data.by_col('PctBlack')).reshape((-1, 1))
         fb = np.array(data.by_col('PctFB')).reshape((-1, 1))
@@ -30,7 +30,8 @@ class TestGWRGaussian(unittest.TestCase):
         self.BS_NN = io.open(ps.examples.get_path('georgia_BS_NN_listwise.csv'))
         self.GS_F = io.open(ps.examples.get_path('georgia_GS_F_listwise.csv'))
         self.GS_NN = io.open(ps.examples.get_path('georgia_GS_NN_listwise.csv'))
-        MGWR_path = os.path.join(os.path.dirname(__file__),'georgia_mgwr_results.csv')
+        MGWR_path = os.path.join(os.path.dirname(__file__),
+                                 'georgia_mgwr_results.csv')
         self.MGWR = pandas.read_csv(MGWR_path)
 
     def test_BS_F(self):
@@ -54,9 +55,9 @@ class TestGWRGaussian(unittest.TestCase):
         cooksD = np.array(self.BS_F.by_col(' CooksD')).reshape((-1, 1))
 
         model = GWR(self.coords, self.y, self.X, bw=209267.689, fixed=True,
-                sigma2_v1=False)
+                    sigma2_v1=False)
+                    
         rslt = model.fit()
-        
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
         BIC = get_BIC(rslt)
@@ -65,7 +66,7 @@ class TestGWRGaussian(unittest.TestCase):
         self.assertAlmostEquals(np.floor(AICc), 894.0)
         self.assertAlmostEquals(np.floor(AIC), 890.0)
         self.assertAlmostEquals(np.floor(BIC), 944.0)
-        self.assertAlmostEquals(np.round(CV,2), 18.25)
+        self.assertAlmostEquals(np.round(CV, 2), 18.25)
         np.testing.assert_allclose(est_Int, rslt.params[:, 0], rtol=1e-04)
         np.testing.assert_allclose(se_Int, rslt.bse[:, 0], rtol=1e-04)
         np.testing.assert_allclose(t_Int, rslt.tvalues[:, 0], rtol=1e-04)
@@ -112,10 +113,10 @@ class TestGWRGaussian(unittest.TestCase):
         cn1 = np.array(io.open(local_cn))
         local_vdp = os.path.join(os.path.dirname(__file__), 'local_vdp.csv')
         vdp1 = np.array(io.open(local_vdp), dtype=np.float64)
-        spat_var_p_vals = [0. , 0.0 , 0.5, 0.2]
+        spat_var_p_vals = [0., 0.0, 0.5, 0.2]
 
         model = GWR(self.coords, self.y, self.X, bw=90.000, fixed=False,
-                sigma2_v1=False)
+                    sigma2_v1=False)
         rslt = model.fit()
         
 
@@ -126,14 +127,12 @@ class TestGWRGaussian(unittest.TestCase):
         AIC = get_AIC(rslt)
         BIC = get_BIC(rslt)
         CV = get_CV(rslt)
-        
         corr2, vif2, cn2, vdp2 = rslt.local_collinearity()
-
         R2 = rslt.R2
 
         
-        np.testing.assert_allclose(adj_alpha, np.array([ 0.02034978,  0.01017489,
-            0.0002035 ]), rtol=1e-04)
+        np.testing.assert_allclose(adj_alpha, np.array([0.02034978, 0.01017489,
+                                                        0.0002035]), rtol=1e-04)
         self.assertAlmostEquals(critical_t, 2.6011011542649394)
         self.assertAlmostEquals(np.around(R2, 4), 0.5924)
         self.assertAlmostEquals(np.floor(AICc), 896.0)
@@ -194,9 +193,9 @@ class TestGWRGaussian(unittest.TestCase):
         cooksD = np.array(self.GS_F.by_col(' CooksD')).reshape((-1, 1))
         
         model = GWR(self.coords, self.y, self.X, bw=87308.298,
-                kernel='gaussian', fixed=True, sigma2_v1=False)
+                    kernel='gaussian', fixed=True, sigma2_v1=False)
+
         rslt = model.fit()
-        
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
         BIC = get_BIC(rslt)
@@ -240,15 +239,15 @@ class TestGWRGaussian(unittest.TestCase):
         t_black = self.GS_NN.by_col(' t_PctBlack')
         yhat = self.GS_NN.by_col(' yhat')
         res = np.array(self.GS_NN.by_col(' residual'))
-        std_res = np.array(self.GS_NN.by_col(' std_residual')).reshape((-1,1))
-        localR2 = np.array(self.GS_NN.by_col(' localR2')).reshape((-1,1))
-        inf = np.array(self.GS_NN.by_col(' influence')).reshape((-1,1))
-        cooksD = np.array(self.GS_NN.by_col(' CooksD')).reshape((-1,1))
+        std_res = np.array(self.GS_NN.by_col(' std_residual')).reshape((-1, 1))
+        localR2 = np.array(self.GS_NN.by_col(' localR2')).reshape((-1, 1))
+        inf = np.array(self.GS_NN.by_col(' influence')).reshape((-1, 1))
+        cooksD = np.array(self.GS_NN.by_col(' CooksD')).reshape((-1, 1))
 
         model = GWR(self.coords, self.y, self.X, bw=49.000,
-                kernel='gaussian', fixed=False, sigma2_v1=False)
+                    kernel='gaussian', fixed=False, sigma2_v1=False)
+
         rslt = model.fit()
-        
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
         BIC = get_BIC(rslt)
@@ -280,12 +279,12 @@ class TestGWRGaussian(unittest.TestCase):
     def test_MGWR(self):
         std_y = (self.y - self.y.mean()) / self.y.std()
         std_X = (self.mgwr_X - self.mgwr_X.mean(axis=0)) / self.mgwr_X.std(axis=0)
-        selector = Sel_BW(self.coords, std_y, std_X, multi=True,
-                constant=True)
+        selector = Sel_BW(self.coords, std_y, std_X, multi=True,constant=True)
         selector.search(multi_bw_min=[2], multi_bw_max=[159])
-        model = MGWR(self.coords, std_y, std_X, selector=selector,
-                constant=True)
+        model = MGWR(self.coords, std_y, std_X, selector=selector,constant=True)
         rslt = model.fit()
+        
+        varnames = ['X0', 'X1', 'X2', 'X3']
 
         np.testing.assert_allclose(rslt.predy, self.MGWR.predy, atol=1e-07)
         np.testing.assert_allclose(rslt.params, self.MGWR.params, atol=1e-07)
@@ -327,7 +326,7 @@ class TestGWRGaussian(unittest.TestCase):
                            18.034833,   -0.077047,   -0.260556,   0.084319,
                            28.452802,   -0.163408,   -0.14097,    -0.063076,
                            22.353095,   -0.103046,   -0.226654,   0.002992,
-                           18.220508,   -0.074034,   -0.309812,   0.108636]).reshape((10,4))
+                           18.220508,   -0.074034,   -0.309812,   0.108636]).reshape((10, 4))
         np.testing.assert_allclose(params, results.params, rtol=1e-03)
 
         bse = np.array([2.080166,    0.021462,    0.102954,    0.049627,
@@ -339,7 +338,7 @@ class TestGWRGaussian(unittest.TestCase):
                         2.5835,      0.021481,    0.113158,    0.047243,
                         1.709483,    0.019752,    0.116944,    0.043636,
                         1.958233,    0.020947,    0.09974,     0.049821,
-                        2.276849,    0.020122,    0.107867,    0.047842]).reshape((10,4))
+                        2.276849,    0.020122,    0.107867,    0.047842]).reshape((10, 4))
         np.testing.assert_allclose(bse, results.bse, rtol=1e-03)
 
         tvalues = np.array([10.947193,   -4.777659,   -2.089223,   -0.283103,
@@ -351,7 +350,7 @@ class TestGWRGaussian(unittest.TestCase):
                             6.980774,    -3.586757,   -2.302575,   1.784818,
                             16.644095,   -8.273001,   -1.205451,   -1.445501,
                             11.414933,   -4.919384,   -2.272458,   0.060064,
-                            8.00251, -3.679274,   -2.872176,   2.270738]).reshape((10,4))
+                            8.00251, -3.679274,   -2.872176,   2.270738]).reshape((10, 4))
         np.testing.assert_allclose(tvalues, results.tvalues, rtol=1e-03)
 
         localR2 = np.array([[0.53068693],
@@ -359,7 +358,7 @@ class TestGWRGaussian(unittest.TestCase):
                             [0.59700925],
                             [0.45769954],
                             [0.54634509],
-                            [0.5494828 ],
+                            [0.5494828],
                             [0.55159604],
                             [0.55634237],
                             [0.53903842],
@@ -371,7 +370,7 @@ class TestGWRGaussian(unittest.TestCase):
                                 [8.92473026],
                                 [5.47350219],
                                 [8.61756585],
-                                [12.8141851 ],
+                                [12.8141851],
                                 [5.55619405],
                                 [12.63004172],
                                 [8.70638418],
@@ -405,14 +404,13 @@ class TestGWRGaussian(unittest.TestCase):
         cooksD = np.array(self.BS_NN_longlat.by_col(' CooksD')).reshape((-1, 1))
         
         model = GWR(coords_longlat, self.y, self.X, bw=90.000, fixed=False,
-                spherical=True, sigma2_v1=False)
+                    spherical=True, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
         BIC = get_BIC(rslt)
         CV = get_CV(rslt)
-        
         R2 = rslt.R2
         
         self.assertAlmostEquals(np.around(R2, 4), 0.5921)
@@ -478,7 +476,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.BS_F.by_col(' localpdev')).reshape((-1,1))
         
         model = GWR(self.coords, self.y, self.X, bw=26029.625, family=Poisson(), 
-                kernel='bisquare', fixed=True, sigma2_v1=False)
+                    kernel='bisquare', fixed=True, sigma2_v1=False)
         rslt = model.fit()
 
         AICc = get_AICc(rslt)
@@ -524,10 +522,10 @@ class TestGWRPoisson(unittest.TestCase):
         se_UNEMP = self.BS_NN.by_col(' se_UNEMP')
         t_UNEMP = self.BS_NN.by_col(' t_UNEMP')
         yhat = self.BS_NN.by_col(' yhat')
-        pdev = np.array(self.BS_NN.by_col(' localpdev')).reshape((-1,1))
+        pdev = np.array(self.BS_NN.by_col(' localpdev')).reshape((-1, 1))
 
         model = GWR(self.coords, self.y, self.X, bw=50, family=Poisson(), 
-                kernel='bisquare', fixed=False, sigma2_v1=False)
+                    kernel='bisquare', fixed=False, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -572,10 +570,10 @@ class TestGWRPoisson(unittest.TestCase):
         se_UNEMP = self.BS_NN_OFF.by_col(' se_UNEMP')
         t_UNEMP = self.BS_NN_OFF.by_col(' t_UNEMP')
         yhat = self.BS_NN_OFF.by_col(' yhat')
-        pdev = np.array(self.BS_NN_OFF.by_col(' localpdev')).reshape((-1,1))
+        pdev = np.array(self.BS_NN_OFF.by_col(' localpdev')).reshape((-1, 1))
 
         model = GWR(self.coords, self.y, self.X, bw=100, offset=self.off, family=Poisson(), 
-                kernel='bisquare', fixed=False, sigma2_v1=False)
+                    kernel='bisquare', fixed=False, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -585,32 +583,21 @@ class TestGWRPoisson(unittest.TestCase):
         self.assertAlmostEquals(np.floor(AICc), 367.0)
         self.assertAlmostEquals(np.floor(AIC), 361.0)
         self.assertAlmostEquals(np.floor(BIC), 451.0)
-        np.testing.assert_allclose(est_Int, rslt.params[:, 0], rtol=1e-02,
-                atol=1e-02)
+        np.testing.assert_allclose(est_Int, rslt.params[:, 0], rtol=1e-02,atol=1e-02)
         np.testing.assert_allclose(se_Int, rslt.bse[:, 0], rtol=1e-02, atol=1e-02)
-        np.testing.assert_allclose(t_Int, rslt.tvalues[:, 0], rtol=1e-01,
-                atol=1e-02)
-        np.testing.assert_allclose(est_OCC, rslt.params[:, 1], rtol=1e-03,
-                atol=1e-02)
+        np.testing.assert_allclose(t_Int, rslt.tvalues[:, 0], rtol=1e-01,atol=1e-02)
+        np.testing.assert_allclose(est_OCC, rslt.params[:, 1], rtol=1e-03,atol=1e-02)
         np.testing.assert_allclose(se_OCC, rslt.bse[:, 1], rtol=1e-02, atol=1e-02)
-        np.testing.assert_allclose(t_OCC, rslt.tvalues[:, 1], rtol=1e-01,
-                atol=1e-02)
-        np.testing.assert_allclose(est_OWN, rslt.params[:, 2], rtol=1e-04,
-                atol=1e-02)
+        np.testing.assert_allclose(t_OCC, rslt.tvalues[:, 1], rtol=1e-01,atol=1e-02)
+        np.testing.assert_allclose(est_OWN, rslt.params[:, 2], rtol=1e-04,atol=1e-02)
         np.testing.assert_allclose(se_OWN, rslt.bse[:, 2], rtol=1e-02, atol=1e-02)
-        np.testing.assert_allclose(t_OWN, rslt.tvalues[:, 2], rtol=1e-01,
-                atol=1e-02)
-        np.testing.assert_allclose(est_POP, rslt.params[:, 3], rtol=1e-03,
-                atol=1e-02)
+        np.testing.assert_allclose(t_OWN, rslt.tvalues[:, 2], rtol=1e-01,atol=1e-02)
+        np.testing.assert_allclose(est_POP, rslt.params[:, 3], rtol=1e-03,atol=1e-02)
         np.testing.assert_allclose(se_POP, rslt.bse[:, 3], rtol=1e-02, atol=1e-02)
-        np.testing.assert_allclose(t_POP, rslt.tvalues[:, 3], rtol=1e-01,
-                atol=1e-02)
-        np.testing.assert_allclose(est_UNEMP, rslt.params[:, 4], rtol=1e-04,
-                atol=1e-02)
-        np.testing.assert_allclose(se_UNEMP, rslt.bse[:, 4], rtol=1e-02,
-                atol=1e-02)
-        np.testing.assert_allclose(t_UNEMP, rslt.tvalues[:, 4], rtol=1e-01,
-                atol=1e-02)
+        np.testing.assert_allclose(t_POP, rslt.tvalues[:, 3], rtol=1e-01,atol=1e-02)
+        np.testing.assert_allclose(est_UNEMP, rslt.params[:, 4], rtol=1e-04,atol=1e-02)
+        np.testing.assert_allclose(se_UNEMP, rslt.bse[:, 4], rtol=1e-02,atol=1e-02)
+        np.testing.assert_allclose(t_UNEMP, rslt.tvalues[:, 4], rtol=1e-01,atol=1e-02)
         np.testing.assert_allclose(yhat, rslt.mu, rtol=1e-03, atol=1e-02)
         np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-04, atol=1e-02)
 
@@ -634,7 +621,7 @@ class TestGWRPoisson(unittest.TestCase):
         pdev = np.array(self.GS_F.by_col(' localpdev')).reshape((-1,1))
         
         model = GWR(self.coords, self.y, self.X, bw=8764.474, family=Poisson(), 
-                kernel='gaussian', fixed=True, sigma2_v1=False)
+                    kernel='gaussian', fixed=True, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -679,7 +666,7 @@ class TestGWRPoisson(unittest.TestCase):
         se_UNEMP = self.GS_NN.by_col(' se_UNEMP')
         t_UNEMP = self.GS_NN.by_col(' t_UNEMP')
         yhat = self.GS_NN.by_col(' yhat')
-        pdev = np.array(self.GS_NN.by_col(' localpdev')).reshape((-1,1))
+        pdev = np.array(self.GS_NN.by_col(' localpdev')).reshape((-1, 1))
         
         model = GWR(self.coords, self.y, self.X, bw=50, family=Poisson(), 
                 kernel='gaussian', fixed=False, sigma2_v1=False)
@@ -715,13 +702,13 @@ class TestGWRBinomial(unittest.TestCase):
         data_path = os.path.join(os.path.dirname(__file__),'clearwater/landslides.csv')
         data = io.open(data_path)
         self.coords = np.array(list(zip(data.by_col('X'), data.by_col('Y'))))
-        self.y = np.array(data.by_col('Landslid')).reshape((-1,1))
-        ELEV  = np.array(data.by_col('Elev')).reshape((-1,1))
-        SLOPE = np.array(data.by_col('Slope')).reshape((-1,1)) 
-        SIN = np.array(data.by_col('SinAspct')).reshape((-1,1))
-        COS = np.array(data.by_col('CosAspct')).reshape((-1,1))
-        SOUTH = np.array(data.by_col('AbsSouth')).reshape((-1,1))
-        DIST = np.array(data.by_col('DistStrm')).reshape((-1,1))
+        self.y = np.array(data.by_col('Landslid')).reshape((-1, 1))
+        ELEV  = np.array(data.by_col('Elev')).reshape((-1, 1))
+        SLOPE = np.array(data.by_col('Slope')).reshape((-1, 1))
+        SIN = np.array(data.by_col('SinAspct')).reshape((-1, 1))
+        COS = np.array(data.by_col('CosAspct')).reshape((-1, 1))
+        SOUTH = np.array(data.by_col('AbsSouth')).reshape((-1, 1))
+        DIST = np.array(data.by_col('DistStrm')).reshape((-1, 1))
         self.X = np.hstack([ELEV, SLOPE, SIN, COS, SOUTH, DIST])
         self.BS_F = io.open(os.path.join(os.path.dirname(__file__), 'clearwater/clearwater_BS_F_listwise.csv'))
         self.BS_NN = io.open(os.path.join(os.path.dirname(__file__), 'clearwater/clearwater_BS_NN_listwise.csv'))
@@ -749,12 +736,12 @@ class TestGWRBinomial(unittest.TestCase):
         t_south = self.BS_F.by_col(' t_AbsSouth')
         est_strm = self.BS_F.by_col(' est_DistStrm')
         se_strm = self.BS_F.by_col(' se_DistStrm')
-        t_strm = self.BS_F.by_col(' t_DistStrm') 
+        t_strm = self.BS_F.by_col(' t_DistStrm')
         yhat = self.BS_F.by_col(' yhat')
-        pdev = np.array(self.BS_F.by_col(' localpdev')).reshape((-1,1))
+        pdev = np.array(self.BS_F.by_col(' localpdev')).reshape((-1, 1))
 
         model = GWR(self.coords, self.y, self.X, bw=19642.170, family=Binomial(), 
-                kernel='bisquare', fixed=True, sigma2_v1=False)
+                    kernel='bisquare', fixed=True, sigma2_v1=False)
         rslt = model.fit()
 
         AICc = get_AICc(rslt)
@@ -786,10 +773,10 @@ class TestGWRBinomial(unittest.TestCase):
         np.testing.assert_allclose(se_strm, rslt.bse[:, 6], rtol=1e01)
         np.testing.assert_allclose(t_strm, rslt.tvalues[:, 6], rtol=1e02)
         np.testing.assert_allclose(yhat, rslt.mu, rtol=1e-01)
-        #This test fails - likely due to compound rounding errors
-        #Has been tested using statsmodels.family calculations and
-        #code from Jing's python version, which both yield the same
-        #np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
+        # This test fails - likely due to compound rounding errors
+        # Has been tested using statsmodels.family calculations and
+        # code from Jing's python version, which both yield the same
+        # np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
     
     def test_BS_NN(self):
         est_Int = self.BS_NN.by_col(' est_Intercept')
@@ -817,7 +804,7 @@ class TestGWRBinomial(unittest.TestCase):
         pdev = self.BS_NN.by_col(' localpdev')
         
         model = GWR(self.coords, self.y, self.X, bw=158, family=Binomial(), 
-                kernel='bisquare', fixed=False, sigma2_v1=False)
+                    kernel='bisquare', fixed=False, sigma2_v1=False)
         rslt = model.fit()
 
         AICc = get_AICc(rslt)
@@ -849,10 +836,10 @@ class TestGWRBinomial(unittest.TestCase):
         np.testing.assert_allclose(se_strm, rslt.bse[:, 6], rtol=1e01)
         np.testing.assert_allclose(t_strm, rslt.tvalues[:, 6], rtol=1e03)
         np.testing.assert_allclose(yhat, rslt.mu, rtol=1e-01)
-        #This test fails - likely due to compound rounding errors
-        #Has been tested using statsmodels.family calculations and
-        #code from Jing's python version, which both yield the same
-        #np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
+        # This test fails - likely due to compound rounding errors
+        # Has been tested using statsmodels.family calculations and
+        # code from Jing's python version, which both yield the same
+        # np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
 
     def test_GS_F(self):
         est_Int = self.GS_F.by_col(' est_Intercept')
@@ -880,7 +867,7 @@ class TestGWRBinomial(unittest.TestCase):
         pdev = self.GS_F.by_col(' localpdev')
 
         model = GWR(self.coords, self.y, self.X, bw=8929.061, family=Binomial(), 
-                kernel='gaussian', fixed=True, sigma2_v1=False)
+                    kernel='gaussian', fixed=True, sigma2_v1=False)
         rslt = model.fit()
         
         AICc = get_AICc(rslt)
@@ -912,10 +899,10 @@ class TestGWRBinomial(unittest.TestCase):
         np.testing.assert_allclose(se_strm, rslt.bse[:, 6], rtol=1e01)
         np.testing.assert_allclose(t_strm, rslt.tvalues[:, 6], rtol=1e02)
         np.testing.assert_allclose(yhat, rslt.mu, rtol=1e-01)
-        #This test fails - likely due to compound rounding errors
-        #Has been tested using statsmodels.family calculations and
-        #code from Jing's python version, which both yield the same
-        #np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
+        # This test fails - likely due to compound rounding errors
+        # Has been tested using statsmodels.family calculations and
+        # code from Jing's python version, which both yield the same
+        # np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
 
     def test_GS_NN(self):
         est_Int = self.GS_NN.by_col(' est_Intercept')
@@ -975,10 +962,10 @@ class TestGWRBinomial(unittest.TestCase):
         np.testing.assert_allclose(se_strm, rslt.bse[:, 6], rtol=1e01)
         np.testing.assert_allclose(t_strm, rslt.tvalues[:, 6], rtol=1e02)
         np.testing.assert_allclose(yhat, rslt.mu, rtol=1e-00)
-        #This test fails - likely due to compound rounding errors
-        #Has been tested using statsmodels.family calculations and
-        #code from Jing's python version, which both yield the same
-        #np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
+        # This test fails - likely due to compound rounding errors
+        # Has been tested using statsmodels.family calculations and
+        # code from Jing's python version, which both yield the same
+        # np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
 
 if __name__ == '__main__':
 	unittest.main()
