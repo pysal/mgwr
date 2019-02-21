@@ -5,7 +5,7 @@ __author__ = "Taylor Oshan Tayoshan@gmail.com"
 import copy
 import numpy as np
 import numpy.linalg as la
-from scipy.stats import t,rankdata
+from scipy.stats import t
 from scipy.special import factorial
 from itertools import combinations as combo
 from spglm.family import Gaussian, Binomial, Poisson
@@ -77,10 +77,9 @@ class GWR(GLM):
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
-
     hat_matrix    : boolean
                     True to store full n by n hat matrix,
-                    False to not store full hat matrix to optimize memory footprint (defalut).
+                    False to not store full hat matrix to minimize memory footprint (defalut).
 
     Attributes
     ----------
@@ -134,10 +133,10 @@ class GWR(GLM):
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
-
+                    
     hat_matrix    : boolean
                     True to store full n by n hat matrix,
-                    False to not store full hat matrix to optimize memory footprint (defalut).
+                    False to not store full hat matrix to minimize memory footprint (defalut).
 
     n             : integer
                     number of observations
@@ -257,9 +256,8 @@ class GWR(GLM):
         params = np.array(reduced[3]).reshape(-1,1)
         return GWRResultsLite(self, resid, influ, params)
 
-
     def fit(self, ini_params=None, tol=1.0e-5, max_iter=20,
-            solve='iwls',searching = False, para=False):
+            solve='iwls',searching = False):
         """
         Method that fits a model with a particular estimation routine.
 
@@ -300,7 +298,7 @@ class GWR(GLM):
         self.fit_params['max_iter'] = max_iter
         self.fit_params['solve'] = solve
         if solve.lower() == 'iwls':
-
+            
             if self.points is None:
                 m = self.y.shape[0]
             else:
@@ -331,7 +329,6 @@ class GWR(GLM):
                         resid[i] = self.y[i] - predy
                         params[i, :] = rslt[0].T
                 return GWRResultsLite(self, resid, influ, params)
-
 
             else:
                 params = np.zeros((m, self.k))
@@ -503,7 +500,7 @@ class GWRResults(GLMResults):
                           calibration point
 
     S                   : array
-                          n*n, hat matrix if hat_matrix is set True in GWR
+                          n*n, hat matrix
 
     CCT                 : array
                           n*k, scaled variance-covariance matrix
@@ -602,7 +599,6 @@ class GWRResults(GLMResults):
 
     def __init__(self, model, params, predy, S, CCT, influ, tr_STS=None, w=None):
         GLMResults.__init__(self, model, params, predy, w)
-        #self.W = model.W
         self.offset = model.offset
         if w is not None:
             self.w = w
@@ -676,7 +672,6 @@ class GWRResults(GLMResults):
             return self.tr_S
         else:
             return 2 * self.tr_S - self.tr_STS
-
 
     @cache_readonly
     def y_bar(self):
@@ -943,40 +938,6 @@ class GWRResults(GLMResults):
         tvalues[subset] = 0
         return tvalues
 
-    ###ZIQI
-    @cache_readonly
-    def pvalues(self):
-        n = self.n
-        return t.sf(np.abs(self.tvalues), n - 1) * 2
-
-    def pval_masks(self, method="None"):
-        k = self.k
-        n = self.n
-        ENP = self.ENP
-        if method == "None":
-            return (self.pvalues <= 0.05).astype(int)
-        elif method == "Bonferroni":
-            return (self.pvalues <= self.adj_alpha[1]).astype(int)
-        elif method == "Sidak":
-            adj_alpha = 1- (1 - 0.05) ** (1/(ENP/k))
-            return (self.pvalues <= adj_alpha).astype(int)
-        elif method == "FDR":
-            fdr_filter = np.empty((n,k))
-            for j in range(k):
-                a = self.pvalues[:,j]
-                rank = rankdata(a, method='min')
-                d = (n*k-ENP)/(n*k-1)
-                adj = rank * 0.05 /(n + d*(rank - n))
-                fdr_filter[:,j] = ((a <= adj).astype(int))
-            return fdr_filter.astype(int)
-        else:
-            raise NotImplementedError('Unknown method for multiple hypothesis testing correction')
-
-    ###ZIQI
-
-
-
-
     @cache_readonly
     def df_model(self):
         return self.n - self.tr_S
@@ -1008,32 +969,12 @@ class GWRResults(GLMResults):
     @cache_readonly
     def llnull(self):
         return None
-
-    @cache_readonly
-    def pseudoR2(self):
-        return None
-
-    @cache_readonly
-    def adj_pseudoR2(self):
-        return None
-
-    @cache_readonly
-    def conf_int(self):
-        return None
-
-    @cache_readonly
-    def use_t(self):
-        return None
-
-    '''
-    @cache_readonly
-    def null(self):
-        return None
-
+    
+    
     @cache_readonly
     def null_deviance(self):
-        return None
-    '''
+        return self.family.deviance(self.y, self.null)
+    
     @cache_readonly
     def global_deviance(self):
         deviance = np.sum(self.family.resid_dev(self.y, self.mu)**2)
@@ -1074,11 +1015,6 @@ class GWRResults(GLMResults):
             return self.adj_D2
         else:
             raise NotImplementedError('adjusted R2 only for Gaussian')
-    
-
-    @cache_readonly
-    def null_deviance(self):
-        return self.family.deviance(self.y, self.null)
 
     @cache_readonly
     def aic(self):
@@ -1092,6 +1028,25 @@ class GWRResults(GLMResults):
     def bic(self):
         return get_BIC(self)
 
+    @cache_readonly
+    def pseudoR2(self):
+        return None
+
+    @cache_readonly
+    def adj_pseudoR2(self):
+        return None
+
+    @cache_readonly
+    def pvalues(self):
+        return None
+
+    @cache_readonly
+    def conf_int(self):
+        return None
+
+    @cache_readonly
+    def use_t(self):
+        return None
 
     def local_collinearity(self):
         """
@@ -1110,8 +1065,9 @@ class GWRResults(GLMResults):
 
         """
         x = self.X
+        w = self.W
         nvar = x.shape[1]
-        nrow = self.n
+        nrow = len(w)
         if self.model.constant:
             ncor = (((nvar - 1)**2 + (nvar - 1)) / 2) - (nvar - 1)
             jk = list(combo(range(1, nvar), 2))
@@ -1216,6 +1172,7 @@ class GWRResults(GLMResults):
 
         init_sd = np.std(self.params, axis=0)
         SDs = []
+
         for x in range(n_iters):
             temp_coords = np.random.permutation(self.model.coords)
             temp_sel.coords = temp_coords
@@ -1312,6 +1269,7 @@ class GWRResultsLite(object):
     def resid_ss(self):
         u = self.resid_response.flatten()
         return np.dot(u, u.T)
+
 
 
 class MGWR(GWR):
@@ -1563,9 +1521,8 @@ class MGWR(GWR):
 
         w = np.ones(self.n)
         if not self.hat_matrix:
-            pR = None
-        return MGWRResults(self, params, predy, CCT, ENP_j, w, pR)
-
+            R = None
+        return MGWRResults(self, params, predy, CCT, ENP_j, R, w)
 
     def predict(self):
         '''
@@ -1743,13 +1700,12 @@ class MGWRResults(GWRResults):
         self.ENP_j = ENP_j
         GWRResults.__init__(self, model, params, predy, None, CCT, None, w)
         self.R = R
-
         self.predy = predy
 
     @cache_readonly
     def tr_S(self):
         return np.sum(self.ENP_j)
-
+    
     @cache_readonly
     def W(self):
         Ws = []
@@ -1757,11 +1713,7 @@ class MGWRResults(GWRResults):
             W = np.array([self.model._build_wi(i, bw_j) for i in range(self.n)])
             Ws.append(W)
         return Ws
-    '''
-    @cache_readonly
-    def ENP_j(self):
-        return [np.trace(self.R[:, :, j]) for j in range(self.R.shape[2])]
-    '''
+    
     @cache_readonly
     def adj_alpha_j(self):
         """
@@ -1847,35 +1799,6 @@ class MGWRResults(GWRResults):
         tvalues = self.tvalues.copy()
         tvalues[subset] = 0
         return tvalues
-
-    ###ZIQI
-    def pval_masks(self, method="None"):
-        k = self.k
-        n = self.n
-        ENP_j = np.array(self.ENP_j)
-        if method == "None":
-            return (self.pvalues <= 0.05).astype(int)
-        elif method == "Bonferroni":
-            return (self.pvalues <= self.adj_alpha_j[:,1]).astype(int)
-        elif method == "Sidak":
-            adj_alpha = 1- (1 - 0.05) ** (1/ENP_j)
-            return (self.pvalues <= adj_alpha).astype(int)
-        elif method == "FDR":
-            fdr_filter = np.empty((n,k))
-            for j in range(k):
-                a = self.pvalues[:,j]
-                rank = rankdata(a, method='min')
-                d = (n-ENP_j[j])/(n-1)
-                adj = rank * 0.05 /(n + d*(rank - n))
-                fdr_filter[:,j] = ((a <= adj).astype(int))
-            return fdr_filter.astype(int)
-        else:
-            raise NotImplementedError('Unknown method for multiple hypothesis testing correction')
-    ###ZIQI
-
-
-
-
 
     @cache_readonly
     def RSS(self):

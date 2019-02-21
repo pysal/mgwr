@@ -84,6 +84,6 @@ def get_CV(gwr):
     return cv
 
 def corr(cov):
-    invsd = invsd = np.diag(1/np.sqrt(np.diag(cov)))
+    invsd = np.diag(1/np.sqrt(np.diag(cov)))
     cors = np.dot(np.dot(invsd, cov), invsd)
     return cors
