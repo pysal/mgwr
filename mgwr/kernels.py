@@ -3,12 +3,13 @@
 __author__ = "Taylor Oshan tayoshan@gmail.com"
 
 import numpy as np
-import numba as nb
 #adaptive specifications should be parameterized with nn-1 to match original gwr
 #implementation. That is, pysal counts self neighbors with knn automatically.
 
-@nb.autojit()
-def cdist(coords_i,coords,spherical):
+def local_cdist(coords_i,coords,spherical):
+    """
+    Compute Haversine (spherical=True) or Euclidean (spherical=False) distance for a local kernel.
+    """
     if spherical:
         dLat = np.radians(coords[:,1] - coords_i[1])
         dLon = np.radians(coords[:,0] - coords_i[0])
@@ -31,9 +32,9 @@ class Kernel(object):
                  points=None, spherical=False):
         
         if points is None:
-            self.dvec = cdist(data[i], data, spherical).reshape(-1)
+            self.dvec = local_cdist(data[i], data, spherical).reshape(-1)
         else:
-            self.dvec = cdist(points[i], data, spherical).reshape(-1)
+            self.dvec = local_cdist(points[i], data, spherical).reshape(-1)
 
         self.function = function.lower()
 

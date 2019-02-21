@@ -9,10 +9,9 @@ import spreg.user_output as USER
 import numpy as np
 import multiprocessing as mp
 from scipy.spatial.distance import pdist
-from scipy.spatial.distance import cdist as cdist_scipy
 from scipy.optimize import minimize_scalar
 from spglm.family import Gaussian, Poisson, Binomial
-from .kernels import *
+from .kernels import Kernel
 from .gwr import GWR
 from .search import golden_section, equal_interval, multi_bw
 from .diagnostics import get_AICc, get_AIC, get_BIC, get_CV

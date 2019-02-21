@@ -798,7 +798,7 @@ class TestGWRBinomial(unittest.TestCase):
         # This test fails - likely due to compound rounding errors
         # Has been tested using statsmodels.family calculations and
         # code from Jing's python version, which both yield the same
-        # np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
+        #np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
     
     def test_BS_NN(self):
         est_Int = self.BS_NN.by_col(' est_Intercept')
@@ -861,7 +861,7 @@ class TestGWRBinomial(unittest.TestCase):
         # This test fails - likely due to compound rounding errors
         # Has been tested using statsmodels.family calculations and
         # code from Jing's python version, which both yield the same
-        # np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
+        #np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
 
     def test_GS_F(self):
         est_Int = self.GS_F.by_col(' est_Intercept')
@@ -924,7 +924,7 @@ class TestGWRBinomial(unittest.TestCase):
         # This test fails - likely due to compound rounding errors
         # Has been tested using statsmodels.family calculations and
         # code from Jing's python version, which both yield the same
-        # np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
+        #np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
 
     def test_GS_NN(self):
         est_Int = self.GS_NN.by_col(' est_Intercept')
@@ -987,7 +987,7 @@ class TestGWRBinomial(unittest.TestCase):
         # This test fails - likely due to compound rounding errors
         # Has been tested using statsmodels.family calculations and
         # code from Jing's python version, which both yield the same
-        # np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
+        #np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
 
 if __name__ == '__main__':
     unittest.main()
