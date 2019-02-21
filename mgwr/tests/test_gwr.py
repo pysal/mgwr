@@ -276,33 +276,55 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(inf, rslt.influ, rtol=1e-04)
         np.testing.assert_allclose(cooksD, rslt.cooksD, rtol=1e-00)
     
+
     def test_MGWR(self):
         std_y = (self.y - self.y.mean()) / self.y.std()
-        std_X = (self.mgwr_X - self.mgwr_X.mean(axis=0)) / self.mgwr_X.std(axis=0)
-        selector = Sel_BW(self.coords, std_y, std_X, multi=True,constant=True)
+        std_X = (self.mgwr_X - self.mgwr_X.mean(axis=0)) / \
+            self.mgwr_X.std(axis=0)
+        selector = Sel_BW(self.coords, std_y, std_X, multi=True,
+                          constant=True)
         selector.search(multi_bw_min=[2], multi_bw_max=[159])
-        model = MGWR(self.coords, std_y, std_X, selector=selector,constant=True)
+        model = MGWR(self.coords, std_y, std_X, selector=selector,
+                     constant=True)
         rslt = model.fit()
-        
+
         varnames = ['X0', 'X1', 'X2', 'X3']
 
-        np.testing.assert_allclose(rslt.predy, self.MGWR.predy, atol=1e-07)
-        np.testing.assert_allclose(rslt.params, self.MGWR.params, atol=1e-07)
-        np.testing.assert_allclose(rslt.bse, self.MGWR.bse, atol=1e-07)
-        np.testing.assert_allclose(rslt.tvalues, self.MGWR.tvalues, atol=1e-07)
-        np.testing.assert_allclose(rslt.resid_response, self.MGWR.resid_response,
-                atol=1e-04, rtol=1e-04)
-        np.testing.assert_almost_equal(rslt.resid_ss, self.MGWR.resid_ss)
-        np.testing.assert_almost_equal(rslt.aicc, self.MGWR.aicc)
-        np.testing.assert_almost_equal(rslt.ENP, self.MGWR.ENP)
-        np.testing.assert_allclose(rslt.ENP_j, self.MGWR.ENP_j)
-        np.testing.assert_allclose(rslt.adj_alpha_j, self.MGWR.adj_alpha_j)
+        # def suffixed(x):
+        #     """ Quick anonymous function to suffix strings"""
+        #     return ['_'.join(x) for x in varnames]
+
+        np.testing.assert_allclose(rslt.predy.flatten(), self.MGWR.predy,
+                                   atol=1e-07)
+        np.testing.assert_allclose(rslt.params,
+                                   self.MGWR[varnames].values, atol=1e-07)
+        np.testing.assert_allclose(rslt.bse,
+                                   self.MGWR[[s + "_bse" for s in varnames]].values, atol=1e-07)
+        np.testing.assert_allclose(rslt.tvalues,
+                                   self.MGWR[[s + "_tvalues" for s in varnames]].values, atol=1e-07)
+        np.testing.assert_allclose(rslt.resid_response,
+                                   self.MGWR.resid_response,
+                                   atol=1e-04, rtol=1e-04)
+        np.testing.assert_almost_equal(rslt.resid_ss, 50.899379467870425)
+        np.testing.assert_almost_equal(rslt.aicc, 297.12013812258783)
+        np.testing.assert_almost_equal(rslt.ENP, 11.36825087269831)
+        np.testing.assert_allclose(rslt.ENP_j, [3.844671080264143, 3.513770805151652,
+                                                2.2580525278898254, 1.7517564593926895])
+        np.testing.assert_allclose(rslt.adj_alpha_j, np.array([[0.02601003, 0.01300501, 0.0002601 ],
+                                                               [0.02845945, 0.01422973, 0.00028459],
+                                                               [0.04428595, 0.02214297, 0.00044286],
+                                                               [0.05708556,
+                                                                0.02854278,
+                                                                0.00057086]]),  atol=1e-07)
         np.testing.assert_allclose(rslt.critical_tval(),
-                                   self.MGWR.critical_tval)
-        np.testing.assert_allclose(rslt.filter_tvals(), 
-                                   self.MGWR.filter_tvals)
-        np.testing.assert_allclose(rslt.local_collinearity()[0],
-                                   self.MGWR.local_collinearity)
+                                   np.array([2.51210749, 2.47888792,
+                                             2.31069113, 2.21000184]), atol=1e-07)
+        np.testing.assert_allclose(rslt.filter_tvals(),
+                                   self.MGWR[[s + "_filter_tvalues" for s in
+                                              varnames]].values, atol=1e-07)
+        np.testing.assert_allclose(rslt.local_collinearity()[0].flatten(),
+                                   self.MGWR.local_collinearity, atol=1e-07)
+
     
     def test_Prediction(self):
         coords = np.array(self.coords)
@@ -473,7 +495,7 @@ class TestGWRPoisson(unittest.TestCase):
         se_UNEMP = self.BS_F.by_col(' se_UNEMP')
         t_UNEMP = self.BS_F.by_col(' t_UNEMP')
         yhat = self.BS_F.by_col(' yhat')
-        pdev = np.array(self.BS_F.by_col(' localpdev')).reshape((-1,1))
+        pdev = np.array(self.BS_F.by_col(' localpdev')).reshape((-1, 1))
         
         model = GWR(self.coords, self.y, self.X, bw=26029.625, family=Poisson(), 
                     kernel='bisquare', fixed=True, sigma2_v1=False)
@@ -618,9 +640,9 @@ class TestGWRPoisson(unittest.TestCase):
         se_UNEMP = self.GS_F.by_col(' se_UNEMP')
         t_UNEMP = self.GS_F.by_col(' t_UNEMP')
         yhat = self.GS_F.by_col(' yhat')
-        pdev = np.array(self.GS_F.by_col(' localpdev')).reshape((-1,1))
+        pdev = np.array(self.GS_F.by_col(' localpdev')).reshape((-1, 1))
         
-        model = GWR(self.coords, self.y, self.X, bw=8764.474, family=Poisson(), 
+        model = GWR(self.coords, self.y, self.X, bw=8764.474, family=Poisson(),
                     kernel='gaussian', fixed=True, sigma2_v1=False)
         rslt = model.fit()
         
@@ -703,7 +725,7 @@ class TestGWRBinomial(unittest.TestCase):
         data = io.open(data_path)
         self.coords = np.array(list(zip(data.by_col('X'), data.by_col('Y'))))
         self.y = np.array(data.by_col('Landslid')).reshape((-1, 1))
-        ELEV  = np.array(data.by_col('Elev')).reshape((-1, 1))
+        ELEV = np.array(data.by_col('Elev')).reshape((-1, 1))
         SLOPE = np.array(data.by_col('Slope')).reshape((-1, 1))
         SIN = np.array(data.by_col('SinAspct')).reshape((-1, 1))
         COS = np.array(data.by_col('CosAspct')).reshape((-1, 1))
@@ -740,7 +762,7 @@ class TestGWRBinomial(unittest.TestCase):
         yhat = self.BS_F.by_col(' yhat')
         pdev = np.array(self.BS_F.by_col(' localpdev')).reshape((-1, 1))
 
-        model = GWR(self.coords, self.y, self.X, bw=19642.170, family=Binomial(), 
+        model = GWR(self.coords, self.y, self.X, bw=19642.170, family=Binomial(),
                     kernel='bisquare', fixed=True, sigma2_v1=False)
         rslt = model.fit()
 
@@ -799,7 +821,7 @@ class TestGWRBinomial(unittest.TestCase):
         t_south = self.BS_NN.by_col(' t_AbsSouth')
         est_strm = self.BS_NN.by_col(' est_DistStrm')
         se_strm = self.BS_NN.by_col(' se_DistStrm')
-        t_strm = self.BS_NN.by_col(' t_DistStrm') 
+        t_strm = self.BS_NN.by_col(' t_DistStrm')
         yhat = self.BS_NN.by_col(' yhat')
         pdev = self.BS_NN.by_col(' localpdev')
         
@@ -968,4 +990,4 @@ class TestGWRBinomial(unittest.TestCase):
         # np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
 
 if __name__ == '__main__':
-	unittest.main()
+    unittest.main()
