@@ -18,7 +18,7 @@ class TestGWRGaussian(unittest.TestCase):
     def setUp(self):
         data_path = ps.examples.get_path("GData_utm.csv")
         data = io.open(data_path)
-        self.coords = np.array(list(zip(data.by_col('X'), data.by_col('Y'))))
+        self.coords = list(zip(data.by_col('X'), data.by_col('Y')))
         self.y = np.array(data.by_col('PctBach')).reshape((-1, 1))
         rural = np.array(data.by_col('PctRural')).reshape((-1, 1))
         pov = np.array(data.by_col('PctPov')).reshape((-1, 1))
@@ -287,6 +287,9 @@ class TestGWRGaussian(unittest.TestCase):
         model = MGWR(self.coords, std_y, std_X, selector=selector,
                      constant=True)
         rslt = model.fit()
+        rslt_2 = model.fit(n_chunks=2) #testing for n_chunks
+        rslt_3 = model.fit(n_chunks=3)
+        rslt_5 = model.fit(n_chunks=5)
 
         varnames = ['X0', 'X1', 'X2', 'X3']
 
@@ -300,6 +303,12 @@ class TestGWRGaussian(unittest.TestCase):
                                    self.MGWR[varnames].values, atol=1e-07)
         np.testing.assert_allclose(rslt.bse,
                                    self.MGWR[[s + "_bse" for s in varnames]].values, atol=1e-07)
+        np.testing.assert_allclose(rslt_2.bse,
+                                       self.MGWR[[s + "_bse" for s in varnames]].values, atol=1e-07)
+        np.testing.assert_allclose(rslt_3.bse,
+                                       self.MGWR[[s + "_bse" for s in varnames]].values, atol=1e-07)
+        np.testing.assert_allclose(rslt_5.bse,
+                                       self.MGWR[[s + "_bse" for s in varnames]].values, atol=1e-07)
         np.testing.assert_allclose(rslt.tvalues,
                                    self.MGWR[[s + "_tvalues" for s in varnames]].values, atol=1e-07)
         np.testing.assert_allclose(rslt.resid_response,
@@ -309,6 +318,12 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_almost_equal(rslt.aicc, 297.12013812258783)
         np.testing.assert_almost_equal(rslt.ENP, 11.36825087269831)
         np.testing.assert_allclose(rslt.ENP_j, [3.844671080264143, 3.513770805151652,
+                                                2.2580525278898254, 1.7517564593926895])
+        np.testing.assert_allclose(rslt_2.ENP_j, [3.844671080264143, 3.513770805151652,
+                                                2.2580525278898254, 1.7517564593926895])
+        np.testing.assert_allclose(rslt_3.ENP_j, [3.844671080264143, 3.513770805151652,
+                                                2.2580525278898254, 1.7517564593926895])
+        np.testing.assert_allclose(rslt_5.ENP_j, [3.844671080264143, 3.513770805151652,
                                                 2.2580525278898254, 1.7517564593926895])
         np.testing.assert_allclose(rslt.adj_alpha_j, np.array([[0.02601003, 0.01300501, 0.0002601 ],
                                                                [0.02845945, 0.01422973, 0.00028459],
@@ -405,7 +420,8 @@ class TestGWRGaussian(unittest.TestCase):
         GA_longlat = os.path.join(os.path.dirname(__file__),'ga_bs_nn_longlat_listwise.csv')
         self.BS_NN_longlat = io.open(GA_longlat)
         
-        coords_longlat = np.array(list(zip(self.BS_NN_longlat.by_col(' x_coord'), self.BS_NN_longlat.by_col(' y_coord'))))
+        coords_longlat = list(zip(self.BS_NN_longlat.by_col(' x_coord'),
+                                  self.BS_NN_longlat.by_col(' y_coord')))
         est_Int = self.BS_NN_longlat.by_col(' est_Intercept')
         se_Int = self.BS_NN_longlat.by_col(' se_Intercept')
         t_Int = self.BS_NN_longlat.by_col(' t_Intercept')
@@ -464,7 +480,7 @@ class TestGWRPoisson(unittest.TestCase):
     def setUp(self):
         data_path = os.path.join(os.path.dirname(__file__),'tokyo/Tokyomortality.csv')
         data = io.open(data_path, mode='Ur')
-        self.coords = np.array(list(zip(data.by_col('X_CENTROID'), data.by_col('Y_CENTROID'))))
+        self.coords = list(zip(data.by_col('X_CENTROID'), data.by_col('Y_CENTROID')))
         self.y = np.array(data.by_col('db2564')).reshape((-1,1))
         self.off = np.array(data.by_col('eb2564')).reshape((-1,1))
         OCC  = np.array(data.by_col('OCC_TEC')).reshape((-1,1))
@@ -730,7 +746,7 @@ class TestGWRBinomial(unittest.TestCase):
     def setUp(self):
         data_path = os.path.join(os.path.dirname(__file__),'clearwater/landslides.csv')
         data = io.open(data_path)
-        self.coords = np.array(list(zip(data.by_col('X'), data.by_col('Y'))))
+        self.coords = list(zip(data.by_col('X'), data.by_col('Y')))
         self.y = np.array(data.by_col('Landslid')).reshape((-1, 1))
         ELEV = np.array(data.by_col('Elev')).reshape((-1, 1))
         SLOPE = np.array(data.by_col('Slope')).reshape((-1, 1))

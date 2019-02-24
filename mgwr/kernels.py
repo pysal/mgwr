@@ -6,6 +6,14 @@ import numpy as np
 #adaptive specifications should be parameterized with nn-1 to match original gwr
 #implementation. That is, pysal counts self neighbors with knn automatically.
 
+#Soft dependency of numba's njit
+try:
+    from numba import njit
+except ImportError:
+    def njit(func):
+        return func
+
+@njit
 def local_cdist(coords_i,coords,spherical):
     """
     Compute Haversine (spherical=True) or Euclidean (spherical=False) distance for a local kernel.
@@ -41,7 +49,7 @@ class Kernel(object):
         if fixed:
             self.bandwidth = float(bw)
         else:
-            self.bandwidth = np.partition(self.dvec, int(bw)-1)[int(bw)-1] * eps #partial sort in O(n)
+            self.bandwidth = np.partition(self.dvec, int(bw)-1)[int(bw)-1] * eps #partial sort in O(n) Time
 
         self.kernel = self._kernel_funcs(self.dvec/self.bandwidth)
 

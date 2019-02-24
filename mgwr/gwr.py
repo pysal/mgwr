@@ -212,7 +212,7 @@ class GWR(GLM):
         GLM.__init__(self, y, X, family, constant=constant)
         self.constant = constant
         self.sigma2_v1 = sigma2_v1
-        self.coords = coords
+        self.coords = np.array(coords)
         self.bw = bw
         self.kernel = kernel
         self.fixed = fixed
@@ -328,19 +328,19 @@ class GWR(GLM):
             except:
                 rslt = map(self._local_fit, range(m)) #sequential
             
-            reduced = list(zip(*rslt))
-            influ = np.array(reduced[0]).reshape(-1,1)
-            resid = np.array(reduced[1]).reshape(-1,1)
-            params = np.array(reduced[3])
+            rslt_list = list(zip(*rslt))
+            influ = np.array(rslt_list[0]).reshape(-1,1)
+            resid = np.array(rslt_list[1]).reshape(-1,1)
+            params = np.array(rslt_list[3])
             
             if lite:
                 return GWRResultsLite(self, resid, influ, params)
             else:
-                predy = np.array(reduced[2]).reshape(-1,1)
-                w = np.array(reduced[-4]).reshape(-1,1)
-                S = np.array(reduced[-3])
-                tr_STS = np.sum(np.array(reduced[-2]))
-                CCT = np.array(reduced[-1])
+                predy = np.array(rslt_list[2]).reshape(-1,1)
+                w = np.array(rslt_list[-4]).reshape(-1,1)
+                S = np.array(rslt_list[-3])
+                tr_STS = np.sum(np.array(rslt_list[-2]))
+                CCT = np.array(rslt_list[-1])
                 return GWRResults(self, params, predy, S, CCT, influ, tr_STS, w)
 
 
@@ -1429,9 +1429,9 @@ class MGWR(GWR):
         Initialize class
         """
         self.selector = selector
-        self.bws = self.selector.bw[0]
-        self.bws_log = selector.bw[1]
-        self.bw_gwr = self.selector.bw_gwr
+        self.bws = self.selector.bw[0] #final set of bandwidth
+        self.bws_history = selector.bw[1] #bws history in backfitting
+        self.bw_gwr = self.selector.bw_gwr #initialization bandiwdth
         self.family = Gaussian()  # manually set since we only support Gassian MGWR for now
         GWR.__init__(self, coords, y, X, self.bw_gwr, family=self.family,
                      sigma2_v1=sigma2_v1, kernel=kernel, fixed=fixed,
@@ -1446,7 +1446,10 @@ class MGWR(GWR):
         self_fit_params = None
 
 
-    def chunk_pR(self, chunk_id=0):
+    def _chunk_pR(self, chunk_id=0):
+        """
+        Compute MGWR inference by chunk to reduce memory footprint.
+        """
         n=self.n
         k=self.k
         n_chunks = self.n_chunks
@@ -1466,7 +1469,7 @@ class MGWR(GWR):
         err = init_pR - np.sum(pR, axis=2)
         del(init_pR)
 
-        for iter in range(self.bws_log.shape[0]):
+        for iter in range(self.bws_history.shape[0]):
             for j in range(k):
                 pRj_old = pR[:,:,j] + err
                 Xj = self.X[:,j]
@@ -1476,7 +1479,7 @@ class MGWR(GWR):
                     pSi = np.empty((len(chunk_index_Aj),n))
                     cur = 0
                     for index in chunk_index_Aj:
-                        wi = self._build_wi(index, self.bws_log[iter,j])
+                        wi = self._build_wi(index, self.bws_history[iter,j])
                         xw = Xj * wi
                         pSi[cur,:] = Xj[index]/np.sum(xw*Xj) * xw
                         cur += 1
@@ -1485,33 +1488,41 @@ class MGWR(GWR):
 
         for j in range(k):
             CCT[:,j] += ((pR[:,:,j]/self.X[:, j].reshape(-1,1))**2).sum(axis=1)
-
         for i in range(len(chunk_index)):
             ENP_j += pR[chunk_index[i],i,:]
-
         #ENP_j += np.trace(pR[chunk_index,:],axis1=0, axis2=1)
         return ENP_j, CCT
 
 
-
-
     def fit(self, n_chunks=1, pool=None):
+        """
+        Compute MGWR inference by chunk to reduce memory footprint.
+        
+        Parameters
+        ----------
+
+        n_chunks      : integer, optional
+                        A number of chunks parameter to reduce memory usage.
+                        e.g. n_chunks=2 should reduce overall memory usage by 2.
+        pool:         : A multiprocessing Pool object for computing each chunk in parallel when n_chunks>1.
+                        Default is None.
+                        
+        Returns
+        -------
+                      : MGWRResults
+        """
         params = self.selector.params
         predy = np.sum(self.X * params, axis=1).reshape(-1,1)
-
         self.n_chunks = n_chunks
+        
         if pool and n_chunks > 1:
-            rslt = pool.map(self.chunk_pR,range(n_chunks))
-            reduced = list(zip(*rslt))
-            ENP_j = np.sum(np.array(reduced[0]),axis=0)
-            CCT = np.sum(np.array(reduced[1]),axis=0)
+            rslt = pool.map(self._chunk_pR,range(n_chunks))
         else:
-            ENP_j = np.zeros(self.k)
-            CCT = np.zeros((self.n,self.k))
-            for chunk in range(n_chunks):
-                ENP_j_c, CCT_c = self.chunk_pR()
-                ENP_j += ENP_j_c
-                CCT += CCT_c
+            rslt = map(self._chunk_pR,range(n_chunks))
+    
+        rslt_list = list(zip(*rslt))
+        ENP_j = np.sum(np.array(rslt_list[0]),axis=0)
+        CCT = np.sum(np.array(rslt_list[1]),axis=0)
 
         w = np.ones(self.n)
         if not self.hat_matrix:

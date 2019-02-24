@@ -15,8 +15,8 @@ class TestSelBWGaussian(unittest.TestCase):
     def setUp(self):
         data_path = ps.examples.get_path("GData_utm.csv")
         data = io.open(data_path)
-        self.coords = np.array(list(zip(data.by_col('X'), data.by_col('Y'))))
-        self.coords_longlat = np.array(list(zip(data.by_col('Longitud'), data.by_col('Latitude'))))
+        self.coords = list(zip(data.by_col('X'), data.by_col('Y')))
+        self.coords_longlat = list(zip(data.by_col('Longitud'), data.by_col('Latitude')))
         self.y = np.array(data.by_col('PctBach')).reshape((-1,1))
         rural  = np.array(data.by_col('PctRural')).reshape((-1,1))
         pov = np.array(data.by_col('PctPov')).reshape((-1,1)) 
@@ -176,7 +176,7 @@ class TestGWRSelBWPoisson(unittest.TestCase):
     def setUp(self):
         data_path = os.path.join(os.path.dirname(__file__),'tokyo/Tokyomortality.csv')
         data = io.open(data_path, mode='Ur')
-        self.coords = np.array(list(zip(data.by_col('X_CENTROID'), data.by_col('Y_CENTROID'))))
+        self.coords = list(zip(data.by_col('X_CENTROID'), data.by_col('Y_CENTROID')))
         self.y = np.array(data.by_col('db2564')).reshape((-1,1))
         self.off = np.array(data.by_col('eb2564')).reshape((-1,1))
         OCC  = np.array(data.by_col('OCC_TEC')).reshape((-1,1))

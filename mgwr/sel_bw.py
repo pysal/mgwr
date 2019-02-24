@@ -172,7 +172,7 @@ class Sel_BW(object):
     def __init__(self, coords, y, X_loc, X_glob=None, family=Gaussian(),
             offset=None, kernel='bisquare', fixed=False, multi=False,
             constant=True, spherical=False):
-        self.coords = coords
+        self.coords = np.array(coords)
         self.y = y
         self.X_loc = X_loc
         if X_glob is not None:

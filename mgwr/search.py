@@ -4,10 +4,8 @@ __author__ = "Taylor Oshan"
 
 import numpy as np
 from copy import deepcopy
-import copy
-from collections import namedtuple
 
-def golden_section(a, c, delta, function, tol, max_iter, int_score=False, multi=True):
+def golden_section(a, c, delta, function, tol, max_iter, int_score=False):
     """
     Golden section search routine
     Method: p212, 9.6.4
@@ -58,16 +56,12 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False, multi=
             score_b = dict[b]
         else:
             score_b = function(b)
-            if multi == False:
-                print("Bandwidth: ",np.round(b, 2), ", score: ", "{0:.2f}".format(np.array(score_b).flatten()[0]))
             dict[b] = score_b
         
         if d in dict:
             score_d = dict[d]
         else:
             score_d = function(d)
-            if multi == False:
-                print("Bandwidth: ",np.round(d, 2), ", score: ", "{0:.2f}".format(np.array(score_d).flatten()[0]))
             dict[d] = score_d
 
         if score_b <= score_d:
@@ -90,7 +84,7 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False, multi=
 
     return np.round(opt_val, 2), opt_score, output
 
-def equal_interval(l_bound, u_bound, interval, function, int_score=False,multi=True):
+def equal_interval(l_bound, u_bound, interval, function, int_score=False):
     """
     Interval search, using interval as stepsize
 
@@ -128,12 +122,7 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False,multi=T
     output = []
 
     score_a = function(a)
-    if multi == False:
-        print("Bandwidth:",a,", score:", "{0:.2f}".format(np.array(score_a).flatten()[0]))
     score_c = function(c)
-    if multi == False:
-        print("Bandwidth:",c,", score:", "{0:.2f}".format(np.array(score_c).flatten()[0]))
-
     output.append((a,score_a))
     output.append((c,score_c))
 
@@ -146,7 +135,6 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False,multi=T
 
     while b < c:
         score_b = function(b)
-        print("Bandwidth:",b,", score:", "{0:.2f}".format(np.array(score_b).flatten()[0]))
         output.append((b,score_b))
 
         if score_b < opt_score:
@@ -180,12 +168,14 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
     bw_counter = np.zeros(k)
     bws = np.empty(k)
 
-    for iters in range(1, max_iter+1):
+    try:
+        from tqdm import tqdm #if they have it, let users have a progress bar
+    except ImportError:
+        def tqdm(x): #otherwise, just passthrough the range
+            return x
+    for iters in tqdm(range(1, max_iter+1)):
         new_XB = np.zeros_like(X)
-        vals = []
         params = np.zeros_like(X)
-        f_XB = XB.copy()
-        f_err = err.copy()
         
         for j in range(k):
             temp_y = XB[:,j].reshape((-1,1))
@@ -219,12 +209,9 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
             new_rss = np.sum((y - predy)**2)
             score = np.abs((new_rss - rss)/new_rss)
             rss = new_rss
-        scores.append(copy.deepcopy(score))
+        scores.append(deepcopy(score))
         delta = score
-        BWs.append(copy.deepcopy(bws))
-        
-        print("Iteration",iters,"SOC:", np.round(score,7))
-        print("Bandwidths:", ', '.join([str(bw) for bw in bws]))
+        BWs.append(deepcopy(bws))
         
         if delta < tol:
             break
