@@ -286,11 +286,20 @@ class TestGWRGaussian(unittest.TestCase):
         selector.search(multi_bw_min=[2], multi_bw_max=[159])
         model = MGWR(self.coords, std_y, std_X, selector=selector,
                      constant=True)
+        
         rslt = model.fit()
-        rslt_2 = model.fit(n_chunks=2) #testing for n_chunks
+        rslt_2 = model.fit(n_chunks=2) #testing for n_chunks > 1
         rslt_3 = model.fit(n_chunks=3)
         rslt_5 = model.fit(n_chunks=5)
-
+        
+        model_hat = MGWR(self.coords, std_y, std_X, selector=selector,
+                         constant=True, hat_matrix=True)
+        rslt_hat = model_hat.fit()
+        rslt_hat_2 = model_hat.fit(n_chunks=2)
+        
+        np.testing.assert_allclose(rslt_hat.R, rslt_hat_2.R,atol=1e-07)
+        np.testing.assert_allclose(rslt_hat.S.dot(std_y).flatten(), self.MGWR.predy, atol=1e-07)
+        
         varnames = ['X0', 'X1', 'X2', 'X3']
 
         # def suffixed(x):

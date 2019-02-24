@@ -195,7 +195,8 @@ class Sel_BW(object):
     def search(self, search_method='golden_section', criterion='AICc',
             bw_min=None, bw_max=None, interval=0.0, tol=1.0e-6, max_iter=200,
             init_multi=None, tol_multi=1.0e-5, rss_score=False,
-            max_iter_multi=200, multi_bw_min=[None], multi_bw_max=[None], pool=None):
+            max_iter_multi=200, multi_bw_min=[None], multi_bw_max=[None],
+            bws_same_times=3, pool=None):
         """
         Method to select one unique bandwidth for a gwr model or a
         bandwidth vector for a mgwr model.
@@ -233,11 +234,13 @@ class Sel_BW(object):
                          algorith faster though it may result in a less optimal
                          model
         max_iter_multi : max iterations if no convergence to tol for multiple
-                         bandwidth backfittign algorithm
+                         bandwidth backfitting algorithm
         rss_score      : True to use the residual sum of sqaures to evaluate
                          each iteration of the multiple bandwidth backfitting
                          routine and False to use a smooth function; default is
                          False
+        bws_same_times : If bandwidths keep the same between iterations for bws_same_times (default 3)
+                         in backfitting, then use the current set of bandwidths as final bandwidths.
         pool           : A multiprocessing Pool object to enbales parallel fitting; default is None
 
         Returns
@@ -255,6 +258,7 @@ class Sel_BW(object):
         self.criterion = criterion
         self.bw_min = bw_min
         self.bw_max = bw_max
+        self.bws_same_times = bws_same_times
         self.pool = pool
         
         if len(multi_bw_min) == k:
@@ -296,7 +300,7 @@ class Sel_BW(object):
         if self.multi:
             self._mbw()
             self.params = self.bw[3] #params n by k
-            self.bw_gwr = self.bw[-1] #scalar, optimal bw from initial gwr model
+            self.bw_init = self.bw[-1] #scalar, optimal bw from initial gwr model
         else:
             self._bw()
         
@@ -351,6 +355,7 @@ class Sel_BW(object):
         interval = self.interval
         tol = self.tol
         max_iter = self.max_iter
+        bws_same_times = self.bws_same_times
         def gwr_func(y,X,bw):
             return GWR(coords, y,X,bw,family=family, kernel=kernel, fixed=fixed,
                     offset=offset, constant=False,spherical=self.spherical, hat_matrix=False).fit(lite=True, pool=self.pool)
@@ -365,7 +370,7 @@ class Sel_BW(object):
         
         self.bw = multi_bw(self.init_multi, y, X, n, k, family,
                 self.tol_multi, self.max_iter_multi, self.rss_score, gwr_func,
-                bw_func, sel_func, multi_bw_min, multi_bw_max)
+                bw_func, sel_func, multi_bw_min, multi_bw_max, bws_same_times)
 
     def _init_section(self, X_glob, X_loc, coords, constant):
         if len(X_glob) > 0:

@@ -338,7 +338,10 @@ class GWR(GLM):
             else:
                 predy = np.array(rslt_list[2]).reshape(-1,1)
                 w = np.array(rslt_list[-4]).reshape(-1,1)
-                S = np.array(rslt_list[-3])
+                if self.hat_matrix:
+                    S = np.array(rslt_list[-3])
+                else:
+                    S = None
                 tr_STS = np.sum(np.array(rslt_list[-2]))
                 CCT = np.array(rslt_list[-1])
                 return GWRResults(self, params, predy, S, CCT, influ, tr_STS, w)
@@ -1318,6 +1321,10 @@ class MGWR(GWR):
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
+    hat_matrix    : boolean
+                    True for computing and storing covariate-specific
+                    hat matrices R (n,n,k) and model hat matrix S (n,n).
+                    False (default) for computing MGWR inference on the fly.
 
     Attributes
     ----------
@@ -1424,18 +1431,18 @@ class MGWR(GWR):
 
     def __init__(self, coords, y, X, selector, sigma2_v1=True,
                  kernel='bisquare',
-                 fixed=False, constant=True, spherical=False):
+                 fixed=False, constant=True, spherical=False, hat_matrix=False):
         """
         Initialize class
         """
         self.selector = selector
         self.bws = self.selector.bw[0] #final set of bandwidth
         self.bws_history = selector.bw[1] #bws history in backfitting
-        self.bw_gwr = self.selector.bw_gwr #initialization bandiwdth
+        self.bw_init = self.selector.bw_init #initialization bandiwdth
         self.family = Gaussian()  # manually set since we only support Gassian MGWR for now
-        GWR.__init__(self, coords, y, X, self.bw_gwr, family=self.family,
+        GWR.__init__(self, coords, y, X, self.bw_init, family=self.family,
                      sigma2_v1=sigma2_v1, kernel=kernel, fixed=fixed,
-                     constant=constant, spherical=spherical)
+                     constant=constant, spherical=spherical, hat_matrix=hat_matrix)
         self.selector = selector
         self.sigma2_v1 = sigma2_v1
         self.points = None
@@ -1463,7 +1470,7 @@ class MGWR(GWR):
         pR = np.zeros((n,len(chunk_index),k)) #partial R: n by chunk_size by k
 
         for i in range(n):
-            wi = self._build_wi(i, self.bw_gwr).reshape(-1,1)
+            wi = self._build_wi(i, self.bw_init).reshape(-1,1)
             xw = self.X*wi
             pR[i,:,:] = ((np.linalg.inv(xw.T.dot(self.X)).dot(xw.T).dot(init_pR)).T) * self.X[i]
         err = init_pR - np.sum(pR, axis=2)
@@ -1491,6 +1498,8 @@ class MGWR(GWR):
         for i in range(len(chunk_index)):
             ENP_j += pR[chunk_index[i],i,:]
         #ENP_j += np.trace(pR[chunk_index,:],axis1=0, axis2=1)
+        if self.hat_matrix:
+            return ENP_j, CCT, pR
         return ENP_j, CCT
 
 
@@ -1525,9 +1534,11 @@ class MGWR(GWR):
         CCT = np.sum(np.array(rslt_list[1]),axis=0)
 
         w = np.ones(self.n)
-        if not self.hat_matrix:
+        if self.hat_matrix:
+            R = np.hstack(rslt_list[2])
+        else:
             R = None
-        return MGWRResults(self, params, predy, CCT, ENP_j, R, w)
+        return MGWRResults(self, params, predy, CCT, ENP_j, w, R)
 
     def predict(self):
         '''
@@ -1552,10 +1563,10 @@ class MGWRResults(GWRResults):
                           n*1, predicted y values
 
     S                   : array
-                          n*n, hat matrix
+                          n*n, model hat matrix (if MGWR(hat_matrix=True))
 
     R                   : array
-                          n*n*k, partial hat matrices for each covariate
+                          n*n*k, covariate-specific hat matrices (if MGWR(hat_matrix=True))
 
     CCT                 : array
                           n*k, scaled variance-covariance matrix
@@ -1617,10 +1628,10 @@ class MGWRResults(GWRResults):
                           covariate (k)
 
     S                   : array
-                          n*n, hat matrix
+                          n*n, model hat matrix (if MGWR(hat_matrix=True))
 
     R                   : array
-                          n*n*k, partial hat matrices for each covariate
+                          n*n*k, covariate-specific hat matrices (if MGWR(hat_matrix=True))
 
     CCT                 : array
                           n*k, scaled variance-covariance matrix
@@ -1656,6 +1667,9 @@ class MGWRResults(GWRResults):
 
     R2                  : float
                           R-squared for the entire model (1- RSS/TSS)
+                          
+    adj_R2              : float
+                          adjusted R-squared for the entire model
 
     aic                 : float
                           Akaike information criterion
@@ -1703,14 +1717,16 @@ class MGWRResults(GWRResults):
         Initialize class
         """
         self.ENP_j = ENP_j
-        GWRResults.__init__(self, model, params, predy, None, CCT, None, w)
         self.R = R
+        GWRResults.__init__(self, model, params, predy, None, CCT, None, w)
+        if model.hat_matrix:
+            self.S = np.sum(self.R, axis=2)
         self.predy = predy
 
     @cache_readonly
     def tr_S(self):
         return np.sum(self.ENP_j)
-    
+
     @cache_readonly
     def W(self):
         Ws = []

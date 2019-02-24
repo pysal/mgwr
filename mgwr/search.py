@@ -145,7 +145,7 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False):
     return opt_val, opt_score, output
 
 def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
-        gwr_func, bw_func, sel_func, multi_bw_min, multi_bw_max):
+        gwr_func, bw_func, sel_func, multi_bw_min, multi_bw_max, bws_same_times):
     """
     Multiscale GWR bandwidth search procedure using iterative GAM backfitting
     """
@@ -165,7 +165,7 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
     scores = []
     delta = 1e6
     BWs = []
-    bw_counter = np.zeros(k)
+    bw_stable_counter = np.ones(k)
     bws = np.empty(k)
 
     try:
@@ -183,14 +183,15 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
             temp_X = X[:,j].reshape((-1,1))
             bw_class = bw_func(temp_y, temp_X)
             
-            if np.all(bw_counter==2):
+            if np.all(bw_stable_counter==bws_same_times):
+                #If in backfitting, all bws not changing in bws_same_times (default 3) iterations
                 bw = bws[j]
             else:
                 bw = sel_func(bw_class, multi_bw_min[j], multi_bw_max[j])
                 if bw == bws[j]:
-                    bw_counter[j] += 1
+                    bw_stable_counter[j] += 1
                 else:
-                    bw_counter = np.zeros(k)
+                    bw_stable_counter = np.ones(k)
         
             optim_model = gwr_func(temp_y, temp_X, bw)
             err = optim_model.resid_response.reshape((-1,1))
