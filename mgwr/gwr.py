@@ -239,7 +239,10 @@ class GWR(GLM):
         return wi
 
     def _local_fit(self, i):
-        wi = self._build_wi(i,self.bw).reshape(-1, 1)
+        """
+        Local fitting at location i.
+        """
+        wi = self._build_wi(i,self.bw).reshape(-1, 1) #local spatial weights
         
         if isinstance(self.family, Gaussian):
             betas, inv_xtx_xt = _compute_betas_gwr(self.y,self.X,wi)
@@ -270,7 +273,7 @@ class GWR(GLM):
             return influ,resid,predy,betas.reshape(-1),w,Si,tr_STS_i,CCT
 
     def fit(self, ini_params=None, tol=1.0e-5, max_iter=20,
-            solve='iwls',lite=False, pool=None):
+            solve='iwls', lite=False, pool=None):
         """
         Method that fits a model with a particular estimation routine.
 
@@ -320,10 +323,10 @@ class GWR(GLM):
             else:
                 m = self.points.shape[0]
 
-            if pool:
-                rslt = pool.map(self._local_fit, range(m))
-            else:
-                rslt = map(self._local_fit, range(m))
+            try:
+                rslt = pool.map(self._local_fit, range(m)) #parallel using mp.Pool
+            except:
+                rslt = map(self._local_fit, range(m)) #sequential
             
             reduced = list(zip(*rslt))
             influ = np.array(reduced[0]).reshape(-1,1)
@@ -506,7 +509,10 @@ class GWRResults(GLMResults):
 
     R2                  : float
                           R-squared for the entire model (1- RSS/TSS)
-
+                          
+    adj_R2              : float
+                          adjusted R-squared for the entire model
+                          
     aic                 : float
                           Akaike information criterion
 
@@ -562,6 +568,14 @@ class GWRResults(GLMResults):
     pDev                : float
                           local percent of deviation accounted for; analogous to
                           r-squared for GLM's
+                          
+    D2                  : float
+                          percent deviance explained for GLM, equivaleng to R2 for
+                          Gaussian.
+                          
+    adj_D2              : float
+                          adjusted percent deviance explained, equivaleng to adjusted
+                          R2 for Gaussian.
 
     mu                  : array
                           n*, flat one dimensional array of predicted mean

@@ -59,7 +59,6 @@ def summaryGWR(self):
     summary += '-' * 75 + '\n'
     
     if isinstance(self.family, Gaussian):
-        
         summary += "%-62s %12.3f\n" % ('Residual sum of squares:', self.resid_ss)
         summary += "%-62s %12.3f\n" % ('Effective number of parameters (trace(S)):', self.tr_S)
         summary += "%-62s %12.3f\n" % ('Degree of freedom (n - trace(S)):', self.df_model)
@@ -69,6 +68,8 @@ def summaryGWR(self):
         summary += "%-62s %12.3f\n" % ('AICc:', self.aicc)
         summary += "%-62s %12.3f\n" % ('BIC:', self.bic)
         summary += "%-62s %12.3f\n" % ('R2:', self.R2)
+        summary += "%-62s %12.3f\n" % ('Adjusted R2:', self.adj_R2)
+    
     else:
         summary += "%-62s %12.3f\n" % ('Effective number of parameters (trace(S)):', self.tr_S)
         summary += "%-62s %12.3f\n" % ('Degree of freedom (n - trace(S)):', self.df_model)
@@ -76,7 +77,8 @@ def summaryGWR(self):
         summary += "%-62s %12.3f\n" % ('AIC:', self.aic)
         summary += "%-62s %12.3f\n" % ('AICc:', self.aicc)
         summary += "%-62s %12.3f\n" % ('BIC:', self.bic)
-        #summary += "%-60s %12.6f\n" % ('Percent deviance explained:', 0)
+        summary += "%-60s %12.3f\n" % ('Percent deviance explained:', self.D2)
+        summary += "%-60s %12.3f\n" % ('Adjusted percent deviance explained:', self.adj_D2)
 
 
     summary += "%-62s %12.3f\n" % ('Adj. alpha (95%):', self.adj_alpha[1])
@@ -121,7 +123,7 @@ def summaryMGWR(self):
     summary += '-' * 75 + '\n'
     summary += "%-15s %14s %10s %16s %16s\n" % ('Variable', 'Bandwidth', 'ENP_j','Adj t-val(95%)','Adj alpha(95%)')
     for j in range(self.k):
-        summary += "%-14s %15.3f %10.3f %16.3f %16.3f\n" % (XNames[j], self.model.bw[j], self.ENP_j[j],self.critical_tval()[j],self.adj_alpha_j[j,1])
+        summary += "%-14s %15.3f %10.3f %16.3f %16.3f\n" % (XNames[j], self.model.bws[j], self.ENP_j[j],self.critical_tval()[j],self.adj_alpha_j[j,1])
 
     summary += "\n%s\n" % ('Diagnostic information')
     summary += '-' * 75 + '\n'
@@ -135,6 +137,8 @@ def summaryMGWR(self):
     summary += "%-62s %12.3f\n" % ('AIC:', self.aic)
     summary += "%-62s %12.3f\n" % ('AICc:', self.aicc)
     summary += "%-62s %12.3f\n" % ('BIC:', self.bic)
+    summary += "%-62s %12.3f\n" % ('R2', self.R2)
+    summary += "%-62s %12.3f\n" % ('Adjusted R2', self.adj_R2)
 
     summary += "\n%s\n" % ('Summary Statistics For MGWR Parameter Estimates')
     summary += '-' * 75 + '\n'

@@ -83,7 +83,7 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False, multi=
             a = b
             b = d
             d = c - delta * np.abs(c-a)
-        print(opt_score)
+
         output.append((opt_val, opt_score))
         diff = score_b - score_d
         score = opt_score
@@ -222,9 +222,10 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         scores.append(copy.deepcopy(score))
         delta = score
         BWs.append(copy.deepcopy(bws))
-
+        
         print("Iteration",iters,"SOC:", np.round(score,7))
         print("Bandwidths:", ', '.join([str(bw) for bw in bws]))
+        
         if delta < tol:
             break
 
