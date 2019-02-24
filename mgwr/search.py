@@ -83,7 +83,7 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False, multi=
             a = b
             b = d
             d = c - delta * np.abs(c-a)
-
+        print(opt_score)
         output.append((opt_val, opt_score))
         diff = score_b - score_d
         score = opt_score
@@ -163,9 +163,9 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
     """
     if init is None:
         bw = sel_func(bw_func(y, X))
-        optim_model = gwr_func(y, X, bw).fit(searching=True)
+        optim_model = gwr_func(y, X, bw)
     else:
-        optim_model = gwr_func(y, X, init).fit(searching=True)
+        optim_model = gwr_func(y, X, init)
     bw_gwr = bw
     err = optim_model.resid_response.reshape((-1,1))
     param = optim_model.params
@@ -202,7 +202,7 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
                 else:
                     bw_counter = np.zeros(k)
         
-            optim_model = gwr_func(temp_y, temp_X, bw).fit(searching=True)
+            optim_model = gwr_func(temp_y, temp_X, bw)
             err = optim_model.resid_response.reshape((-1,1))
             param = optim_model.params.reshape((-1,))
             new_XB[:,j] = optim_model.predy.reshape(-1)

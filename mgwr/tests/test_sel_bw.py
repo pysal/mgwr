@@ -11,11 +11,12 @@ from spglm.family import Gaussian, Poisson, Binomial
 from ..sel_bw import Sel_BW
 from numpy.testing import assert_allclose
 
-class TestSelBW(unittest.TestCase):
+class TestSelBWGaussian(unittest.TestCase):
     def setUp(self):
         data_path = ps.examples.get_path("GData_utm.csv")
         data = io.open(data_path)
         self.coords = np.array(list(zip(data.by_col('X'), data.by_col('Y'))))
+        self.coords_longlat = np.array(list(zip(data.by_col('Longitud'), data.by_col('Latitude'))))
         self.y = np.array(data.by_col('PctBach')).reshape((-1,1))
         rural  = np.array(data.by_col('PctRural')).reshape((-1,1))
         pov = np.array(data.by_col('PctPov')).reshape((-1,1)) 
@@ -38,6 +39,12 @@ class TestSelBW(unittest.TestCase):
         bw1 = 93.0
         bw2 = Sel_BW(self.coords, self.y, self.X, kernel='bisquare',
                 fixed=False).search(criterion='AICc')
+        assert_allclose(bw1, bw2)
+    
+    def test_golden_adapt_AICc_Longlat(self):
+        bw1 = 92.0
+        bw2 = Sel_BW(self.coords_longlat, self.y, self.X, kernel='bisquare',
+                     fixed=False,spherical=True).search(criterion='AICc')
         assert_allclose(bw1, bw2)
 
     def test_golden_fixed_AIC(self):
@@ -144,7 +151,7 @@ class TestSelBW(unittest.TestCase):
                 fixed=False).search(criterion='CV', search_method='interval', bw_min=60.0,
                         bw_max=76.0 , interval=2)
         assert_allclose(bw1, bw2)
-
+    
     def test_MGWR_AICc(self):
         bw1 = [101.0, 101.0, 117.0, 157.0]
         std_y = (self.y - self.y.mean()) / self.y.std()
@@ -153,6 +160,43 @@ class TestSelBW(unittest.TestCase):
                 constant=True)
         bw2 = selector.search()
         np.testing.assert_allclose(bw1, bw2)
+
+
+    def test_MGWR_AICc_Longlat(self):
+        bw1 = [104.0, 104.0, 103.0, 157.0]
+        std_y = (self.y - self.y.mean()) / self.y.std()
+        std_X = (self.mgwr_X - self.mgwr_X.mean(axis=0)) / self.mgwr_X.std(axis=0)
+        selector = Sel_BW(self.coords_longlat, std_y, std_X, multi=True,
+                constant=True, spherical=True)
+        bw2 = selector.search()
+        assert_allclose(bw1, bw2)
+
+
+class TestGWRSelBWPoisson(unittest.TestCase):
+    def setUp(self):
+        data_path = os.path.join(os.path.dirname(__file__),'tokyo/Tokyomortality.csv')
+        data = io.open(data_path, mode='Ur')
+        self.coords = np.array(list(zip(data.by_col('X_CENTROID'), data.by_col('Y_CENTROID'))))
+        self.y = np.array(data.by_col('db2564')).reshape((-1,1))
+        self.off = np.array(data.by_col('eb2564')).reshape((-1,1))
+        OCC  = np.array(data.by_col('OCC_TEC')).reshape((-1,1))
+        OWN = np.array(data.by_col('OWNH')).reshape((-1,1))
+        POP = np.array(data.by_col('POP65')).reshape((-1,1))
+        UNEMP = np.array(data.by_col('UNEMP')).reshape((-1,1))
+        self.X = np.hstack([OCC,OWN,POP,UNEMP])
+
+    def test_golden_adapt_AICc_Poisson_w_offset(self):
+        bw1 = 95.0
+        bw2 = Sel_BW(self.coords, self.y, self.X, kernel='bisquare', family=Poisson(),
+        fixed=False,offset=self.off).search(criterion='AICc')
+        assert_allclose(bw1, bw2)
+        
+    def test_golden_adapt_AICc_Poisson_wo_offset(self):
+        bw1 = 51.0
+        bw2 = Sel_BW(self.coords, self.y, self.X, kernel='bisquare', family=Poisson(),
+        fixed=False).search(criterion='AICc')
+        assert_allclose(bw1, bw2)
+
 
 if __name__ == '__main__':
 	unittest.main()

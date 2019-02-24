@@ -238,26 +238,39 @@ class GWR(GLM):
 
         return wi
 
-    def localfit(self, i):
-        wi = self._build_wi(i,self.bw).reshape((-1, 1))
-        betas, inv_xtx_xt = _compute_betas_gwr(self.y,self.X,wi)
-        influ = np.dot(self.X[i],inv_xtx_xt[:,i])
-        predy = np.dot(self.X[i],betas)[0]
-        resid = self.y[i] - predy
-        return influ,resid,predy,betas.reshape(-1)
+    def _local_fit(self, i):
+        wi = self._build_wi(i,self.bw).reshape(-1, 1)
+        
+        if isinstance(self.family, Gaussian):
+            betas, inv_xtx_xt = _compute_betas_gwr(self.y,self.X,wi)
+            predy = np.dot(self.X[i],betas)[0]
+            resid = self.y[i] - predy
+            influ = np.dot(self.X[i],inv_xtx_xt[:,i])
+            w = 1
 
-    def parafit(self, pool):
-        m = self.X.shape[0]
-        rslt = pool.map(self.localfit, range(m))
-        reduced = list(zip(*rslt))
-        influ = np.array(reduced[0]).reshape(-1,1)
-        resid = np.array(reduced[1]).reshape(-1,1)
-        predy = np.array(reduced[2]).reshape(-1,1)
-        params = np.array(reduced[3]).reshape(-1,1)
-        return GWRResultsLite(self, resid, influ, params)
+        elif isinstance(self.family, (Poisson, Binomial)):
+            rslt = iwls(self.y, self.X, self.family,
+                        self.offset, None, self.fit_params['ini_params'], self.fit_params['tol'],
+                        self.fit_params['max_iter'], wi=wi)
+            inv_xtx_xt = rslt[5]
+            w = rslt[3][i][0]
+            influ = np.dot(self.X[i], inv_xtx_xt[:, i]) * w
+            predy = rslt[1][i]
+            resid = self.y[i] - predy
+            betas = rslt[0]
+        
+        if self.fit_params['lite']:
+            return influ,resid,predy,betas.reshape(-1)
+        else:
+            Si = np.dot(self.X[i], inv_xtx_xt).reshape(-1)
+            tr_STS_i = np.sum(Si * Si * w * w)
+            CCT = np.diag(np.dot(inv_xtx_xt, inv_xtx_xt.T)).reshape(-1)
+            if not self.hat_matrix:
+                Si = None
+            return influ,resid,predy,betas.reshape(-1),w,Si,tr_STS_i,CCT
 
     def fit(self, ini_params=None, tol=1.0e-5, max_iter=20,
-            solve='iwls',searching = False):
+            solve='iwls',lite=False, pool=None):
         """
         Method that fits a model with a particular estimation routine.
 
@@ -278,17 +291,18 @@ class GWR(GLM):
                         Technique to solve MLE equations.
                         Default is 'iwls', meaning iteratively (
                         re)weighted least squares.
-        searching     : bool, optional
+        lite          : bool, optional
                         Whether to estimate a lightweight GWR that
                         computes the minimum diagnostics needed for
                         bandwidth selection (could speed up
                         bandwidth selection for GWR) or to estimate
                         a full GWR. Default is False.
+        pool          : A multiprocessing Pool object to enable parallel fitting; default is None.
 
         Returns
         -------
                       :
-                        If searching=True, return a GWRResult
+                        If lite=False, return a GWRResult
                         instance; otherwise, return a GWRResultLite
                         instance.
 
@@ -297,6 +311,8 @@ class GWR(GLM):
         self.fit_params['tol'] = tol
         self.fit_params['max_iter'] = max_iter
         self.fit_params['solve'] = solve
+        self.fit_params['lite'] = lite
+        
         if solve.lower() == 'iwls':
             
             if self.points is None:
@@ -304,62 +320,26 @@ class GWR(GLM):
             else:
                 m = self.points.shape[0]
 
-            # In bandwidth selection, return GWRResultsLite
-            if searching:
-                resid = np.zeros((m, 1))
-                influ = np.zeros((m, 1))
-                params = np.zeros((m, self.k))
-                for i in range(m):
-                    wi = self._build_wi(i,self.bw).reshape((-1, 1))
-                    if isinstance(self.family, Gaussian):
-                        betas, inv_xtx_xt = _compute_betas_gwr(
-                            self.y, self.X, wi)
-                        influ[i] = np.dot(self.X[i], inv_xtx_xt[:, i])
-                        predy = np.dot(self.X[i], betas)[0]
-                        resid[i] = self.y[i] - predy
-                        params[i, :] = betas.T
-                    elif isinstance(self.family, (Poisson, Binomial)):
-                        rslt = iwls(self.y, self.X, self.family,
-                                    self.offset, None, ini_params, tol,
-                                    max_iter, wi=wi)
-                        inv_xtx_xt = rslt[5]
-                        influ[i] = np.dot(self.X[i], inv_xtx_xt[:, i]) * \
-                                   rslt[3][i][0]
-                        predy = rslt[1][i]
-                        resid[i] = self.y[i] - predy
-                        params[i, :] = rslt[0].T
-                return GWRResultsLite(self, resid, influ, params)
-
+            if pool:
+                rslt = pool.map(self._local_fit, range(m))
             else:
-                params = np.zeros((m, self.k))
-                predy = np.zeros((m, 1))
-                influ = np.zeros((m, 1))
-                tr_STS = 0
-                w = np.zeros((m, 1))
-                if self.hat_matrix:
-                    S = np.zeros((m, self.n))
-                else:
-                    S = None
-                CCT = np.zeros((m, self.k))
-                for i in range(m):
-                    wi = self._build_wi(i,self.bw).reshape((-1, 1))
-                    rslt = iwls(self.y, self.X, self.family,
-                                self.offset, None, ini_params, tol,
-                                max_iter, wi=wi)
-                    params[i, :] = rslt[0].T
-                    predy[i] = rslt[1][i]
-                    w[i] = rslt[3][i]
-                    Si = np.dot(self.X[i], rslt[5])
-                    influ[i] = Si[i]
-                    if self.hat_matrix:
-                        S[i] = Si
-                    tr_STS += np.sum(Si * Si * w[i][0] * w[i][0])
-                    # dont need unless f is explicitly passed for
-                    # prediction of non-sampled points
-                    #cf = rslt[5] - np.dot(rslt[5], f)
-                    #CCT[i] = np.diag(np.dot(cf, cf.T/rslt[3]))
-                    CCT[i] = np.diag(np.dot(rslt[5], rslt[5].T))
+                rslt = map(self._local_fit, range(m))
+            
+            reduced = list(zip(*rslt))
+            influ = np.array(reduced[0]).reshape(-1,1)
+            resid = np.array(reduced[1]).reshape(-1,1)
+            params = np.array(reduced[3])
+            
+            if lite:
+                return GWRResultsLite(self, resid, influ, params)
+            else:
+                predy = np.array(reduced[2]).reshape(-1,1)
+                w = np.array(reduced[-4]).reshape(-1,1)
+                S = np.array(reduced[-3])
+                tr_STS = np.sum(np.array(reduced[-2]))
+                CCT = np.array(reduced[-1])
                 return GWRResults(self, params, predy, S, CCT, influ, tr_STS, w)
+
 
     def predict(self, points, P, exog_scale=None, exog_resid=None,
                 fit_params={}):
@@ -654,7 +634,7 @@ class GWRResults(GLMResults):
         """
         trace of S (hat) matrix
         """
-        return np.sum(self.influ*self.w)
+        return np.sum(self.influ)
 
     @cache_readonly
     def ENP(self):

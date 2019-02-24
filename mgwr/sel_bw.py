@@ -238,6 +238,7 @@ class Sel_BW(object):
                          each iteration of the multiple bandwidth backfitting
                          routine and False to use a smooth function; default is
                          False
+        pool           : A multiprocessing Pool object to enbales parallel fitting; default is None
 
         Returns
         -------
@@ -295,7 +296,7 @@ class Sel_BW(object):
         if self.multi:
             self._mbw()
             self.params = self.bw[3] #params n by k
-            self.bw_gwr = self.bw[-1] #scalar
+            self.bw_gwr = self.bw[-1] #scalar, optimal bw from initial gwr model
         else:
             self._bw()
         
@@ -303,10 +304,7 @@ class Sel_BW(object):
         return self.bw[0]
     
     def _bw(self):
-        if self.pool:
-            gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel,fixed=self.fixed, constant=self.constant, offset=self.offset,spherical=self.spherical).parafit(self.pool))
-        else:
-            gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel,fixed=self.fixed, constant=self.constant, offset=self.offset,spherical=self.spherical).fit(searching = True))
+        gwr_func = lambda bw: getDiag[self.criterion](GWR(self.coords, self.y, self.X_loc, bw, family=self.family, kernel=self.kernel,fixed=self.fixed, constant=self.constant, offset=self.offset,spherical=self.spherical).fit(lite=True, pool=self.pool))
         
         self._optimized_function = gwr_func
 
@@ -355,7 +353,7 @@ class Sel_BW(object):
         max_iter = self.max_iter
         def gwr_func(y,X,bw):
             return GWR(coords, y,X,bw,family=family, kernel=kernel, fixed=fixed,
-                    offset=offset, constant=False,spherical=self.spherical, hat_matrix=False)
+                    offset=offset, constant=False,spherical=self.spherical, hat_matrix=False).fit(lite=True, pool=self.pool)
         def bw_func(y,X):
             selector = Sel_BW(coords, y,X,X_glob=[], family=family, kernel=kernel,
                     fixed=fixed, offset=offset, constant=False, spherical=self.spherical)
