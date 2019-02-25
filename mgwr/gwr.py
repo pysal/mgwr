@@ -1454,7 +1454,7 @@ class MGWR(GWR):
 
     def _chunk_compute_R(self, chunk_id=0):
         """
-        Compute MGWR inference by chunk to reduce memory footprint.
+        Compute MGWR inference by chunks to reduce memory footprint.
         """
         n=self.n
         k=self.k
@@ -1467,11 +1467,13 @@ class MGWR(GWR):
         init_pR = np.zeros((n,len(chunk_index)))
         init_pR[chunk_index,:] = np.eye(len(chunk_index))
         pR = np.zeros((n,len(chunk_index),k)) #partial R: n by chunk_size by k
-
+        
         for i in range(n):
             wi = self._build_wi(i, self.bw_init).reshape(-1,1)
-            xw = self.X*wi
-            pR[i,:,:] = ((np.linalg.inv(xw.T.dot(self.X)).dot(xw.T).dot(init_pR)).T) * self.X[i]
+            xT = (self.X * wi).T
+            P = np.linalg.solve(xT.dot(self.X), xT).dot(init_pR).T
+            pR[i,:,:] = P * self.X[i]
+        
         err = init_pR - np.sum(pR, axis=2) #n by chunk_size
         del(init_pR)
 
