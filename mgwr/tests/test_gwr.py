@@ -290,7 +290,7 @@ class TestGWRGaussian(unittest.TestCase):
         rslt = model.fit()
         rslt_2 = model.fit(n_chunks=2) #testing for n_chunks > 1
         rslt_3 = model.fit(n_chunks=3)
-        rslt_5 = model.fit(n_chunks=5)
+        rslt_20 = model.fit(n_chunks=20)
         
         model_hat = MGWR(self.coords, std_y, std_X, selector=selector,
                          constant=True, hat_matrix=True)
@@ -316,7 +316,7 @@ class TestGWRGaussian(unittest.TestCase):
                                        self.MGWR[[s + "_bse" for s in varnames]].values, atol=1e-07)
         np.testing.assert_allclose(rslt_3.bse,
                                        self.MGWR[[s + "_bse" for s in varnames]].values, atol=1e-07)
-        np.testing.assert_allclose(rslt_5.bse,
+        np.testing.assert_allclose(rslt_20.bse,
                                        self.MGWR[[s + "_bse" for s in varnames]].values, atol=1e-07)
         np.testing.assert_allclose(rslt.tvalues,
                                    self.MGWR[[s + "_tvalues" for s in varnames]].values, atol=1e-07)
@@ -332,7 +332,7 @@ class TestGWRGaussian(unittest.TestCase):
                                                 2.2580525278898254, 1.7517564593926895])
         np.testing.assert_allclose(rslt_3.ENP_j, [3.844671080264143, 3.513770805151652,
                                                 2.2580525278898254, 1.7517564593926895])
-        np.testing.assert_allclose(rslt_5.ENP_j, [3.844671080264143, 3.513770805151652,
+        np.testing.assert_allclose(rslt_20.ENP_j, [3.844671080264143, 3.513770805151652,
                                                 2.2580525278898254, 1.7517564593926895])
         np.testing.assert_allclose(rslt.adj_alpha_j, np.array([[0.02601003, 0.01300501, 0.0002601 ],
                                                                [0.02845945, 0.01422973, 0.00028459],

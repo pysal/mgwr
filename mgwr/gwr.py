@@ -1452,8 +1452,7 @@ class MGWR(GWR):
         self.exog_scale = None
         self_fit_params = None
 
-
-    def _chunk_pR(self, chunk_id=0):
+    def _chunk_compute_R(self, chunk_id=0):
         """
         Compute MGWR inference by chunk to reduce memory footprint.
         """
@@ -1473,37 +1472,38 @@ class MGWR(GWR):
             wi = self._build_wi(i, self.bw_init).reshape(-1,1)
             xw = self.X*wi
             pR[i,:,:] = ((np.linalg.inv(xw.T.dot(self.X)).dot(xw.T).dot(init_pR)).T) * self.X[i]
-        err = init_pR - np.sum(pR, axis=2)
+        err = init_pR - np.sum(pR, axis=2) #n by chunk_size
         del(init_pR)
 
-        for iter in range(self.bws_history.shape[0]):
+        for iter_i in range(self.bws_history.shape[0]):
             for j in range(k):
                 pRj_old = pR[:,:,j] + err
                 Xj = self.X[:,j]
-
-                for chunk_Aj in range(n_chunks):
-                    chunk_index_Aj = np.arange(n)[chunk_Aj*chunk_size:(chunk_Aj+1)*chunk_size]
-                    pSi = np.empty((len(chunk_index_Aj),n))
-                    cur = 0
-                    for index in chunk_index_Aj:
-                        wi = self._build_wi(index, self.bws_history[iter,j])
+                n_chunks_Aj = min(1,int(np.ceil(float(n_chunks/k))))
+                chunk_size_Aj = int(np.ceil(float(n / n_chunks_Aj)))
+                for chunk_Aj in range(n_chunks_Aj):
+                    chunk_index_Aj = np.arange(n)[chunk_Aj*chunk_size_Aj
+                                                  :(chunk_Aj+1)*chunk_size_Aj]
+                    pAj = np.empty((len(chunk_index_Aj),n))
+                    for i in range(len(chunk_index_Aj)):
+                        index = chunk_index_Aj[i]
+                        wi = self._build_wi(index, self.bws_history[iter_i,j])
                         xw = Xj * wi
-                        pSi[cur,:] = Xj[index]/np.sum(xw*Xj) * xw
-                        cur += 1
-                    pR[chunk_index_Aj,:,j] = pSi.dot(pRj_old)
+                        pAj[i,:] = Xj[index]/np.sum(xw*Xj) * xw
+                    pR[chunk_index_Aj,:,j] = pAj.dot(pRj_old)
                 err = pRj_old - pR[:,:,j]
 
         for j in range(k):
             CCT[:,j] += ((pR[:,:,j]/self.X[:, j].reshape(-1,1))**2).sum(axis=1)
         for i in range(len(chunk_index)):
             ENP_j += pR[chunk_index[i],i,:]
-        #ENP_j += np.trace(pR[chunk_index,:],axis1=0, axis2=1)
+
         if self.hat_matrix:
             return ENP_j, CCT, pR
         return ENP_j, CCT
 
 
-    def fit(self, n_chunks=1, pool=None):
+    def fit(self, n_chunks=1):
         """
         Compute MGWR inference by chunk to reduce memory footprint.
         
@@ -1513,8 +1513,6 @@ class MGWR(GWR):
         n_chunks      : integer, optional
                         A number of chunks parameter to reduce memory usage.
                         e.g. n_chunks=2 should reduce overall memory usage by 2.
-        pool:         : A multiprocessing Pool object for computing each chunk in parallel when n_chunks>1.
-                        Default is None.
                         
         Returns
         -------
@@ -1524,11 +1522,7 @@ class MGWR(GWR):
         predy = np.sum(self.X * params, axis=1).reshape(-1,1)
         self.n_chunks = n_chunks
         
-        if pool and n_chunks > 1:
-            rslt = pool.map(self._chunk_pR,range(n_chunks))
-        else:
-            rslt = map(self._chunk_pR,range(n_chunks))
-    
+        rslt = map(self._chunk_compute_R,range(n_chunks))
         rslt_list = list(zip(*rslt))
         ENP_j = np.sum(np.array(rslt_list[0]),axis=0)
         CCT = np.sum(np.array(rslt_list[1]),axis=0)
