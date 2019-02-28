@@ -1505,7 +1505,7 @@ class MGWR(GWR):
         return ENP_j, CCT
 
 
-    def fit(self, n_chunks=1):
+    def fit(self, n_chunks=1, pool=None):
         """
         Compute MGWR inference by chunk to reduce memory footprint.
         
@@ -1515,6 +1515,7 @@ class MGWR(GWR):
         n_chunks      : integer, optional
                         A number of chunks parameter to reduce memory usage.
                         e.g. n_chunks=2 should reduce overall memory usage by 2.
+        pool          : A multiprocessing Pool object to enable parallel fitting; default is None.
                         
         Returns
         -------
@@ -1522,9 +1523,13 @@ class MGWR(GWR):
         """
         params = self.selector.params
         predy = np.sum(self.X * params, axis=1).reshape(-1,1)
-        self.n_chunks = n_chunks
         
-        rslt = map(self._chunk_compute_R,range(n_chunks))
+        try:
+            self.n_chunks = pool._processes * n_chunks
+            rslt = pool.map(self._chunk_compute_R,range(self.n_chunks))
+        except:
+            self.n_chunks = n_chunks
+            rslt = map(self._chunk_compute_R,range(self.n_chunks))
         rslt_list = list(zip(*rslt))
         ENP_j = np.sum(np.array(rslt_list[0]),axis=0)
         CCT = np.sum(np.array(rslt_list[1]),axis=0)
