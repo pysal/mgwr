@@ -1524,10 +1524,10 @@ class MGWR(GWR):
         params = self.selector.params
         predy = np.sum(self.X * params, axis=1).reshape(-1,1)
         
-        try:
+        if pool:
             self.n_chunks = pool._processes * n_chunks
             rslt = pool.map(self._chunk_compute_R,range(self.n_chunks))
-        except:
+        else:
             self.n_chunks = n_chunks
             rslt = map(self._chunk_compute_R,range(self.n_chunks))
         rslt_list = list(zip(*rslt))
