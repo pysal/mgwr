@@ -1481,7 +1481,7 @@ class MGWR(GWR):
             for j in range(k):
                 pRj_old = pR[:,:,j] + err
                 Xj = self.X[:,j]
-                n_chunks_Aj = min(1,int(np.ceil(float(n_chunks/k))))
+                n_chunks_Aj = max(1,int(np.ceil(float(n_chunks/k))))
                 chunk_size_Aj = int(np.ceil(float(n / n_chunks_Aj)))
                 for chunk_Aj in range(n_chunks_Aj):
                     chunk_index_Aj = np.arange(n)[chunk_Aj*chunk_size_Aj
