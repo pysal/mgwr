@@ -169,11 +169,11 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
     bws = np.empty(k)
 
     try:
-        from tqdm import tqdm #if they have it, let users have a progress bar
+        from tqdm import tqdm_notebook as tqdm #if they have it, let users have a progress bar
     except ImportError:
-        def tqdm(x): #otherwise, just passthrough the range
+        def tqdm(x,desc=''): #otherwise, just passthrough the range
             return x
-    for iters in tqdm(range(1, max_iter+1)):
+    for iters in tqdm(range(1, max_iter+1),desc='backfitting'):
         new_XB = np.zeros_like(X)
         params = np.zeros_like(X)
         

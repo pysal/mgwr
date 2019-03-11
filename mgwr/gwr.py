@@ -323,9 +323,9 @@ class GWR(GLM):
             else:
                 m = self.points.shape[0]
 
-            try:
+            if pool:
                 rslt = pool.map(self._local_fit, range(m)) #parallel using mp.Pool
-            except:
+            else:
                 rslt = map(self._local_fit, range(m)) #sequential
             
             rslt_list = list(zip(*rslt))
@@ -1524,12 +1524,19 @@ class MGWR(GWR):
         params = self.selector.params
         predy = np.sum(self.X * params, axis=1).reshape(-1,1)
         
+        try:
+            from tqdm import tqdm_notebook as tqdm #if they have it, let users have a progress bar
+        except ImportError:
+            def tqdm(x,desc=''): #otherwise, just passthrough the range
+                return x
+        
         if pool:
             self.n_chunks = pool._processes * n_chunks
-            rslt = pool.map(self._chunk_compute_R,range(self.n_chunks),chunksize=n_chunks)
+            rslt = tqdm(pool.imap(self._chunk_compute_R,range(self.n_chunks)),total=self.n_chunks,desc='inference')
         else:
             self.n_chunks = n_chunks
-            rslt = map(self._chunk_compute_R,range(self.n_chunks))
+            rslt = map(self._chunk_compute_R,tqdm(range(self.n_chunks),desc='inference'))
+        
         rslt_list = list(zip(*rslt))
         ENP_j = np.sum(np.array(rslt_list[0]),axis=0)
         CCT = np.sum(np.array(rslt_list[1]),axis=0)
