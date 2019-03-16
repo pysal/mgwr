@@ -196,7 +196,7 @@ class Sel_BW(object):
             bw_min=None, bw_max=None, interval=0.0, tol=1.0e-6, max_iter=200,
             init_multi=None, tol_multi=1.0e-5, rss_score=False,
             max_iter_multi=200, multi_bw_min=[None], multi_bw_max=[None],
-            bws_same_times=3, pool=None):
+            bws_same_times=3, pool=None, verbose=False):
         """
         Method to select one unique bandwidth for a gwr model or a
         bandwidth vector for a mgwr model.
@@ -239,9 +239,13 @@ class Sel_BW(object):
                          each iteration of the multiple bandwidth backfitting
                          routine and False to use a smooth function; default is
                          False
-        bws_same_times : If bandwidths keep the same between iterations for bws_same_times (default 3)
-                         in backfitting, then use the current set of bandwidths as final bandwidths.
-        pool           : A multiprocessing Pool object to enbales parallel fitting; default is None
+        bws_same_times : If bandwidths keep the same between iterations for
+                         bws_same_times (default 3) in backfitting, then use the
+                         current set of bandwidths asfinal bandwidths.
+        pool           : A multiprocessing Pool object to enbales parallel fitting;
+                         default is None
+        verbose        : Boolean
+                         If true, bandwidth searching history is printed out; default is False.
 
         Returns
         -------
@@ -260,6 +264,7 @@ class Sel_BW(object):
         self.bw_max = bw_max
         self.bws_same_times = bws_same_times
         self.pool = pool
+        self.verbose = verbose
         
         if len(multi_bw_min) == k:
             self.multi_bw_min = multi_bw_min
@@ -317,10 +322,10 @@ class Sel_BW(object):
                     self.constant)
             delta = 0.38197 #1 - (np.sqrt(5.0)-1.0)/2.0
             self.bw = golden_section(a, c, delta, gwr_func, self.tol,
-                    self.max_iter, self.int_score)
+                    self.max_iter, self.int_score, self.verbose)
         elif self.search_method == 'interval':
             self.bw = equal_interval(self.bw_min, self.bw_max, self.interval,
-                    gwr_func, self.int_score)
+                    gwr_func, self.int_score, self.verbose)
         elif self.search_method == 'scipy':
             self.bw_min, self.bw_max = self._init_section(self.X_glob, self.X_loc,
                     self.coords, self.constant)
@@ -366,11 +371,11 @@ class Sel_BW(object):
 
         def sel_func(bw_func, bw_min=None, bw_max=None):
             return bw_func.search(search_method=search_method, criterion=criterion,
-                    bw_min=bw_min, bw_max=bw_max, interval=interval, tol=tol, max_iter=max_iter, pool=self.pool)
+                    bw_min=bw_min, bw_max=bw_max, interval=interval, tol=tol, max_iter=max_iter, pool=self.pool, verbose=False)
         
         self.bw = multi_bw(self.init_multi, y, X, n, k, family,
                 self.tol_multi, self.max_iter_multi, self.rss_score, gwr_func,
-                bw_func, sel_func, multi_bw_min, multi_bw_max, bws_same_times)
+                bw_func, sel_func, multi_bw_min, multi_bw_max, bws_same_times,verbose=self.verbose)
 
     def _init_section(self, X_glob, X_loc, coords, constant):
         if len(X_glob) > 0:

@@ -5,7 +5,7 @@ __author__ = "Taylor Oshan"
 import numpy as np
 from copy import deepcopy
 
-def golden_section(a, c, delta, function, tol, max_iter, int_score=False):
+def golden_section(a, c, delta, function, tol, max_iter, int_score=False, verbose=False):
     """
     Golden section search routine
     Method: p212, 9.6.4
@@ -57,12 +57,16 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False):
         else:
             score_b = function(b)
             dict[b] = score_b
+            if verbose:
+                print("Bandwidth: ",np.round(b, 2), ", score: ", "{0:.2f}".format(score_b[0]))
         
         if d in dict:
             score_d = dict[d]
         else:
             score_d = function(d)
             dict[d] = score_d
+            if verbose:
+                print("Bandwidth: ",np.round(d, 2), ", score: ", "{0:.2f}".format(score_d[0]))
 
         if score_b <= score_d:
             opt_val = b
@@ -84,7 +88,7 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False):
 
     return np.round(opt_val, 2), opt_score, output
 
-def equal_interval(l_bound, u_bound, interval, function, int_score=False):
+def equal_interval(l_bound, u_bound, interval, function, int_score=False, verbose=False):
     """
     Interval search, using interval as stepsize
 
@@ -122,7 +126,14 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False):
     output = []
 
     score_a = function(a)
+    if verbose:
+        print(score_a)
+        print("Bandwidth:",a,", score:", "{0:.2f}".format(score_a[0]))
+
     score_c = function(c)
+    if verbose:
+        print("Bandwidth:",c,", score:", "{0:.2f}".format(score_c[0]))
+
     output.append((a,score_a))
     output.append((c,score_c))
 
@@ -135,6 +146,8 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False):
 
     while b < c:
         score_b = function(b)
+        if verbose:
+            print("Bandwidth:",b,", score:", "{0:.2f}".format(score_b[0]))
         output.append((b,score_b))
 
         if score_b < opt_score:
@@ -145,7 +158,7 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False):
     return opt_val, opt_score, output
 
 def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
-        gwr_func, bw_func, sel_func, multi_bw_min, multi_bw_max, bws_same_times):
+        gwr_func, bw_func, sel_func, multi_bw_min, multi_bw_max, bws_same_times, verbose=False):
     """
     Multiscale GWR bandwidth search procedure using iterative GAM backfitting
     """
@@ -153,6 +166,7 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         bw = sel_func(bw_func(y, X))
         optim_model = gwr_func(y, X, bw)
     else:
+        bw = init
         optim_model = gwr_func(y, X, init)
     bw_gwr = bw
     err = optim_model.resid_response.reshape((-1,1))
@@ -173,7 +187,7 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
     except ImportError:
         def tqdm(x,desc=''): #otherwise, just passthrough the range
             return x
-    for iters in tqdm(range(1, max_iter+1),desc='backfitting'):
+    for iters in tqdm(range(1, max_iter+1),desc='Backfitting'):
         new_XB = np.zeros_like(X)
         params = np.zeros_like(X)
         
@@ -213,6 +227,10 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         scores.append(deepcopy(score))
         delta = score
         BWs.append(deepcopy(bws))
+
+        if verbose:
+            print("Current iteration:",iters,",SOC:", np.round(score,7))
+            print("Bandwidths:", ', '.join([str(bw) for bw in bws]))
         
         if delta < tol:
             break

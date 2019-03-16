@@ -1475,8 +1475,7 @@ class MGWR(GWR):
             pR[i,:,:] = P * self.X[i]
         
         err = init_pR - np.sum(pR, axis=2) #n by chunk_size
-        del(init_pR)
-
+        
         for iter_i in range(self.bws_history.shape[0]):
             for j in range(k):
                 pRj_old = pR[:,:,j] + err
@@ -1513,7 +1512,7 @@ class MGWR(GWR):
         ----------
 
         n_chunks      : integer, optional
-                        A number of chunks parameter to reduce memory usage.
+                        A number of chunks parameter to reduce memory usage. 
                         e.g. n_chunks=2 should reduce overall memory usage by 2.
         pool          : A multiprocessing Pool object to enable parallel fitting; default is None.
                         
@@ -1525,17 +1524,17 @@ class MGWR(GWR):
         predy = np.sum(self.X * params, axis=1).reshape(-1,1)
         
         try:
-            from tqdm import tqdm_notebook as tqdm #if they have it, let users have a progress bar
+            from tqdm import tqdm_notebook as tqdm #progress bar
         except ImportError:
             def tqdm(x,desc=''): #otherwise, just passthrough the range
                 return x
         
         if pool:
             self.n_chunks = pool._processes * n_chunks
-            rslt = tqdm(pool.imap(self._chunk_compute_R,range(self.n_chunks)),total=self.n_chunks,desc='inference')
+            rslt = tqdm(pool.imap(self._chunk_compute_R,range(self.n_chunks)),total=self.n_chunks,desc='Inference')
         else:
             self.n_chunks = n_chunks
-            rslt = map(self._chunk_compute_R,tqdm(range(self.n_chunks),desc='inference'))
+            rslt = map(self._chunk_compute_R,tqdm(range(self.n_chunks),desc='Inference'))
         
         rslt_list = list(zip(*rslt))
         ENP_j = np.sum(np.array(rslt_list[0]),axis=0)
