@@ -6,6 +6,7 @@ import os
 import libpysal as ps
 from libpysal import io
 import numpy as np
+import multiprocessing as mp
 import unittest
 import pandas
 from types import SimpleNamespace
@@ -15,7 +16,7 @@ from ..diagnostics import get_AICc, get_AIC, get_BIC, get_CV
 from spglm.family import Gaussian, Poisson, Binomial
 
 
-class TestGWRGaussian(unittest.TestCase):
+class TestGWRGaussianPool(unittest.TestCase):
     def setUp(self):
         data_path = ps.examples.get_path("GData_utm.csv")
         data = io.open(data_path)
@@ -36,60 +37,9 @@ class TestGWRGaussian(unittest.TestCase):
         MGWR_path = os.path.join(
             os.path.dirname(__file__), 'georgia_mgwr_results.csv')
         self.MGWR = pandas.read_csv(MGWR_path)
+        self.pool = mp.Pool(4)
 
-    def test_BS_F(self):
-        est_Int = self.BS_F.by_col(' est_Intercept')
-        se_Int = self.BS_F.by_col(' se_Intercept')
-        t_Int = self.BS_F.by_col(' t_Intercept')
-        est_rural = self.BS_F.by_col(' est_PctRural')
-        se_rural = self.BS_F.by_col(' se_PctRural')
-        t_rural = self.BS_F.by_col(' t_PctRural')
-        est_pov = self.BS_F.by_col(' est_PctPov')
-        se_pov = self.BS_F.by_col(' se_PctPov')
-        t_pov = self.BS_F.by_col(' t_PctPov')
-        est_black = self.BS_F.by_col(' est_PctBlack')
-        se_black = self.BS_F.by_col(' se_PctBlack')
-        t_black = self.BS_F.by_col(' t_PctBlack')
-        yhat = self.BS_F.by_col(' yhat')
-        res = np.array(self.BS_F.by_col(' residual'))
-        std_res = np.array(self.BS_F.by_col(' std_residual')).reshape((-1, 1))
-        localR2 = np.array(self.BS_F.by_col(' localR2')).reshape((-1, 1))
-        inf = np.array(self.BS_F.by_col(' influence')).reshape((-1, 1))
-        cooksD = np.array(self.BS_F.by_col(' CooksD')).reshape((-1, 1))
-
-        model = GWR(self.coords, self.y, self.X, bw=209267.689, fixed=True,
-                    sigma2_v1=False)
-
-        rslt = model.fit()
-        AICc = get_AICc(rslt)
-        AIC = get_AIC(rslt)
-        BIC = get_BIC(rslt)
-        CV = get_CV(rslt)
-
-        self.assertAlmostEquals(np.floor(AICc), 894.0)
-        self.assertAlmostEquals(np.floor(AIC), 890.0)
-        self.assertAlmostEquals(np.floor(BIC), 944.0)
-        self.assertAlmostEquals(np.round(CV, 2), 18.25)
-        np.testing.assert_allclose(est_Int, rslt.params[:, 0], rtol=1e-04)
-        np.testing.assert_allclose(se_Int, rslt.bse[:, 0], rtol=1e-04)
-        np.testing.assert_allclose(t_Int, rslt.tvalues[:, 0], rtol=1e-04)
-        np.testing.assert_allclose(est_rural, rslt.params[:, 1], rtol=1e-04)
-        np.testing.assert_allclose(se_rural, rslt.bse[:, 1], rtol=1e-04)
-        np.testing.assert_allclose(t_rural, rslt.tvalues[:, 1], rtol=1e-04)
-        np.testing.assert_allclose(est_pov, rslt.params[:, 2], rtol=1e-04)
-        np.testing.assert_allclose(se_pov, rslt.bse[:, 2], rtol=1e-04)
-        np.testing.assert_allclose(t_pov, rslt.tvalues[:, 2], rtol=1e-04)
-        np.testing.assert_allclose(est_black, rslt.params[:, 3], rtol=1e-02)
-        np.testing.assert_allclose(se_black, rslt.bse[:, 3], rtol=1e-02)
-        np.testing.assert_allclose(t_black, rslt.tvalues[:, 3], rtol=1e-02)
-        np.testing.assert_allclose(yhat, rslt.mu, rtol=1e-05)
-        np.testing.assert_allclose(res, rslt.resid_response, rtol=1e-04)
-        np.testing.assert_allclose(std_res, rslt.std_res, rtol=1e-04)
-        np.testing.assert_allclose(localR2, rslt.localR2, rtol=1e-05)
-        np.testing.assert_allclose(inf, rslt.influ, rtol=1e-04)
-        np.testing.assert_allclose(cooksD, rslt.cooksD, rtol=1e-00)
-
-    def test_BS_NN(self):
+    def test_BS_NN_Pool(self):
         est_Int = self.BS_NN.by_col(' est_Intercept')
         se_Int = self.BS_NN.by_col(' se_Intercept')
         t_Int = self.BS_NN.by_col(' t_Intercept')
@@ -120,7 +70,8 @@ class TestGWRGaussian(unittest.TestCase):
 
         model = GWR(self.coords, self.y, self.X, bw=90.000, fixed=False,
                     sigma2_v1=False)
-        rslt = model.fit()
+
+        rslt = model.fit(pool=self.pool)
 
         adj_alpha = rslt.adj_alpha
         alpha = 0.01017489
@@ -166,14 +117,14 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(cooksD, rslt.cooksD, rtol=1e-00)
 
         sel = Sel_BW(self.coords, self.y, self.X)
-        bw = sel.search()
+        bw = sel.search(pool=self.pool)
         model = GWR(self.coords, self.y, self.X, bw)
-        result = model.fit()
+        result = model.fit(pool=self.pool)
 
         p_vals = result.spatial_variability(sel, 10)
         np.testing.assert_allclose(spat_var_p_vals, p_vals, rtol=1e-04)
 
-    def test_GS_F(self):
+    def test_GS_F_Pool(self):
         est_Int = self.GS_F.by_col(' est_Intercept')
         se_Int = self.GS_F.by_col(' se_Intercept')
         t_Int = self.GS_F.by_col(' t_Intercept')
@@ -196,7 +147,8 @@ class TestGWRGaussian(unittest.TestCase):
         model = GWR(self.coords, self.y, self.X, bw=87308.298,
                     kernel='gaussian', fixed=True, sigma2_v1=False)
 
-        rslt = model.fit()
+        rslt = model.fit(pool=self.pool)
+
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
         BIC = get_BIC(rslt)
@@ -225,76 +177,26 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(inf, rslt.influ, rtol=1e-04)
         np.testing.assert_allclose(cooksD, rslt.cooksD, rtol=1e-00)
 
-    def test_GS_NN(self):
-        est_Int = self.GS_NN.by_col(' est_Intercept')
-        se_Int = self.GS_NN.by_col(' se_Intercept')
-        t_Int = self.GS_NN.by_col(' t_Intercept')
-        est_rural = self.GS_NN.by_col(' est_PctRural')
-        se_rural = self.GS_NN.by_col(' se_PctRural')
-        t_rural = self.GS_NN.by_col(' t_PctRural')
-        est_pov = self.GS_NN.by_col(' est_PctPov')
-        se_pov = self.GS_NN.by_col(' se_PctPov')
-        t_pov = self.GS_NN.by_col(' t_PctPov')
-        est_black = self.GS_NN.by_col(' est_PctBlack')
-        se_black = self.GS_NN.by_col(' se_PctBlack')
-        t_black = self.GS_NN.by_col(' t_PctBlack')
-        yhat = self.GS_NN.by_col(' yhat')
-        res = np.array(self.GS_NN.by_col(' residual'))
-        std_res = np.array(self.GS_NN.by_col(' std_residual')).reshape((-1, 1))
-        localR2 = np.array(self.GS_NN.by_col(' localR2')).reshape((-1, 1))
-        inf = np.array(self.GS_NN.by_col(' influence')).reshape((-1, 1))
-        cooksD = np.array(self.GS_NN.by_col(' CooksD')).reshape((-1, 1))
-
-        model = GWR(self.coords, self.y, self.X, bw=49.000, kernel='gaussian',
-                    fixed=False, sigma2_v1=False)
-
-        rslt = model.fit()
-        AICc = get_AICc(rslt)
-        AIC = get_AIC(rslt)
-        BIC = get_BIC(rslt)
-        CV = get_CV(rslt)
-
-        self.assertAlmostEquals(np.floor(AICc), 896.0)
-        self.assertAlmostEquals(np.floor(AIC), 894.0)
-        self.assertAlmostEquals(np.floor(BIC), 922.0)
-        self.assertAlmostEquals(np.around(CV, 2), 17.91)
-        np.testing.assert_allclose(est_Int, rslt.params[:, 0], rtol=1e-04)
-        np.testing.assert_allclose(se_Int, rslt.bse[:, 0], rtol=1e-04)
-        np.testing.assert_allclose(t_Int, rslt.tvalues[:, 0], rtol=1e-04)
-        np.testing.assert_allclose(est_rural, rslt.params[:, 1], rtol=1e-04)
-        np.testing.assert_allclose(se_rural, rslt.bse[:, 1], rtol=1e-04)
-        np.testing.assert_allclose(t_rural, rslt.tvalues[:, 1], rtol=1e-04)
-        np.testing.assert_allclose(est_pov, rslt.params[:, 2], rtol=1e-04)
-        np.testing.assert_allclose(se_pov, rslt.bse[:, 2], rtol=1e-04)
-        np.testing.assert_allclose(t_pov, rslt.tvalues[:, 2], rtol=1e-04)
-        np.testing.assert_allclose(est_black, rslt.params[:, 3], rtol=1e-02)
-        np.testing.assert_allclose(se_black, rslt.bse[:, 3], rtol=1e-02)
-        np.testing.assert_allclose(t_black, rslt.tvalues[:, 3], rtol=1e-02)
-        np.testing.assert_allclose(yhat, rslt.mu, rtol=1e-05)
-        np.testing.assert_allclose(res, rslt.resid_response, rtol=1e-04)
-        np.testing.assert_allclose(std_res, rslt.std_res, rtol=1e-04)
-        np.testing.assert_allclose(localR2, rslt.localR2, rtol=1e-05)
-        np.testing.assert_allclose(inf, rslt.influ, rtol=1e-04)
-        np.testing.assert_allclose(cooksD, rslt.cooksD, rtol=1e-00)
-
-    def test_MGWR(self):
+    def test_MGWR_Pool(self):
         std_y = (self.y - self.y.mean()) / self.y.std()
         std_X = (self.mgwr_X - self.mgwr_X.mean(axis=0)) / \
             self.mgwr_X.std(axis=0)
+
         selector = Sel_BW(self.coords, std_y, std_X, multi=True, constant=True)
-        selector.search(multi_bw_min=[2], multi_bw_max=[159])
+        selector.search(multi_bw_min=[2], multi_bw_max=[159], pool=self.pool)
         model = MGWR(self.coords, std_y, std_X, selector=selector,
                      constant=True)
 
-        rslt = model.fit()
-        rslt_2 = model.fit(n_chunks=2)  #testing for n_chunks > 1
-        rslt_3 = model.fit(n_chunks=3)
-        rslt_20 = model.fit(n_chunks=20)
+        rslt = model.fit(pool=self.pool)
+        rslt_2 = model.fit(n_chunks=2,
+                           pool=self.pool)  #testing for n_chunks > 1
+        rslt_3 = model.fit(n_chunks=3, pool=self.pool)
+        rslt_20 = model.fit(n_chunks=20, pool=self.pool)
 
         model_hat = MGWR(self.coords, std_y, std_X, selector=selector,
                          constant=True, hat_matrix=True)
-        rslt_hat = model_hat.fit()
-        rslt_hat_2 = model_hat.fit(n_chunks=2)
+        rslt_hat = model_hat.fit(pool=self.pool)
+        rslt_hat_2 = model_hat.fit(n_chunks=2, pool=self.pool)
 
         np.testing.assert_allclose(rslt_hat.R, rslt_hat_2.R, atol=1e-07)
         np.testing.assert_allclose(
@@ -422,7 +324,7 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(predictions, results.predictions,
                                    rtol=1e-05)
 
-    def test_BS_NN_longlat(self):
+    def test_BS_NN_longlat_Pool(self):
         GA_longlat = os.path.join(
             os.path.dirname(__file__), 'ga_bs_nn_longlat_listwise.csv')
         self.BS_NN_longlat = io.open(GA_longlat)
@@ -456,7 +358,8 @@ class TestGWRGaussian(unittest.TestCase):
 
         model = GWR(coords_longlat, self.y, self.X, bw=90.000, fixed=False,
                     spherical=True, sigma2_v1=False)
-        rslt = model.fit()
+
+        rslt = model.fit(pool=self.pool)
 
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
@@ -489,7 +392,7 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(cooksD, rslt.cooksD, rtol=1e-00)
 
 
-class TestGWRPoisson(unittest.TestCase):
+class TestGWRPoissonPool(unittest.TestCase):
     def setUp(self):
         data_path = os.path.join(
             os.path.dirname(__file__), 'tokyo/Tokyomortality.csv')
@@ -519,8 +422,9 @@ class TestGWRPoisson(unittest.TestCase):
             os.path.join(
                 os.path.dirname(__file__),
                 'tokyo/tokyo_BS_NN_OFF_listwise.csv'))
+        self.pool = mp.Pool(4)
 
-    def test_BS_F(self):
+    def test_BS_F_Pool(self):
         est_Int = self.BS_F.by_col(' est_Intercept')
         se_Int = self.BS_F.by_col(' se_Intercept')
         t_Int = self.BS_F.by_col(' t_Intercept')
@@ -542,7 +446,8 @@ class TestGWRPoisson(unittest.TestCase):
         model = GWR(self.coords, self.y, self.X, bw=26029.625,
                     family=Poisson(), kernel='bisquare', fixed=True,
                     sigma2_v1=False)
-        rslt = model.fit()
+
+        rslt = model.fit(pool=self.pool)
 
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
@@ -570,7 +475,7 @@ class TestGWRPoisson(unittest.TestCase):
         np.testing.assert_allclose(yhat, rslt.mu, rtol=1e-05)
         np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
 
-    def test_BS_NN(self):
+    def test_BS_NN_Pool(self):
         est_Int = self.BS_NN.by_col(' est_Intercept')
         se_Int = self.BS_NN.by_col(' se_Intercept')
         t_Int = self.BS_NN.by_col(' t_Intercept')
@@ -591,7 +496,8 @@ class TestGWRPoisson(unittest.TestCase):
 
         model = GWR(self.coords, self.y, self.X, bw=50, family=Poisson(),
                     kernel='bisquare', fixed=False, sigma2_v1=False)
-        rslt = model.fit()
+
+        rslt = model.fit(pool=self.pool)
 
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
@@ -621,7 +527,7 @@ class TestGWRPoisson(unittest.TestCase):
         np.testing.assert_allclose(yhat, rslt.mu, rtol=1e-04)
         np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
 
-    def test_BS_NN_Offset(self):
+    def test_BS_NN_Offset_Pool(self):
         est_Int = self.BS_NN_OFF.by_col(' est_Intercept')
         se_Int = self.BS_NN_OFF.by_col(' se_Intercept')
         t_Int = self.BS_NN_OFF.by_col(' t_Intercept')
@@ -643,7 +549,8 @@ class TestGWRPoisson(unittest.TestCase):
         model = GWR(self.coords, self.y, self.X, bw=100, offset=self.off,
                     family=Poisson(), kernel='bisquare', fixed=False,
                     sigma2_v1=False)
-        rslt = model.fit()
+
+        rslt = model.fit(pool=self.pool)
 
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
@@ -688,7 +595,7 @@ class TestGWRPoisson(unittest.TestCase):
         np.testing.assert_allclose(yhat, rslt.mu, rtol=1e-03, atol=1e-02)
         np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-04, atol=1e-02)
 
-    def test_GS_F(self):
+    def test_GS_F_Pool(self):
         est_Int = self.GS_F.by_col(' est_Intercept')
         se_Int = self.GS_F.by_col(' se_Intercept')
         t_Int = self.GS_F.by_col(' t_Intercept')
@@ -709,7 +616,8 @@ class TestGWRPoisson(unittest.TestCase):
 
         model = GWR(self.coords, self.y, self.X, bw=8764.474, family=Poisson(),
                     kernel='gaussian', fixed=True, sigma2_v1=False)
-        rslt = model.fit()
+
+        rslt = model.fit(pool=self.pool)
 
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
@@ -736,7 +644,7 @@ class TestGWRPoisson(unittest.TestCase):
         np.testing.assert_allclose(yhat, rslt.mu, rtol=1e-04)
         np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
 
-    def test_GS_NN(self):
+    def test_GS_NN_Pool(self):
         est_Int = self.GS_NN.by_col(' est_Intercept')
         se_Int = self.GS_NN.by_col(' se_Intercept')
         t_Int = self.GS_NN.by_col(' t_Intercept')
@@ -757,7 +665,8 @@ class TestGWRPoisson(unittest.TestCase):
 
         model = GWR(self.coords, self.y, self.X, bw=50, family=Poisson(),
                     kernel='gaussian', fixed=False, sigma2_v1=False)
-        rslt = model.fit()
+
+        rslt = model.fit(pool=self.pool)
 
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
@@ -785,7 +694,7 @@ class TestGWRPoisson(unittest.TestCase):
         np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
 
 
-class TestGWRBinomial(unittest.TestCase):
+class TestGWRBinomialPool(unittest.TestCase):
     def setUp(self):
         data_path = os.path.join(
             os.path.dirname(__file__), 'clearwater/landslides.csv')
@@ -815,8 +724,9 @@ class TestGWRBinomial(unittest.TestCase):
             os.path.join(
                 os.path.dirname(__file__),
                 'clearwater/clearwater_GS_NN_listwise.csv'))
+        self.pool = mp.Pool(4)
 
-    def test_BS_F(self):
+    def test_BS_F_Pool(self):
         est_Int = self.BS_F.by_col(' est_Intercept')
         se_Int = self.BS_F.by_col(' se_Intercept')
         t_Int = self.BS_F.by_col(' t_Intercept')
@@ -844,7 +754,8 @@ class TestGWRBinomial(unittest.TestCase):
         model = GWR(self.coords, self.y, self.X, bw=19642.170,
                     family=Binomial(), kernel='bisquare', fixed=True,
                     sigma2_v1=False)
-        rslt = model.fit()
+
+        rslt = model.fit(pool=self.pool)
 
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
@@ -880,7 +791,7 @@ class TestGWRBinomial(unittest.TestCase):
         # code from Jing's python version, which both yield the same
         #np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
 
-    def test_BS_NN(self):
+    def test_BS_NN_Pool(self):
         est_Int = self.BS_NN.by_col(' est_Intercept')
         se_Int = self.BS_NN.by_col(' se_Intercept')
         t_Int = self.BS_NN.by_col(' t_Intercept')
@@ -907,7 +818,8 @@ class TestGWRBinomial(unittest.TestCase):
 
         model = GWR(self.coords, self.y, self.X, bw=158, family=Binomial(),
                     kernel='bisquare', fixed=False, sigma2_v1=False)
-        rslt = model.fit()
+
+        rslt = model.fit(pool=self.pool)
 
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
@@ -946,7 +858,7 @@ class TestGWRBinomial(unittest.TestCase):
         # code from Jing's python version, which both yield the same
         #np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
 
-    def test_GS_F(self):
+    def test_GS_F_Pool(self):
         est_Int = self.GS_F.by_col(' est_Intercept')
         se_Int = self.GS_F.by_col(' se_Intercept')
         t_Int = self.GS_F.by_col(' t_Intercept')
@@ -974,7 +886,8 @@ class TestGWRBinomial(unittest.TestCase):
         model = GWR(self.coords, self.y, self.X, bw=8929.061,
                     family=Binomial(), kernel='gaussian', fixed=True,
                     sigma2_v1=False)
-        rslt = model.fit()
+
+        rslt = model.fit(pool=self.pool)
 
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
@@ -1010,7 +923,7 @@ class TestGWRBinomial(unittest.TestCase):
         # code from Jing's python version, which both yield the same
         #np.testing.assert_allclose(pdev, rslt.pDev, rtol=1e-05)
 
-    def test_GS_NN(self):
+    def test_GS_NN_Pool(self):
         est_Int = self.GS_NN.by_col(' est_Intercept')
         se_Int = self.GS_NN.by_col(' se_Intercept')
         t_Int = self.GS_NN.by_col(' t_Intercept')
@@ -1037,7 +950,8 @@ class TestGWRBinomial(unittest.TestCase):
 
         model = GWR(self.coords, self.y, self.X, bw=64, family=Binomial(),
                     kernel='gaussian', fixed=False, sigma2_v1=False)
-        rslt = model.fit()
+
+        rslt = model.fit(pool=self.pool)
 
         AICc = get_AICc(rslt)
         AIC = get_AIC(rslt)
