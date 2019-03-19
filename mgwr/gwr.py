@@ -17,6 +17,7 @@ from .kernels import *
 from .summary import *
 import multiprocessing as mp
 
+
 class GWR(GLM):
     """
     Geographically weighted regression. Can currently estimate Gaussian,
@@ -232,7 +233,9 @@ class GWR(GLM):
     def _build_wi(self, i, bw):
 
         try:
-            wi = Kernel(i, self.coords, bw, fixed=self.fixed, function=self.kernel, points=self.points, spherical=self.spherical).kernel
+            wi = Kernel(i, self.coords, bw, fixed=self.fixed,
+                        function=self.kernel, points=self.points,
+                        spherical=self.spherical).kernel
         except BaseException:
             raise  # TypeError('Unsupported kernel function  ', kernel)
 
@@ -242,18 +245,18 @@ class GWR(GLM):
         """
         Local fitting at location i.
         """
-        wi = self._build_wi(i,self.bw).reshape(-1, 1) #local spatial weights
-        
+        wi = self._build_wi(i, self.bw).reshape(-1, 1)  #local spatial weights
+
         if isinstance(self.family, Gaussian):
-            betas, inv_xtx_xt = _compute_betas_gwr(self.y,self.X,wi)
-            predy = np.dot(self.X[i],betas)[0]
+            betas, inv_xtx_xt = _compute_betas_gwr(self.y, self.X, wi)
+            predy = np.dot(self.X[i], betas)[0]
             resid = self.y[i] - predy
-            influ = np.dot(self.X[i],inv_xtx_xt[:,i])
+            influ = np.dot(self.X[i], inv_xtx_xt[:, i])
             w = 1
 
         elif isinstance(self.family, (Poisson, Binomial)):
-            rslt = iwls(self.y, self.X, self.family,
-                        self.offset, None, self.fit_params['ini_params'], self.fit_params['tol'],
+            rslt = iwls(self.y, self.X, self.family, self.offset, None,
+                        self.fit_params['ini_params'], self.fit_params['tol'],
                         self.fit_params['max_iter'], wi=wi)
             inv_xtx_xt = rslt[5]
             w = rslt[3][i][0]
@@ -261,19 +264,19 @@ class GWR(GLM):
             predy = rslt[1][i]
             resid = self.y[i] - predy
             betas = rslt[0]
-        
+
         if self.fit_params['lite']:
-            return influ,resid,predy,betas.reshape(-1)
+            return influ, resid, predy, betas.reshape(-1)
         else:
             Si = np.dot(self.X[i], inv_xtx_xt).reshape(-1)
             tr_STS_i = np.sum(Si * Si * w * w)
             CCT = np.diag(np.dot(inv_xtx_xt, inv_xtx_xt.T)).reshape(-1)
             if not self.hat_matrix:
                 Si = None
-            return influ,resid,predy,betas.reshape(-1),w,Si,tr_STS_i,CCT
+            return influ, resid, predy, betas.reshape(-1), w, Si, tr_STS_i, CCT
 
-    def fit(self, ini_params=None, tol=1.0e-5, max_iter=20,
-            solve='iwls', lite=False, pool=None):
+    def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls',
+            lite=False, pool=None):
         """
         Method that fits a model with a particular estimation routine.
 
@@ -315,37 +318,38 @@ class GWR(GLM):
         self.fit_params['max_iter'] = max_iter
         self.fit_params['solve'] = solve
         self.fit_params['lite'] = lite
-        
+
         if solve.lower() == 'iwls':
-            
+
             if self.points is None:
                 m = self.y.shape[0]
             else:
                 m = self.points.shape[0]
 
             if pool:
-                rslt = pool.map(self._local_fit, range(m)) #parallel using mp.Pool
+                rslt = pool.map(self._local_fit,
+                                range(m))  #parallel using mp.Pool
             else:
-                rslt = map(self._local_fit, range(m)) #sequential
-            
+                rslt = map(self._local_fit, range(m))  #sequential
+
             rslt_list = list(zip(*rslt))
-            influ = np.array(rslt_list[0]).reshape(-1,1)
-            resid = np.array(rslt_list[1]).reshape(-1,1)
+            influ = np.array(rslt_list[0]).reshape(-1, 1)
+            resid = np.array(rslt_list[1]).reshape(-1, 1)
             params = np.array(rslt_list[3])
-            
+
             if lite:
                 return GWRResultsLite(self, resid, influ, params)
             else:
-                predy = np.array(rslt_list[2]).reshape(-1,1)
-                w = np.array(rslt_list[-4]).reshape(-1,1)
+                predy = np.array(rslt_list[2]).reshape(-1, 1)
+                w = np.array(rslt_list[-4]).reshape(-1, 1)
                 if self.hat_matrix:
                     S = np.array(rslt_list[-3])
                 else:
                     S = None
                 tr_STS = np.sum(np.array(rslt_list[-2]))
                 CCT = np.array(rslt_list[-1])
-                return GWRResults(self, params, predy, S, CCT, influ, tr_STS, w)
-
+                return GWRResults(self, params, predy, S, CCT, influ, tr_STS,
+                                  w)
 
     def predict(self, points, P, exog_scale=None, exog_resid=None,
                 fit_params={}):
@@ -594,7 +598,8 @@ class GWRResults(GLMResults):
                           unsampled points ()
     """
 
-    def __init__(self, model, params, predy, S, CCT, influ, tr_STS=None, w=None):
+    def __init__(self, model, params, predy, S, CCT, influ, tr_STS=None,
+                 w=None):
         GLMResults.__init__(self, model, params, predy, w)
         self.offset = model.offset
         if w is not None:
@@ -608,7 +613,8 @@ class GWRResults(GLMResults):
 
     @cache_readonly
     def W(self):
-        W = np.array([self.model._build_wi(i,self.model.bw) for i in range(self.n)])
+        W = np.array(
+            [self.model._build_wi(i, self.model.bw) for i in range(self.n)])
         return W
 
     @cache_readonly
@@ -682,7 +688,7 @@ class GWRResults(GLMResults):
         off = self.offset.reshape((-1, 1))
         arr_ybar = np.zeros(shape=(self.n, 1))
         for i in range(n):
-            w_i = np.reshape(self.model._build_wi(i,self.model.bw), (-1, 1))
+            w_i = np.reshape(self.model._build_wi(i, self.model.bw), (-1, 1))
             sum_yw = np.sum(self.y.reshape((-1, 1)) * w_i)
             arr_ybar[i] = 1.0 * sum_yw / np.sum(w_i * off)
         return arr_ybar
@@ -704,8 +710,10 @@ class GWRResults(GLMResults):
             n = self.n
         TSS = np.zeros(shape=(n, 1))
         for i in range(n):
-            TSS[i] = np.sum(np.reshape(self.model._build_wi(i,self.model.bw), (-1, 1)) *
-                            (self.y.reshape((-1, 1)) - self.y_bar[i])**2)
+            TSS[i] = np.sum(
+                np.reshape(self.model._build_wi(i, self.model.bw),
+                           (-1, 1)) * (self.y.reshape(
+                               (-1, 1)) - self.y_bar[i])**2)
         return TSS
 
     @cache_readonly
@@ -726,7 +734,9 @@ class GWRResults(GLMResults):
             resid = self.resid_response.reshape((-1, 1))
         RSS = np.zeros(shape=(n, 1))
         for i in range(n):
-            RSS[i] = np.sum(np.reshape(self.model._build_wi(i,self.model.bw), (-1, 1)) * resid**2)
+            RSS[i] = np.sum(
+                np.reshape(self.model._build_wi(i, self.model.bw),
+                           (-1, 1)) * resid**2)
         return RSS
 
     @cache_readonly
@@ -820,7 +830,8 @@ class GWRResults(GLMResults):
                 'deviance not currently used for Gaussian')
         elif isinstance(self.family, Poisson):
             dev = np.sum(
-                2.0 * self.W * (y * np.log(y / (ybar * off)) - (y - ybar * off)), axis=1)
+                2.0 * self.W * (y * np.log(y / (ybar * off)) -
+                                (y - ybar * off)), axis=1)
         elif isinstance(self.family, Binomial):
             dev = self.family.deviance(self.y, self.y_bar, self.W, axis=1)
         return dev.reshape((-1, 1))
@@ -966,12 +977,11 @@ class GWRResults(GLMResults):
     @cache_readonly
     def llnull(self):
         return None
-    
-    
+
     @cache_readonly
     def null_deviance(self):
         return self.family.deviance(self.y, self.null)
-    
+
     @cache_readonly
     def global_deviance(self):
         deviance = np.sum(self.family.resid_dev(self.y, self.mu)**2)
@@ -982,9 +992,9 @@ class GWRResults(GLMResults):
         """
         Percentage of deviance explanied. Equivalent to 1 - (deviance/null deviance)
         """
-        D2 =  1.0 - (self.global_deviance / self.null_deviance)
+        D2 = 1.0 - (self.global_deviance / self.null_deviance)
         return D2
-    
+
     @cache_readonly
     def R2(self):
         """
@@ -1000,7 +1010,7 @@ class GWRResults(GLMResults):
         """
         Adjusted percentage of deviance explanied.
         """
-        adj_D2 = 1 - (1 - self.D2) * (self.n - 1)/(self.n - self.ENP - 1)
+        adj_D2 = 1 - (1 - self.D2) * (self.n - 1) / (self.n - self.ENP - 1)
         return adj_D2
 
     @cache_readonly
@@ -1080,25 +1090,25 @@ class GWRResults(GLMResults):
         vdp_pi = np.ndarray((nrow, nvar, nvar))
 
         for i in range(nrow):
-            wi = self.model._build_wi(i,self.model.bw)
+            wi = self.model._build_wi(i, self.model.bw)
             sw = np.sum(wi)
             wi = wi / sw
             tag = 0
 
             for j, k in jk:
-                corr_mat[i, tag] = corr(
-                    np.cov(x[:, j], x[:, k], aweights=wi))[0][1]
+                corr_mat[i, tag] = corr(np.cov(x[:, j], x[:, k],
+                                               aweights=wi))[0][1]
                 tag = tag + 1
 
             if self.model.constant:
                 corr_mati = corr(np.cov(x[:, 1:].T, aweights=wi))
-                vifs_mat[i, ] = np.diag(np.linalg.solve(
-                    corr_mati, np.identity((nvar - 1))))
+                vifs_mat[i, ] = np.diag(
+                    np.linalg.solve(corr_mati, np.identity((nvar - 1))))
 
             else:
                 corr_mati = corr(np.cov(x.T, aweights=wi))
-                vifs_mat[i, ] = np.diag(np.linalg.solve(
-                    corr_mati, np.identity((nvar))))
+                vifs_mat[i, ] = np.diag(
+                    np.linalg.solve(corr_mati, np.identity((nvar))))
 
             xw = x * wi.reshape((nrow, 1))
             sxw = np.sqrt(np.sum(xw**2, axis=0))
@@ -1268,7 +1278,6 @@ class GWRResultsLite(object):
         return np.dot(u, u.T)
 
 
-
 class MGWR(GWR):
     """
     Multiscale GWR estimation and inference.
@@ -1430,19 +1439,21 @@ class MGWR(GWR):
     """
 
     def __init__(self, coords, y, X, selector, sigma2_v1=True,
-                 kernel='bisquare',
-                 fixed=False, constant=True, spherical=False, hat_matrix=False):
+                 kernel='bisquare', fixed=False, constant=True,
+                 spherical=False, hat_matrix=False):
         """
         Initialize class
         """
         self.selector = selector
-        self.bws = self.selector.bw[0] #final set of bandwidth
-        self.bws_history = selector.bw[1] #bws history in backfitting
-        self.bw_init = self.selector.bw_init #initialization bandiwdth
-        self.family = Gaussian()  # manually set since we only support Gassian MGWR for now
+        self.bws = self.selector.bw[0]  #final set of bandwidth
+        self.bws_history = selector.bw[1]  #bws history in backfitting
+        self.bw_init = self.selector.bw_init  #initialization bandiwdth
+        self.family = Gaussian(
+        )  # manually set since we only support Gassian MGWR for now
         GWR.__init__(self, coords, y, X, self.bw_init, family=self.family,
                      sigma2_v1=sigma2_v1, kernel=kernel, fixed=fixed,
-                     constant=constant, spherical=spherical, hat_matrix=hat_matrix)
+                     constant=constant, spherical=spherical,
+                     hat_matrix=hat_matrix)
         self.selector = selector
         self.sigma2_v1 = sigma2_v1
         self.points = None
@@ -1456,53 +1467,55 @@ class MGWR(GWR):
         """
         Compute MGWR inference by chunks to reduce memory footprint.
         """
-        n=self.n
-        k=self.k
+        n = self.n
+        k = self.k
         n_chunks = self.n_chunks
         chunk_size = int(np.ceil(float(n / n_chunks)))
         ENP_j = np.zeros(self.k)
-        CCT = np.zeros((self.n,self.k))
+        CCT = np.zeros((self.n, self.k))
 
-        chunk_index = np.arange(n)[chunk_id*chunk_size:(chunk_id+1)*chunk_size]
-        init_pR = np.zeros((n,len(chunk_index)))
-        init_pR[chunk_index,:] = np.eye(len(chunk_index))
-        pR = np.zeros((n,len(chunk_index),k)) #partial R: n by chunk_size by k
-        
+        chunk_index = np.arange(n)[chunk_id * chunk_size:(chunk_id + 1) *
+                                   chunk_size]
+        init_pR = np.zeros((n, len(chunk_index)))
+        init_pR[chunk_index, :] = np.eye(len(chunk_index))
+        pR = np.zeros((n, len(chunk_index),
+                       k))  #partial R: n by chunk_size by k
+
         for i in range(n):
-            wi = self._build_wi(i, self.bw_init).reshape(-1,1)
+            wi = self._build_wi(i, self.bw_init).reshape(-1, 1)
             xT = (self.X * wi).T
             P = np.linalg.solve(xT.dot(self.X), xT).dot(init_pR).T
-            pR[i,:,:] = P * self.X[i]
-        
-        err = init_pR - np.sum(pR, axis=2) #n by chunk_size
-        
+            pR[i, :, :] = P * self.X[i]
+
+        err = init_pR - np.sum(pR, axis=2)  #n by chunk_size
+
         for iter_i in range(self.bws_history.shape[0]):
             for j in range(k):
-                pRj_old = pR[:,:,j] + err
-                Xj = self.X[:,j]
+                pRj_old = pR[:, :, j] + err
+                Xj = self.X[:, j]
                 n_chunks_Aj = n_chunks
                 chunk_size_Aj = int(np.ceil(float(n / n_chunks_Aj)))
                 for chunk_Aj in range(n_chunks_Aj):
-                    chunk_index_Aj = np.arange(n)[chunk_Aj*chunk_size_Aj
-                                                  :(chunk_Aj+1)*chunk_size_Aj]
-                    pAj = np.empty((len(chunk_index_Aj),n))
+                    chunk_index_Aj = np.arange(n)[chunk_Aj * chunk_size_Aj:(
+                        chunk_Aj + 1) * chunk_size_Aj]
+                    pAj = np.empty((len(chunk_index_Aj), n))
                     for i in range(len(chunk_index_Aj)):
                         index = chunk_index_Aj[i]
-                        wi = self._build_wi(index, self.bws_history[iter_i,j])
+                        wi = self._build_wi(index, self.bws_history[iter_i, j])
                         xw = Xj * wi
-                        pAj[i,:] = Xj[index]/np.sum(xw*Xj) * xw
-                    pR[chunk_index_Aj,:,j] = pAj.dot(pRj_old)
-                err = pRj_old - pR[:,:,j]
+                        pAj[i, :] = Xj[index] / np.sum(xw * Xj) * xw
+                    pR[chunk_index_Aj, :, j] = pAj.dot(pRj_old)
+                err = pRj_old - pR[:, :, j]
 
         for j in range(k):
-            CCT[:,j] += ((pR[:,:,j]/self.X[:, j].reshape(-1,1))**2).sum(axis=1)
+            CCT[:, j] += ((pR[:, :, j] / self.X[:, j].reshape(-1, 1))**2).sum(
+                axis=1)
         for i in range(len(chunk_index)):
-            ENP_j += pR[chunk_index[i],i,:]
+            ENP_j += pR[chunk_index[i], i, :]
 
         if self.hat_matrix:
             return ENP_j, CCT, pR
         return ENP_j, CCT
-
 
     def fit(self, n_chunks=1, pool=None):
         """
@@ -1521,24 +1534,29 @@ class MGWR(GWR):
                       : MGWRResults
         """
         params = self.selector.params
-        predy = np.sum(self.X * params, axis=1).reshape(-1,1)
-        
+        predy = np.sum(self.X * params, axis=1).reshape(-1, 1)
+
         try:
-            from tqdm import tqdm_notebook as tqdm #progress bar
+            from tqdm.autonotebook import tqdm  #progress bar
         except ImportError:
-            def tqdm(x,desc=''): #otherwise, just passthrough the range
+
+            def tqdm(x, total=0,
+                     desc=''):  #otherwise, just passthrough the range
                 return x
-        
+
         if pool:
             self.n_chunks = pool._processes * n_chunks
-            rslt = tqdm(pool.imap(self._chunk_compute_R,range(self.n_chunks)),total=self.n_chunks,desc='Inference')
+            rslt = tqdm(
+                pool.imap(self._chunk_compute_R, range(self.n_chunks)),
+                total=self.n_chunks, desc='Inference')
         else:
             self.n_chunks = n_chunks
-            rslt = map(self._chunk_compute_R,tqdm(range(self.n_chunks),desc='Inference'))
-        
+            rslt = map(self._chunk_compute_R,
+                       tqdm(range(self.n_chunks), desc='Inference'))
+
         rslt_list = list(zip(*rslt))
-        ENP_j = np.sum(np.array(rslt_list[0]),axis=0)
-        CCT = np.sum(np.array(rslt_list[1]),axis=0)
+        ENP_j = np.sum(np.array(rslt_list[0]), axis=0)
+        CCT = np.sum(np.array(rslt_list[1]), axis=0)
 
         w = np.ones(self.n)
         if self.hat_matrix:
@@ -1738,10 +1756,11 @@ class MGWRResults(GWRResults):
     def W(self):
         Ws = []
         for bw_j in self.model.bws:
-            W = np.array([self.model._build_wi(i, bw_j) for i in range(self.n)])
+            W = np.array(
+                [self.model._build_wi(i, bw_j) for i in range(self.n)])
             Ws.append(W)
         return Ws
-    
+
     @cache_readonly
     def adj_alpha_j(self):
         """

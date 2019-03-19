@@ -5,7 +5,9 @@ __author__ = "Taylor Oshan"
 import numpy as np
 from copy import deepcopy
 
-def golden_section(a, c, delta, function, tol, max_iter, int_score=False, verbose=False):
+
+def golden_section(a, c, delta, function, tol, max_iter, int_score=False,
+                   verbose=False):
     """
     Golden section search routine
     Method: p212, 9.6.4
@@ -39,11 +41,11 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False, verbos
     output          : list of tuples
                       searching history
     """
-    b = a + delta * np.abs(c-a)
-    d = c - delta * np.abs(c-a)
+    b = a + delta * np.abs(c - a)
+    d = c - delta * np.abs(c - a)
     score = 0.0
     diff = 1.0e9
-    iters  = 0
+    iters = 0
     output = []
     dict = {}
     while np.abs(diff) > tol and iters < max_iter:
@@ -51,36 +53,38 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False, verbos
         if int_score:
             b = np.round(b)
             d = np.round(d)
-        
+
         if b in dict:
             score_b = dict[b]
         else:
             score_b = function(b)
             dict[b] = score_b
             if verbose:
-                print("Bandwidth: ",np.round(b, 2), ", score: ", "{0:.2f}".format(score_b[0]))
-        
+                print("Bandwidth: ", np.round(b, 2), ", score: ",
+                      "{0:.2f}".format(score_b[0]))
+
         if d in dict:
             score_d = dict[d]
         else:
             score_d = function(d)
             dict[d] = score_d
             if verbose:
-                print("Bandwidth: ",np.round(d, 2), ", score: ", "{0:.2f}".format(score_d[0]))
+                print("Bandwidth: ", np.round(d, 2), ", score: ",
+                      "{0:.2f}".format(score_d[0]))
 
         if score_b <= score_d:
             opt_val = b
             opt_score = score_b
             c = d
             d = b
-            b = a + delta * np.abs(c-a)
+            b = a + delta * np.abs(c - a)
 
         else:
             opt_val = d
             opt_score = score_d
             a = b
             b = d
-            d = c - delta * np.abs(c-a)
+            d = c - delta * np.abs(c - a)
 
         output.append((opt_val, opt_score))
         diff = score_b - score_d
@@ -88,7 +92,9 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False, verbos
 
     return np.round(opt_val, 2), opt_score, output
 
-def equal_interval(l_bound, u_bound, interval, function, int_score=False, verbose=False):
+
+def equal_interval(l_bound, u_bound, interval, function, int_score=False,
+                   verbose=False):
     """
     Interval search, using interval as stepsize
 
@@ -119,23 +125,23 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False, verbos
     c = u_bound
     b = a + interval
     if int_score:
-        a = np.round(a,0)
-        c = np.round(c,0)
-        b = np.round(b,0)
+        a = np.round(a, 0)
+        c = np.round(c, 0)
+        b = np.round(b, 0)
 
     output = []
 
     score_a = function(a)
     if verbose:
         print(score_a)
-        print("Bandwidth:",a,", score:", "{0:.2f}".format(score_a[0]))
+        print("Bandwidth:", a, ", score:", "{0:.2f}".format(score_a[0]))
 
     score_c = function(c)
     if verbose:
-        print("Bandwidth:",c,", score:", "{0:.2f}".format(score_c[0]))
+        print("Bandwidth:", c, ", score:", "{0:.2f}".format(score_c[0]))
 
-    output.append((a,score_a))
-    output.append((c,score_c))
+    output.append((a, score_a))
+    output.append((c, score_c))
 
     if score_a < score_c:
         opt_val = a
@@ -147,8 +153,8 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False, verbos
     while b < c:
         score_b = function(b)
         if verbose:
-            print("Bandwidth:",b,", score:", "{0:.2f}".format(score_b[0]))
-        output.append((b,score_b))
+            print("Bandwidth:", b, ", score:", "{0:.2f}".format(score_b[0]))
+        output.append((b, score_b))
 
         if score_b < opt_score:
             opt_val = b
@@ -157,8 +163,10 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False, verbos
 
     return opt_val, opt_score, output
 
-def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
-        gwr_func, bw_func, sel_func, multi_bw_min, multi_bw_max, bws_same_times, verbose=False):
+
+def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
+             bw_func, sel_func, multi_bw_min, multi_bw_max, bws_same_times,
+             verbose=False):
     """
     Multiscale GWR bandwidth search procedure using iterative GAM backfitting
     """
@@ -169,7 +177,7 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
         bw = init
         optim_model = gwr_func(y, X, init)
     bw_gwr = bw
-    err = optim_model.resid_response.reshape((-1,1))
+    err = optim_model.resid_response.reshape((-1, 1))
     param = optim_model.params
 
     XB = np.multiply(param, X)
@@ -183,21 +191,23 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
     bws = np.empty(k)
 
     try:
-        from tqdm import tqdm_notebook as tqdm #if they have it, let users have a progress bar
+        from tqdm.auto import tqdm  #if they have it, let users have a progress bar
     except ImportError:
-        def tqdm(x,desc=''): #otherwise, just passthrough the range
+
+        def tqdm(x, desc=''):  #otherwise, just passthrough the range
             return x
-    for iters in tqdm(range(1, max_iter+1),desc='Backfitting'):
+
+    for iters in tqdm(range(1, max_iter + 1), desc='Backfitting'):
         new_XB = np.zeros_like(X)
         params = np.zeros_like(X)
-        
+
         for j in range(k):
-            temp_y = XB[:,j].reshape((-1,1))
+            temp_y = XB[:, j].reshape((-1, 1))
             temp_y = temp_y + err
-            temp_X = X[:,j].reshape((-1,1))
+            temp_X = X[:, j].reshape((-1, 1))
             bw_class = bw_func(temp_y, temp_X)
-            
-            if np.all(bw_stable_counter==bws_same_times):
+
+            if np.all(bw_stable_counter == bws_same_times):
                 #If in backfitting, all bws not changing in bws_same_times (default 3) iterations
                 bw = bws[j]
             else:
@@ -206,36 +216,34 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score,
                     bw_stable_counter[j] += 1
                 else:
                     bw_stable_counter = np.ones(k)
-        
+
             optim_model = gwr_func(temp_y, temp_X, bw)
-            err = optim_model.resid_response.reshape((-1,1))
-            param = optim_model.params.reshape((-1,))
-            new_XB[:,j] = optim_model.predy.reshape(-1)
-            params[:,j] = param
+            err = optim_model.resid_response.reshape((-1, 1))
+            param = optim_model.params.reshape((-1, ))
+            new_XB[:, j] = optim_model.predy.reshape(-1)
+            params[:, j] = param
             bws[j] = bw
 
-        num = np.sum((new_XB - XB)**2)/n
+        num = np.sum((new_XB - XB)**2) / n
         den = np.sum(np.sum(new_XB, axis=1)**2)
-        score = (num/den)**0.5
+        score = (num / den)**0.5
         XB = new_XB
 
         if rss_score:
-            predy = np.sum(np.multiply(params, X), axis=1).reshape((-1,1))
+            predy = np.sum(np.multiply(params, X), axis=1).reshape((-1, 1))
             new_rss = np.sum((y - predy)**2)
-            score = np.abs((new_rss - rss)/new_rss)
+            score = np.abs((new_rss - rss) / new_rss)
             rss = new_rss
         scores.append(deepcopy(score))
         delta = score
         BWs.append(deepcopy(bws))
 
         if verbose:
-            print("Current iteration:",iters,",SOC:", np.round(score,7))
+            print("Current iteration:", iters, ",SOC:", np.round(score, 7))
             print("Bandwidths:", ', '.join([str(bw) for bw in bws]))
-        
+
         if delta < tol:
             break
 
     opt_bws = BWs[-1]
-    return (opt_bws, np.array(BWs),
-                          np.array(scores), params,
-                          err, bw_gwr)
+    return (opt_bws, np.array(BWs), np.array(scores), params, err, bw_gwr)
