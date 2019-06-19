@@ -4,6 +4,7 @@ __author__ = "Taylor Oshan"
 
 import numpy as np
 from copy import deepcopy
+from spglm.family import Gaussian, Binomial, Poisson
 
 
 def golden_section(a, c, delta, function, tol, max_iter, int_score=False,
@@ -164,7 +165,7 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False,
     return opt_val, opt_score, output
 
 
-def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
+def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_func,
              bw_func, sel_func, multi_bw_min, multi_bw_max, bws_same_times,
              verbose=False):
     """
@@ -180,7 +181,13 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
     err = optim_model.resid_response.reshape((-1, 1))
     param = optim_model.params
 
-    XB = np.multiply(param, X)
+    if isinstance(family, Poisson):
+        XB = offset*np.exp(np.multiply(param,X))
+    elif isinstance(family, Binomial):
+        XB = 1/(1+np.exp(-1*np.multiply(param,X)))
+    else:
+        XB = np.multiply(param, X)
+
     if rss_score:
         rss = np.sum((err)**2)
     iters = 0
