@@ -134,7 +134,7 @@ class GWR(GLM):
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
-                    
+
     hat_matrix    : boolean
                     True to store full n by n hat matrix,
                     False to not store full hat matrix to minimize memory footprint (defalut).
@@ -516,10 +516,10 @@ class GWRResults(GLMResults):
 
     R2                  : float
                           R-squared for the entire model (1- RSS/TSS)
-                          
+
     adj_R2              : float
                           adjusted R-squared for the entire model
-                          
+
     aic                 : float
                           Akaike information criterion
 
@@ -575,11 +575,11 @@ class GWRResults(GLMResults):
     pDev                : float
                           local percent of deviation accounted for; analogous to
                           r-squared for GLM's
-                          
+
     D2                  : float
                           percent deviance explained for GLM, equivaleng to R2 for
                           Gaussian.
-                          
+
     adj_D2              : float
                           adjusted percent deviance explained, equivaleng to adjusted
                           R2 for Gaussian.
@@ -1438,8 +1438,8 @@ class MGWR(GWR):
 
     """
 
-    def __init__(self, coords, y, X, selector, sigma2_v1=True,
-                 kernel='bisquare', fixed=False, constant=True,
+    def __init__(self, coords, y, X, selector, family=Gaussian(), offset=None,
+                 sigma2_v1=True, kernel='bisquare', fixed=False, constant=True,
                  spherical=False, hat_matrix=False):
         """
         Initialize class
@@ -1448,17 +1448,18 @@ class MGWR(GWR):
         self.bws = self.selector.bw[0]  #final set of bandwidth
         self.bws_history = selector.bw[1]  #bws history in backfitting
         self.bw_init = self.selector.bw_init  #initialization bandiwdth
-        self.family = Gaussian(
-        )  # manually set since we only support Gassian MGWR for now
-        GWR.__init__(self, coords, y, X, self.bw_init, family=self.family,
-                     sigma2_v1=sigma2_v1, kernel=kernel, fixed=fixed,
-                     constant=constant, spherical=spherical,
+        self.family = family
+        self.offset = offset
+        # manually set since we only support Gassian MGWR for now
+        GWR.__init__(self, coords, y, X, self.bw_init, self.family,
+                     self.offset,sigma2_v1=sigma2_v1, kernel=kernel,
+                     fixed=fixed, constant=constant, spherical=spherical,
                      hat_matrix=hat_matrix)
         self.selector = selector
         self.sigma2_v1 = sigma2_v1
         self.points = None
         self.P = None
-        self.offset = None
+        self.family = family
         self.exog_resid = None
         self.exog_scale = None
         self_fit_params = None
@@ -1520,21 +1521,28 @@ class MGWR(GWR):
     def fit(self, n_chunks=1, pool=None):
         """
         Compute MGWR inference by chunk to reduce memory footprint.
-        
+
         Parameters
         ----------
 
         n_chunks      : integer, optional
-                        A number of chunks parameter to reduce memory usage. 
+                        A number of chunks parameter to reduce memory usage.
                         e.g. n_chunks=2 should reduce overall memory usage by 2.
         pool          : A multiprocessing Pool object to enable parallel fitting; default is None.
-                        
+
         Returns
         -------
                       : MGWRResults
         """
         params = self.selector.params
-        predy = np.sum(self.X * params, axis=1).reshape(-1, 1)
+        if isinstance(self.family,Poisson):
+            predy = self.offset*(np.exp(np.sum(self.X * params, axis=1).reshape(-1, 1)))
+            
+        elif isinstance(self.family,Binomial):
+            predy = 1/(1+np.exp(-1*np.sum(self.X * params, axis=1).reshape(-1, 1)))
+
+        else:
+            predy = np.sum(self.X * params, axis=1).reshape(-1, 1)
 
         try:
             from tqdm.autonotebook import tqdm  #progress bar
@@ -1692,7 +1700,7 @@ class MGWRResults(GWRResults):
 
     R2                  : float
                           R-squared for the entire model (1- RSS/TSS)
-                          
+
     adj_R2              : float
                           adjusted R-squared for the entire model
 

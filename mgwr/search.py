@@ -4,6 +4,7 @@ __author__ = "Taylor Oshan"
 
 import numpy as np
 from copy import deepcopy
+from spglm.family import Gaussian, Binomial, Poisson
 
 
 def golden_section(a, c, delta, function, tol, max_iter, int_score=False,
@@ -164,7 +165,7 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False,
     return opt_val, opt_score, output
 
 
-def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
+def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_func,
              bw_func, sel_func, multi_bw_min, multi_bw_max, bws_same_times,
              verbose=False):
     """
@@ -180,7 +181,14 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
     err = optim_model.resid_response.reshape((-1, 1))
     param = optim_model.params
 
-    XB = np.multiply(param, X)
+    if isinstance(family, Poisson):
+        XB = offset*np.exp(np.multiply(param,X))
+    elif isinstance(family, Binomial):
+        XXB = 1/(1+np.exp(-1*np.multiply(param,X)))
+        XB = np.multiply(param, X)
+    else:
+        XB = np.multiply(param, X)
+
     if rss_score:
         rss = np.sum((err)**2)
     iters = 0
@@ -199,12 +207,23 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
 
     for iters in tqdm(range(1, max_iter + 1), desc='Backfitting'):
         new_XB = np.zeros_like(X)
+        neww_XB = np.zeros_like(X)
+
         params = np.zeros_like(X)
 
         for j in range(k):
             temp_y = XB[:, j].reshape((-1, 1))
             temp_y = temp_y + err
+
+            if isinstance(family, Binomial):
+                for i in range(n):
+                    if temp_y[i]>=0:
+                        temp_y[i]=1
+                    else:
+                        temp_y[i]=0
+                        
             temp_X = X[:, j].reshape((-1, 1))
+
             bw_class = bw_func(temp_y, temp_X)
 
             if np.all(bw_stable_counter == bws_same_times):
@@ -220,17 +239,31 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
             optim_model = gwr_func(temp_y, temp_X, bw)
             err = optim_model.resid_response.reshape((-1, 1))
             param = optim_model.params.reshape((-1, ))
-            new_XB[:, j] = optim_model.predy.reshape(-1)
+            if isinstance(family, Binomial):
+                new_XB[:, j] = np.multiply(param.reshape(-1,1),temp_X).reshape(-1)
+                neww_XB[:, j] = optim_model.predy.reshape(-1)
+            else:
+                new_XB[:, j] = optim_model.predy.reshape(-1)
             params[:, j] = param
             bws[j] = bw
 
-        num = np.sum((new_XB - XB)**2) / n
-        den = np.sum(np.sum(new_XB, axis=1)**2)
+        if isinstance(family, Binomial):
+            num = np.sum((neww_XB - XXB)**2) / n
+            den = np.sum(np.sum(neww_XB, axis=1)**2)
+        else:
+            num = np.sum((new_XB - XB)**2) / n
+            den = np.sum(np.sum(new_XB, axis=1)**2)
         score = (num / den)**0.5
         XB = new_XB
+        XXB = neww_XB
 
         if rss_score:
-            predy = np.sum(np.multiply(params, X), axis=1).reshape((-1, 1))
+            if isinstance(family, Poisson):
+                predy = offset*(np.exp(np.sum(X * params, axis=1).reshape(-1, 1)))
+            elif isinstance(family, Binomial):
+                predy = 1/(1+np.exp(-1*np.sum(X * params, axis=1).reshape(-1, 1)))
+            else:
+                predy = np.sum(np.multiply(params, X), axis=1).reshape((-1, 1))
             new_rss = np.sum((y - predy)**2)
             score = np.abs((new_rss - rss) / new_rss)
             rss = new_rss
