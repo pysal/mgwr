@@ -221,7 +221,7 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
                         temp_y[i]=1
                     else:
                         temp_y[i]=0
-                        
+
             temp_X = X[:, j].reshape((-1, 1))
 
             bw_class = bw_func(temp_y, temp_X)
