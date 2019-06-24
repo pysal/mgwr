@@ -1438,7 +1438,7 @@ class MGWR(GWR):
 
     """
 
-    def __init__(self, coords, y, X, selector, family=Gaussian(), offset=None,
+    def __init__(self, coords, y, X, selector, family, offset=None,
                  sigma2_v1=True, kernel='bisquare', fixed=False, constant=True,
                  spherical=False, hat_matrix=False):
         """
@@ -1537,7 +1537,7 @@ class MGWR(GWR):
         params = self.selector.params
         if isinstance(self.family,Poisson):
             predy = self.offset*(np.exp(np.sum(self.X * params, axis=1).reshape(-1, 1)))
-            
+
         elif isinstance(self.family,Binomial):
             predy = 1/(1+np.exp(-1*np.sum(self.X * params, axis=1).reshape(-1, 1)))
 
