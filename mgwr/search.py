@@ -207,21 +207,12 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
 
     for iters in tqdm(range(1, max_iter + 1), desc='Backfitting'):
         new_XB = np.zeros_like(X)
-        neww_XB = np.zeros_like(X)
 
         params = np.zeros_like(X)
 
         for j in range(k):
             temp_y = XB[:, j].reshape((-1, 1))
             temp_y = temp_y + err
-
-            if isinstance(family, Binomial):
-                for i in range(n):
-                    if temp_y[i]>=0:
-                        temp_y[i]=1
-                    else:
-                        temp_y[i]=0
-
             temp_X = X[:, j].reshape((-1, 1))
 
             bw_class = bw_func(temp_y, temp_X)
@@ -239,29 +230,19 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
             optim_model = gwr_func(temp_y, temp_X, bw)
             err = optim_model.resid_response.reshape((-1, 1))
             param = optim_model.params.reshape((-1, ))
-            if isinstance(family, Binomial):
-                new_XB[:, j] = np.multiply(param.reshape(-1,1),temp_X).reshape(-1)
-                neww_XB[:, j] = optim_model.predy.reshape(-1)
-            else:
-                new_XB[:, j] = optim_model.predy.reshape(-1)
+            new_XB[:, j] = optim_model.predy.reshape(-1)
             params[:, j] = param
             bws[j] = bw
 
-        if isinstance(family, Binomial):
-            num = np.sum((neww_XB - XXB)**2) / n
-            den = np.sum(np.sum(neww_XB, axis=1)**2)
-        else:
-            num = np.sum((new_XB - XB)**2) / n
-            den = np.sum(np.sum(new_XB, axis=1)**2)
+        num = np.sum((new_XB - XB)**2) / n
+        den = np.sum(np.sum(new_XB, axis=1)**2)
         score = (num / den)**0.5
         XB = new_XB
-        XXB = neww_XB
 
         if rss_score:
             if isinstance(family, Poisson):
                 predy = offset*(np.exp(np.sum(X * params, axis=1).reshape(-1, 1)))
-            elif isinstance(family, Binomial):
-                predy = 1/(1+np.exp(-1*np.sum(X * params, axis=1).reshape(-1, 1)))
+                
             else:
                 predy = np.sum(np.multiply(params, X), axis=1).reshape((-1, 1))
             new_rss = np.sum((y - predy)**2)
