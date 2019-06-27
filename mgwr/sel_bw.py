@@ -374,12 +374,34 @@ class Sel_BW(object):
         bws_same_times = self.bws_same_times
 
         def gwr_func(y, X, bw):
+            family = self.family
+            #if isinstance(family, Binomial):
+                #family = Gaussian()
+            return GWR(coords, y, X, bw, family=family, kernel=kernel,
+                       fixed=fixed, offset=offset, constant=False,
+                       spherical=self.spherical, hat_matrix=False).fit(
+                           lite=True, pool=self.pool)
+
+        def gwr_func_g(y, X, bw):
+            family = self.family
+            family = Gaussian()
             return GWR(coords, y, X, bw, family=family, kernel=kernel,
                        fixed=fixed, offset=offset, constant=False,
                        spherical=self.spherical, hat_matrix=False).fit(
                            lite=True, pool=self.pool)
 
         def bw_func(y, X):
+            family = self.family
+            #if isinstance(family, Binomial):
+                #family = Gaussian()
+            selector = Sel_BW(coords, y, X, X_glob=[], family=family,
+                              kernel=kernel, fixed=fixed, offset=offset,
+                              constant=False, spherical=self.spherical)
+            return selector
+
+        def bw_func_g(y, X):
+            family = self.family
+            family = Gaussian()
             selector = Sel_BW(coords, y, X, X_glob=[], family=family,
                               kernel=kernel, fixed=fixed, offset=offset,
                               constant=False, spherical=self.spherical)
@@ -392,8 +414,8 @@ class Sel_BW(object):
                 max_iter=max_iter, pool=self.pool, verbose=False)
 
         self.bw = multi_bw(self.init_multi, y, X, n, k, family, offset, self.tol_multi,
-                           self.max_iter_multi, self.rss_score, gwr_func,
-                           bw_func,sel_func, multi_bw_min, multi_bw_max,
+                           self.max_iter_multi, self.rss_score, gwr_func,gwr_func_g,
+                           bw_func,bw_func_g,sel_func, multi_bw_min, multi_bw_max,
                            bws_same_times, verbose=self.verbose)
 
     def _init_section(self, X_glob, X_loc, coords, constant):

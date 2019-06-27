@@ -166,7 +166,7 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False,
 
 
 def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_func,
-             bw_func, sel_func, multi_bw_min, multi_bw_max, bws_same_times,
+             gwr_func_g, bw_func, bw_func_g, sel_func, multi_bw_min, multi_bw_max, bws_same_times,
              verbose=False):
     """
     Multiscale GWR bandwidth search procedure using iterative GAM backfitting
@@ -184,8 +184,9 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
     if isinstance(family, Poisson):
         XB = offset*np.exp(np.multiply(param,X))
     elif isinstance(family, Binomial):
-        XXB = 1/(1+np.exp(-1*np.multiply(param,X)))
-        XB = np.multiply(param, X)
+        v = np.multiply(X, param)
+        XB = 1 / (1 + np.exp(-1 * v))
+        #XB = v + ((1 / (mu * (1 - mu))) * (y - mu))
     else:
         XB = np.multiply(param, X)
 
@@ -207,7 +208,6 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
 
     for iters in tqdm(range(1, max_iter + 1), desc='Backfitting'):
         new_XB = np.zeros_like(X)
-
         params = np.zeros_like(X)
 
         for j in range(k):
@@ -215,7 +215,10 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
             temp_y = temp_y + err
             temp_X = X[:, j].reshape((-1, 1))
 
-            bw_class = bw_func(temp_y, temp_X)
+            if isinstance(family, Binomial):
+                bw_class = bw_func_g(temp_y, temp_X)
+            else:
+                bw_class = bw_func(temp_y, temp_X)
 
             if np.all(bw_stable_counter == bws_same_times):
                 #If in backfitting, all bws not changing in bws_same_times (default 3) iterations
@@ -227,7 +230,11 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
                 else:
                     bw_stable_counter = np.ones(k)
 
-            optim_model = gwr_func(temp_y, temp_X, bw)
+            if isinstance(family, Binomial):
+                optim_model = gwr_func_g(temp_y, temp_X, bw)
+
+            else:
+                optim_model = gwr_func(temp_y, temp_X, bw)
             err = optim_model.resid_response.reshape((-1, 1))
             param = optim_model.params.reshape((-1, ))
             new_XB[:, j] = optim_model.predy.reshape(-1)
@@ -242,7 +249,10 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
         if rss_score:
             if isinstance(family, Poisson):
                 predy = offset*(np.exp(np.sum(X * params, axis=1).reshape(-1, 1)))
-                
+
+            elif isinstance(family,Binomial):
+                predy = 1/(1+np.exp(-1*np.sum(X * params, axis=1).reshape(-1, 1)))
+
             else:
                 predy = np.sum(np.multiply(params, X), axis=1).reshape((-1, 1))
             new_rss = np.sum((y - predy)**2)
