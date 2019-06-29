@@ -10,8 +10,10 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False,
                    verbose=False):
     """
     Golden section search routine
+
     Method: p212, 9.6.4
-    Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
+
+    :cite:`fotheringham_geographically_2002`: Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
     Geographically weighted regression: the analysis of spatially varying relationships.
 
     Parameters

@@ -664,8 +664,7 @@ class GWRResults(GLMResults):
         """
         effective number of parameters
 
-        Defualts to tr(s) as defined in yu et. al (2018) Inference in
-        Multiscale GWR
+        Defaults to tr(s) as defined in :cite:`yu:2019`
 
         but can alternatively be based on 2tr(s) - tr(STS)
 
@@ -761,16 +760,16 @@ class GWRResults(GLMResults):
 
         if sigma2_v1 is True: only use n-tr(S) in denominator
 
-        Methods: p214, (9.6),
+        Methods: p214, (9.6) :cite:`fotheringham_geographically_2002`
         Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
         Geographically weighted regression: the analysis of spatially varying
         relationships.
 
-        and as defined  in Yu et. al. (2018) Inference in Multiscale GWR
+        and as defined in :cite:`yu:2019`
 
         if sigma2_v1 is False (v1v2): use n-2(tr(S)+tr(S'S)) in denominator
 
-        Methods: p55 (2.16)-(2.18)
+        Methods: p55 (2.16)-(2.18) :cite:`fotheringham_geographically_2002`
         Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
         Geographically weighted regression: the analysis of spatially varying
         relationships.
@@ -787,7 +786,7 @@ class GWRResults(GLMResults):
         """
         standardized residuals
 
-        Methods:  p215, (9.7)
+        Methods:  p215, (9.7) :cite:`fotheringham_geographically_2002`
         Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
         Geographically weighted regression: the analysis of spatially varying
         relationships.
@@ -800,7 +799,7 @@ class GWRResults(GLMResults):
         """
         standard errors of Betas
 
-        Methods:  p215, (2.15) and (2.21)
+        Methods:  p215, (2.15) and (2.21) :cite:`fotheringham_geographically_2002`
         Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
         Geographically weighted regression: the analysis of spatially varying
         relationships.
@@ -812,7 +811,7 @@ class GWRResults(GLMResults):
         """
         Influence: leading diagonal of S Matrix
 
-        Methods: p216, (9.11),
+        Methods: p216, (9.11) :cite:`fotheringham_geographically_2002`
         Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
         Geographically weighted regression: the analysis of spatially varying
         relationships.
@@ -869,7 +868,7 @@ class GWRResults(GLMResults):
         testing. Includes corrected value for 90% (.1), 95% (.05), and 99%
         (.01) confidence levels. Correction comes from:
 
-        da Silva, A. R., & Fotheringham, A. S. (2015). The Multiple Testing Issue in
+        :cite:`Silva:2016` : da Silva, A. R., & Fotheringham, A. S. (2015). The Multiple Testing Issue in
         Geographically Weighted Regression. Geographical Analysis.
 
         """
@@ -880,7 +879,7 @@ class GWRResults(GLMResults):
 
     def critical_tval(self, alpha=None):
         """
-        Utility function to derive the critial t-value based on given alpha
+        Utility function to derive the critical t-value based on given alpha
         that are needed for hypothesis testing
 
         Parameters
@@ -919,7 +918,7 @@ class GWRResults(GLMResults):
 
         Parameters
         ----------
-        critical        : scalar
+        critical_t      : scalar
                           critical t-value to determine whether parameters are
                           statistically significant
 
@@ -1067,7 +1066,7 @@ class GWRResults(GLMResults):
 
         Returns four arrays with the order and dimensions listed above where n
         is the number of locations used as calibrations points and p is the
-        nubmer of explanatory variables. Local correlation coefficient and local
+        number of explanatory variables. Local correlation coefficient and local
         VIF are not calculated for constant term.
 
         """
@@ -1281,6 +1280,7 @@ class GWRResultsLite(object):
 class MGWR(GWR):
     """
     Multiscale GWR estimation and inference.
+    See :cite:`Fotheringham:2017` :cite:`yu:2019`.
 
     Parameters
     ----------
@@ -1328,7 +1328,7 @@ class MGWR(GWR):
                     intercept.
 
     spherical     : boolean
-                    True for shperical coordinates (long-lat),
+                    True for spherical coordinates (long-lat),
                     False for projected coordinates (defalut).
     hat_matrix    : boolean
                     True for computing and storing covariate-specific
@@ -1768,7 +1768,7 @@ class MGWRResults(GWRResults):
         testing. Includes corrected value for 90% (.1), 95% (.05), and 99%
         (.01) confidence levels. Correction comes from:
 
-        da Silva, A. R., & Fotheringham, A. S. (2015). The Multiple Testing Issue in
+        :cite:`Silva:2016` : da Silva, A. R., & Fotheringham, A. S. (2015). The Multiple Testing Issue in
         Geographically Weighted Regression. Geographical Analysis.
 
         """
