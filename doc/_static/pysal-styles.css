@@ -71,3 +71,13 @@
 /* Table with a scrollbar */
 .bodycontainer { max-height: 600px; width: 100%; margin: 0; overflow-y: auto; }
 .table-scrollable { margin: 0; padding: 0; }
+
+.label {
+    color: #ff0000;
+    /*font-size: 100%;*/
+}
+
+div.body {
+    max-width: 1080px;
+}
+
