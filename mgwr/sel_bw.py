@@ -36,8 +36,9 @@ class Sel_BW(object):
                      n*k2, local independent variable, including constant.
     coords         : list of tuples
                      (x,y) of points used in bandwidth selection
-    family         : string
-                     GWR model type: 'Gaussian', 'logistic, 'Poisson''
+    family         : family object/instance, optional
+                     underlying probability model: Gaussian(), Poisson(),
+                     Binomial(). Default is Gaussian().
     offset         : array
                      n*1, the offset variable at the ith location. For Poisson model
                      this term is often the size of the population at risk or
