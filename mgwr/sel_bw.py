@@ -44,8 +44,9 @@ class Sel_BW(object):
                      this term is often the size of the population at risk or
                      the expected size of the outcome in spatial epidemiology
                      Default is None where Ni becomes 1.0 for all locations
-    kernel         : string
-                     kernel function: 'gaussian', 'bisquare', 'exponetial'
+    kernel         : string, optional
+                     kernel function: 'gaussian', 'bisquare', 'exponential'.
+                     Default is 'bisquare'.
     fixed          : boolean
                      True for fixed bandwidth and False for adaptive (NN)
     multi          : True for multiple (covaraite-specific) bandwidths
