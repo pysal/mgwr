@@ -36,15 +36,17 @@ class Sel_BW(object):
                      n*k2, local independent variable, including constant.
     coords         : list of tuples
                      (x,y) of points used in bandwidth selection
-    family         : string
-                     GWR model type: 'Gaussian', 'logistic, 'Poisson''
-    offset        : array
-                    n*1, the offset variable at the ith location. For Poisson model
-                    this term is often the size of the population at risk or
-                    the expected size of the outcome in spatial epidemiology
-                    Default is None where Ni becomes 1.0 for all locations
-    kernel         : string
-                     kernel function: 'gaussian', 'bisquare', 'exponetial'
+    family         : family object/instance, optional
+                     underlying probability model: Gaussian(), Poisson(),
+                     Binomial(). Default is Gaussian().
+    offset         : array
+                     n*1, the offset variable at the ith location. For Poisson model
+                     this term is often the size of the population at risk or
+                     the expected size of the outcome in spatial epidemiology
+                     Default is None where Ni becomes 1.0 for all locations
+    kernel         : string, optional
+                     kernel function: 'gaussian', 'bisquare', 'exponential'.
+                     Default is 'bisquare'.
     fixed          : boolean
                      True for fixed bandwidth and False for adaptive (NN)
     multi          : True for multiple (covaraite-specific) bandwidths
@@ -53,9 +55,9 @@ class Sel_BW(object):
     constant       : boolean
                      True to include intercept (default) in model and False to exclude
                      intercept.
-    spherical     : boolean
-                    True for shperical coordinates (long-lat),
-                    False for projected coordinates (defalut).
+    spherical      : boolean
+                     True for shperical coordinates (long-lat),
+                     False for projected coordinates (defalut).
 
     Attributes
     ----------
@@ -93,36 +95,36 @@ class Sel_BW(object):
     constant       : boolean
                      True to include intercept (default) in model and False to exclude
                      intercept.
-    offset        : array
-                    n*1, the offset variable at the ith location. For Poisson model
-                    this term is often the size of the population at risk or
-                    the expected size of the outcome in spatial epidemiology
-                    Default is None where Ni becomes 1.0 for all locations
-    spherical     : boolean
-                    True for shperical coordinates (long-lat),
-                    False for projected coordinates (defalut).
-    search_params : dict
-                    stores search arguments
-    int_score     : boolan
-                    True if adaptive bandwidth is being used and bandwdith
-                    selection should be discrete. False
-                    if fixed bandwidth is being used and bandwidth does not have
-                    to be discrete.
-    bw            : scalar or array-like
-                    Derived optimal bandwidth(s). Will be a scalar for GWR
-                    (multi=False) and a list of scalars for MGWR (multi=True)
-                    with one bandwidth for each covariate.
-    S             : array
-                    n*n, hat matrix derived from the iterative backfitting
-                    algorthim for MGWR during bandwidth selection
-    R             : array
-                    n*n*k, partial hat matrices derived from the iterative
-                    backfitting algoruthm for MGWR during bandwidth selection.
-                    There is one n*n matrix for each of the k covariates.
-    params        : array
-                    n*k, calibrated parameter estimates for MGWR based on the
-                    iterative backfitting algorithm - computed and saved here to
-                    avoid having to do it again in the MGWR object.
+    offset         : array
+                     n*1, the offset variable at the ith location. For Poisson model
+                     this term is often the size of the population at risk or
+                     the expected size of the outcome in spatial epidemiology
+                     Default is None where Ni becomes 1.0 for all locations
+    spherical      : boolean
+                     True for shperical coordinates (long-lat),
+                     False for projected coordinates (defalut).
+    search_params  : dict
+                     stores search arguments
+    int_score      : boolan
+                     True if adaptive bandwidth is being used and bandwdith
+                     selection should be discrete. False
+                     if fixed bandwidth is being used and bandwidth does not have
+                     to be discrete.
+    bw             : scalar or array-like
+                     Derived optimal bandwidth(s). Will be a scalar for GWR
+                     (multi=False) and a list of scalars for MGWR (multi=True)
+                     with one bandwidth for each covariate.
+    S              : array
+                     n*n, hat matrix derived from the iterative backfitting
+                     algorthim for MGWR during bandwidth selection
+    R              : array
+                     n*n*k, partial hat matrices derived from the iterative
+                     backfitting algoruthm for MGWR during bandwidth selection.
+                     There is one n*n matrix for each of the k covariates.
+    params         : array
+                     n*k, calibrated parameter estimates for MGWR based on the
+                     iterative backfitting algorithm - computed and saved here to
+                     avoid having to do it again in the MGWR object.
 
     Examples
     --------
