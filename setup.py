@@ -37,7 +37,7 @@ def setup_package():
         url='https://github.com/pysal/mgwr',  #github repo
         maintainer='Taylor M. Oshan',
         maintainer_email='tayoshan@gmail.com',
-        python_requires='>3.4',
+        python_requires='>3.5',
         test_suite='nose.collector',
         tests_require=['nose'],
         keywords='spatial statistics',
@@ -50,8 +50,8 @@ def setup_package():
             'Topic :: Scientific/Engineering :: GIS',
             'License :: OSI Approved :: BSD License',
             'Programming Language :: Python',
-            'Programming Language :: Python :: 3.5',
-            'Programming Language :: Python :: 3.6'
+            'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7'
         ],
         license='3-Clause BSD',
         packages=find_packages(),
