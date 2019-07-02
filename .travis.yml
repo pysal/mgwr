@@ -1,22 +1,23 @@
 language: python
-sudo: false
+dist: xenial
+sudo: true
 branches:
-only:
-  - master
+  only:
+    - master
 python:
-  - 3.5
   - 3.6
+  - 3.7
 
 env:
   - PYSAL_PLUS=false
   - PYSAL_PLUS=true
 
 matrix:
-    allow_failures:
-        - python: 3.5
-          env: PYSAL_PYPI=false
-        - python: 3.6
-          env: PYSAL_PYPI=false
+  allow_failures:
+      - python: 3.6
+        env: PYSAL_PYPI=false
+      - python: 3.7
+        env: PYSAL_PYPI=false
 
 before_install:
   - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
@@ -35,9 +36,9 @@ install:
   - if "$PYSAL_PYPI"; then
         echo 'testing pypi libpysal spglm' && pip install libpysal spglm;
     else
-        echo 'testing git libpysal';
-        git clone https://github.com/pysal/libpysal.git; cd libpysal; pip install .; cd ../;
-        git clone https://github.com/pysal/spglm.git; cd spglm; pip install .; cd ../;
+        echo 'testing git libpysal spglm';
+        pip install https://github.com/pysal/libpysal/archive/master.zip;
+        pip install https://github.com/pysal/spglm/archive/master.zip;
     fi;
 
 script:
