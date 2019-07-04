@@ -184,9 +184,11 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
     if isinstance(family, Poisson):
         XB = offset*np.exp(np.multiply(param,X))
     elif isinstance(family, Binomial):
-        v = np.multiply(X, param)
-        XB = 1 / (1 + np.exp(-1 * v))
+        #v = np.multiply(X, param)
+        #XB = 1 / (1 + np.exp(-1 * v))
         #XB = v + ((1 / (mu * (1 - mu))) * (y - mu))
+        XB = 1/(1+np.exp(-1*np.multiply(param,X)))
+        #XB=np.log(XB/(1-XB))
     else:
         XB = np.multiply(param, X)
 
@@ -215,10 +217,10 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
             temp_y = temp_y + err
             temp_X = X[:, j].reshape((-1, 1))
 
-            if isinstance(family, Binomial):
-                bw_class = bw_func_g(temp_y, temp_X)
-            else:
-                bw_class = bw_func(temp_y, temp_X)
+            #if isinstance(family, Binomial):
+                #bw_class = bw_func_g(temp_y, temp_X)
+            #else:
+            bw_class = bw_func(temp_y, temp_X)
 
             if np.all(bw_stable_counter == bws_same_times):
                 #If in backfitting, all bws not changing in bws_same_times (default 3) iterations
@@ -230,14 +232,16 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
                 else:
                     bw_stable_counter = np.ones(k)
 
-            if isinstance(family, Binomial):
-                optim_model = gwr_func_g(temp_y, temp_X, bw)
+            #if isinstance(family, Binomial):
+                #optim_model = gwr_func_g(temp_y, temp_X, bw)
 
-            else:
-                optim_model = gwr_func(temp_y, temp_X, bw)
+            #else:
+            optim_model = gwr_func(temp_y, temp_X, bw)
             err = optim_model.resid_response.reshape((-1, 1))
             param = optim_model.params.reshape((-1, ))
+            #new_XB[:,j] = 1/(1+np.exp(-1*np.sum(temp_X * param, axis=1).reshape(-1)))
             new_XB[:, j] = optim_model.predy.reshape(-1)
+            #new_XB[:, j] = np.log(new_XB[:,j]/(1-new_XB[:,j]))
             params[:, j] = param
             bws[j] = bw
 
