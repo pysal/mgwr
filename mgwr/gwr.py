@@ -1488,12 +1488,8 @@ class MGWR(GWR):
                        k))  #partial R: n by chunk_size by k
         if isinstance(self.family, Poisson):
             v = np.sum(np.multiply(self.selector.params, self.X),axis=1).reshape(-1,1)
-            #print(v.shape)
             yhat = self.offset*np.exp(v)
-            #print(yhat.shape)
             au = fs_weights(yhat)
-            #print(au.shape)
-            #print(au)
 
         for i in range(n):
             wi = self._build_wi(i, self.bw_init).reshape(-1, 1)
