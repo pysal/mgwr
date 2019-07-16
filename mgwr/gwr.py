@@ -1468,6 +1468,11 @@ class MGWR(GWR):
         """
         Compute MGWR inference by chunks to reduce memory footprint.
         """
+        def fs_weights(yhat):
+            deriv_p = 1.0/yhat
+            variance = np.ones(yhat.shape,np.float64)
+            return 1.0/(deriv_p**2 * variance)
+
         n = self.n
         k = self.k
         n_chunks = self.n_chunks
@@ -1481,10 +1486,22 @@ class MGWR(GWR):
         init_pR[chunk_index, :] = np.eye(len(chunk_index))
         pR = np.zeros((n, len(chunk_index),
                        k))  #partial R: n by chunk_size by k
+        if isinstance(self.family, Poisson):
+            v = np.sum(np.multiply(self.selector.params, self.X),axis=1).reshape(-1,1)
+            #print(v.shape)
+            yhat = self.offset*np.exp(v)
+            #print(yhat.shape)
+            au = fs_weights(yhat)
+            #print(au.shape)
+            #print(au)
 
         for i in range(n):
             wi = self._build_wi(i, self.bw_init).reshape(-1, 1)
-            xT = (self.X * wi).T
+            if isinstance(self.family, Poisson):
+                xT = (self.X * wi * au[i]).T
+            else:
+                xT = (self.X * wi).T
+
             P = np.linalg.solve(xT.dot(self.X), xT).dot(init_pR).T
             pR[i, :, :] = P * self.X[i]
 
@@ -1503,7 +1520,10 @@ class MGWR(GWR):
                     for i in range(len(chunk_index_Aj)):
                         index = chunk_index_Aj[i]
                         wi = self._build_wi(index, self.bws_history[iter_i, j])
-                        xw = Xj * wi
+                        if isinstance(self.family, Poisson):
+                            xw = Xj * wi * au[i]
+                        else:
+                            xw = Xj * wi
                         pAj[i, :] = Xj[index] / np.sum(xw * Xj) * xw
                     pR[chunk_index_Aj, :, j] = pAj.dot(pRj_old)
                 err = pRj_old - pR[:, :, j]
