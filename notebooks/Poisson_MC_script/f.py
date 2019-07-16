@@ -9,33 +9,35 @@ from mgwr.gwr import MGWR
 from mgwr.sel_bw import Sel_BW
 
 class stats(object):
-    def __init__(self):
-        self.gwr_bw = []
-        self.mgwr_bw = []
+	def __init__(self):
+		self.gwr_bw = []
+		self.mgwr_bw = []
 
-        self.gwr_aic = []
-        '''
-        self.gwr_bic = []
-        self.gwr_aicc = []
-        self.gwr_predy = []
-        self.gwr_params = []
-        '''
-        self.mgwr_aic = []
-        '''
-        self.mgwr_bic = []
-        self.mgwr_aicc = []
-        self.mgwr_predy = []
-        self.mgwr_params = []
-        '''
+		self.gwr_aicc = []
+		self.gwr_bic=[]
+		'''
+		self.gwr_bic = []
+		self.gwr_aicc = []
+		self.gwr_predy = []
+		'''
+		self.gwr_params = []
+		self.mgwr_aicc = []
+		'''
+		self.mgwr_bic = []
+		self.mgwr_aicc = []
+		self.mgwr_predy = []
+		'''
+		self.mgwr_params = []
+		self.mgwr_bic=[]
 
 def add(a,b):
-    return 1+((1/120)*(a+b))
+	return 1+((1/120)*(a+b))
 
 def con(u,v):
-    return (0*(u)*(v))+0.3
+	return (0*(u)*(v))+0.3
 
 def sp(u,v):
-    return 1+1/3240*(36-(6-u/2)**2)*(36-(6-v/2)**2)
+	return 1+1/3240*(36-(6-u/2)**2)*(36-(6-v/2)**2)
 
 class foo(object):
 	def __init__(self):
@@ -81,12 +83,15 @@ def models(output):
 	bw=bw.search()
 	s.gwr_bw.append(bw)
 	gwr_model=GWR(coords,y,X1,bw,family=Poisson(),offset=None).fit()
-	s.gwr_aic.append(gwr_model.aic)
+	s.gwr_aicc.append(gwr_model.aicc)
+	s.gwr_bic.append(gwr_model.bic)
+	s.gwr_params.append(gwr_model.params)
 	selector=Sel_BW(coords,y,X1,multi=True,family=Poisson(),offset=None)
 	selector.search()
 	s.mgwr_bw.append(selector.bw[0])
 	mgwr_model=MGWR(coords,y,X1,selector,family=Poisson(),offset=None).fit()
-	s.mgwr_aic.append(mgwr_model.aic)
-	#return res
+	s.mgwr_aicc.append(mgwr_model.aicc)
+	s.mgwr_bic.append(mgwr_model.bic)
+	s.mgwr_params.append(mgwr_model.params)
 	output.put(s)
 	return
