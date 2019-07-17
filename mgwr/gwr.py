@@ -1486,18 +1486,31 @@ class MGWR(GWR):
         init_pR[chunk_index, :] = np.eye(len(chunk_index))
         pR = np.zeros((n, len(chunk_index),
                        k))  #partial R: n by chunk_size by k
+
         if isinstance(self.family, Poisson):
             v = np.sum(np.multiply(self.selector.params, self.X),axis=1).reshape(-1,1)
             yhat = self.offset*np.exp(v)
             au = fs_weights(yhat)
+            au = np.sqrt(au)
+            #print(au.shape)
 
         for i in range(n):
             wi = self._build_wi(i, self.bw_init).reshape(-1, 1)
+            #print("wi= "+str(wi.shape))
             if isinstance(self.family, Poisson):
-                xT = (self.X * wi * au[i]).T
+                #xT = (self.X * wi * au[i]).T
+                wi=wi.reshape(-1,1)
+                rslt = iwls(self.y, self.X, self.family, self.offset, None, wi=wi)
+                inv_xtx_xt = rslt[5]
+                #w = rslt[3][i][0]
+                w = rslt[3]
+                #print("w = "+str(w.shape))
+                xT = (self.X * w).T
+                #pR[i, :, :] = np.dot(self.X[i], inv_xtx_xt[:, i]) * w
+                #print(pR.shape)
             else:
+                #print("wi = "+str(wi))
                 xT = (self.X * wi).T
-
             P = np.linalg.solve(xT.dot(self.X), xT).dot(init_pR).T
             pR[i, :, :] = P * self.X[i]
 
@@ -1517,10 +1530,18 @@ class MGWR(GWR):
                         index = chunk_index_Aj[i]
                         wi = self._build_wi(index, self.bws_history[iter_i, j])
                         if isinstance(self.family, Poisson):
-                            xw = Xj * wi * au[i]
+                            Xj = Xj.reshape(-1,1)
+                            wi = wi.reshape(-1,1)
+                            #print("Xj "+str(Xj.shape))
+                            #print("wi "+str(wi.shape))
+
+                            rslt = iwls(self.y, Xj, self.family, self.offset, None, wi=wi)
+                            #w = rslt[3][i][0]
+                            w = rslt[3]
+                            xw = Xj * w
                         else:
                             xw = Xj * wi
-                        pAj[i, :] = Xj[index] / np.sum(xw * Xj) * xw
+                        pAj[i, :] = (Xj[index] / np.sum(xw * Xj) * xw).reshape(-1)
                     pR[chunk_index_Aj, :, j] = pAj.dot(pRj_old)
                 err = pRj_old - pR[:, :, j]
 
@@ -1550,6 +1571,10 @@ class MGWR(GWR):
         -------
                       : MGWRResults
         """
+        #self.fit_params['ini_params'] = ini_params
+        #self.fit_params['tol'] = tol
+        #self.fit_params['max_iter'] = max_iter
+
         params = self.selector.params
         if isinstance(self.family,Poisson):
             predy = self.offset*(np.exp(np.sum(self.X * params, axis=1).reshape(-1, 1)))
