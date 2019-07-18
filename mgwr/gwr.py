@@ -1468,11 +1468,6 @@ class MGWR(GWR):
         """
         Compute MGWR inference by chunks to reduce memory footprint.
         """
-        def fs_weights(yhat):
-            deriv_p = 1.0/yhat
-            variance = np.ones(yhat.shape,np.float64)
-            return 1.0/(deriv_p**2 * variance)
-
         n = self.n
         k = self.k
         n_chunks = self.n_chunks
@@ -1487,29 +1482,15 @@ class MGWR(GWR):
         pR = np.zeros((n, len(chunk_index),
                        k))  #partial R: n by chunk_size by k
 
-        if isinstance(self.family, Poisson):
-            v = np.sum(np.multiply(self.selector.params, self.X),axis=1).reshape(-1,1)
-            yhat = self.offset*np.exp(v)
-            au = fs_weights(yhat)
-            au = np.sqrt(au)
-            #print(au.shape)
-
         for i in range(n):
             wi = self._build_wi(i, self.bw_init).reshape(-1, 1)
-            #print("wi= "+str(wi.shape))
             if isinstance(self.family, Poisson):
-                #xT = (self.X * wi * au[i]).T
                 wi=wi.reshape(-1,1)
                 rslt = iwls(self.y, self.X, self.family, self.offset, None, wi=wi)
                 inv_xtx_xt = rslt[5]
-                #w = rslt[3][i][0]
                 w = rslt[3]
-                #print("w = "+str(w.shape))
                 xT = (self.X * w).T
-                #pR[i, :, :] = np.dot(self.X[i], inv_xtx_xt[:, i]) * w
-                #print(pR.shape)
             else:
-                #print("wi = "+str(wi))
                 xT = (self.X * wi).T
             P = np.linalg.solve(xT.dot(self.X), xT).dot(init_pR).T
             pR[i, :, :] = P * self.X[i]
@@ -1532,11 +1513,8 @@ class MGWR(GWR):
                         if isinstance(self.family, Poisson):
                             Xj = Xj.reshape(-1,1)
                             wi = wi.reshape(-1,1)
-                            #print("Xj "+str(Xj.shape))
-                            #print("wi "+str(wi.shape))
-
                             rslt = iwls(self.y, Xj, self.family, self.offset, None, wi=wi)
-                            #w = rslt[3][i][0]
+
                             w = rslt[3]
                             xw = Xj * w
                         else:
@@ -1576,6 +1554,7 @@ class MGWR(GWR):
         #self.fit_params['max_iter'] = max_iter
 
         params = self.selector.params
+
         if isinstance(self.family,Poisson):
             predy = self.offset*(np.exp(np.sum(self.X * params, axis=1).reshape(-1, 1)))
 
