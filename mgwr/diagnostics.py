@@ -11,34 +11,37 @@ from spglm.family import Gaussian, Poisson, Binomial
 def get_AICc(gwr):
     """
     Get AICc value
-    
+
     Gaussian: p61, (2.33), Fotheringham, Brunsdon and Charlton (2002)
-    
+
     GWGLM: AICc=AIC+2k(k+1)/(n-k-1), Nakaya et al. (2005): p2704, (36)
 
     """
     n = gwr.n
     k = gwr.tr_S
+    y = gwr.y
+    mu = gwr.mu
     #sigma2 = gwr.sigma2
     if isinstance(gwr.family, Gaussian):
         aicc = -2.0 * gwr.llf + 2.0 * n * (k + 1.0) / (
             n - k - 2.0)  #equivalent to below but
-        #can't control denominator of sigma without altering GLM familt code
+        #can't control denominator of sigma without altering GLM family code
         #aicc = n*np.log(sigma2) + n*np.log(2.0*np.pi) + n*(n+k)/(n-k-2.0)
     elif isinstance(gwr.family, (Poisson, Binomial)):
         aicc = get_AIC(gwr) + 2.0 * k * (k + 1.0) / (n - k - 1.0)
+        #aicc = np.sum(gwr.family.resid_dev(y, mu)**2) + 2.0 * n * (k + 1.0) / (n - k - 2.0)
     return aicc
 
 
 def get_AIC(gwr):
     """
-    Get AIC calue
+    Get AIC value
 
     Gaussian: p96, (4.22), Fotheringham, Brunsdon and Charlton (2002)
 
     GWGLM:  AIC(G)=D(G) + 2K(G), where D and K denote the deviance and the effective
     number of parameters in the model with bandwidth G, respectively.
-    
+
     """
     k = gwr.tr_S
     #deviance = -2*log-likelihood
