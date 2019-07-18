@@ -4,6 +4,7 @@ __author__ = "Taylor Oshan"
 
 import numpy as np
 from copy import deepcopy
+from spglm.family import Gaussian, Binomial, Poisson
 
 
 def golden_section(a, c, delta, function, tol, max_iter, int_score=False,
@@ -164,8 +165,8 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False,
     return opt_val, opt_score, output
 
 
-def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
-             bw_func, sel_func, multi_bw_min, multi_bw_max, bws_same_times,
+def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_func,
+             gwr_func_g, bw_func, bw_func_g, sel_func, multi_bw_min, multi_bw_max, bws_same_times,
              verbose=False):
     """
     Multiscale GWR bandwidth search procedure using iterative GAM backfitting
@@ -180,7 +181,17 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
     err = optim_model.resid_response.reshape((-1, 1))
     param = optim_model.params
 
-    XB = np.multiply(param, X)
+    if isinstance(family, Poisson):
+        XB = offset*np.exp(np.multiply(param,X))
+    elif isinstance(family, Binomial):
+        #v = np.multiply(X, param)
+        #XB = 1 / (1 + np.exp(-1 * v))
+        #XB = v + ((1 / (mu * (1 - mu))) * (y - mu))
+        XB = 1/(1+np.exp(-1*np.multiply(param,X)))
+        #XB=np.log(XB/(1-XB))
+    else:
+        XB = np.multiply(param, X)
+
     if rss_score:
         rss = np.sum((err)**2)
     iters = 0
@@ -205,6 +216,10 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
             temp_y = XB[:, j].reshape((-1, 1))
             temp_y = temp_y + err
             temp_X = X[:, j].reshape((-1, 1))
+
+            #if isinstance(family, Binomial):
+                #bw_class = bw_func_g(temp_y, temp_X)
+            #else:
             bw_class = bw_func(temp_y, temp_X)
 
             if np.all(bw_stable_counter == bws_same_times):
@@ -217,10 +232,16 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
                 else:
                     bw_stable_counter = np.ones(k)
 
+            #if isinstance(family, Binomial):
+                #optim_model = gwr_func_g(temp_y, temp_X, bw)
+
+            #else:
             optim_model = gwr_func(temp_y, temp_X, bw)
             err = optim_model.resid_response.reshape((-1, 1))
             param = optim_model.params.reshape((-1, ))
+            #new_XB[:,j] = 1/(1+np.exp(-1*np.sum(temp_X * param, axis=1).reshape(-1)))
             new_XB[:, j] = optim_model.predy.reshape(-1)
+            #new_XB[:, j] = np.log(new_XB[:,j]/(1-new_XB[:,j]))
             params[:, j] = param
             bws[j] = bw
 
@@ -230,7 +251,14 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
         XB = new_XB
 
         if rss_score:
-            predy = np.sum(np.multiply(params, X), axis=1).reshape((-1, 1))
+            if isinstance(family, Poisson):
+                predy = offset*(np.exp(np.sum(X * params, axis=1).reshape(-1, 1)))
+
+            elif isinstance(family,Binomial):
+                predy = 1/(1+np.exp(-1*np.sum(X * params, axis=1).reshape(-1, 1)))
+
+            else:
+                predy = np.sum(np.multiply(params, X), axis=1).reshape((-1, 1))
             new_rss = np.sum((y - predy)**2)
             score = np.abs((new_rss - rss) / new_rss)
             rss = new_rss

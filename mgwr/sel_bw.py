@@ -136,7 +136,7 @@ class Sel_BW(object):
     >>> pov = np.array(data.by_col('PctPov')).reshape((-1,1))
     >>> african_amer = np.array(data.by_col('PctBlack')).reshape((-1,1))
     >>> X = np.hstack([rural, pov, african_amer])
-    
+
     Golden section search AICc - adaptive bisquare
 
     >>> bw = Sel_BW(coords, y, X).search(criterion='AICc')
@@ -213,7 +213,7 @@ class Sel_BW(object):
                          min value used in bandwidth search
         bw_max         : float
                          max value used in bandwidth search
-        multi_bw_min   : list 
+        multi_bw_min   : list
                          min values used for each covariate in mgwr bandwidth search.
                          Must be either a single value or have one value for
                          each covariate including the intercept
@@ -374,12 +374,34 @@ class Sel_BW(object):
         bws_same_times = self.bws_same_times
 
         def gwr_func(y, X, bw):
+            family = self.family
+            #if isinstance(family, Binomial):
+                #family = Gaussian()
+            return GWR(coords, y, X, bw, family=family, kernel=kernel,
+                       fixed=fixed, offset=offset, constant=False,
+                       spherical=self.spherical, hat_matrix=False).fit(
+                           lite=True, pool=self.pool)
+
+        def gwr_func_g(y, X, bw):
+            family = self.family
+            family = Gaussian()
             return GWR(coords, y, X, bw, family=family, kernel=kernel,
                        fixed=fixed, offset=offset, constant=False,
                        spherical=self.spherical, hat_matrix=False).fit(
                            lite=True, pool=self.pool)
 
         def bw_func(y, X):
+            family = self.family
+            #if isinstance(family, Binomial):
+                #family = Gaussian()
+            selector = Sel_BW(coords, y, X, X_glob=[], family=family,
+                              kernel=kernel, fixed=fixed, offset=offset,
+                              constant=False, spherical=self.spherical)
+            return selector
+
+        def bw_func_g(y, X):
+            family = self.family
+            family = Gaussian()
             selector = Sel_BW(coords, y, X, X_glob=[], family=family,
                               kernel=kernel, fixed=fixed, offset=offset,
                               constant=False, spherical=self.spherical)
@@ -391,9 +413,9 @@ class Sel_BW(object):
                 bw_min=bw_min, bw_max=bw_max, interval=interval, tol=tol,
                 max_iter=max_iter, pool=self.pool, verbose=False)
 
-        self.bw = multi_bw(self.init_multi, y, X, n, k, family, self.tol_multi,
-                           self.max_iter_multi, self.rss_score, gwr_func,
-                           bw_func, sel_func, multi_bw_min, multi_bw_max,
+        self.bw = multi_bw(self.init_multi, y, X, n, k, family, offset, self.tol_multi,
+                           self.max_iter_multi, self.rss_score, gwr_func,gwr_func_g,
+                           bw_func,bw_func_g,sel_func, multi_bw_min, multi_bw_max,
                            bws_same_times, verbose=self.verbose)
 
     def _init_section(self, X_glob, X_loc, coords, constant):
