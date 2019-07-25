@@ -187,7 +187,12 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
         #v = np.multiply(X, param)
         #XB = 1 / (1 + np.exp(-1 * v))
         #XB = v + ((1 / (mu * (1 - mu))) * (y - mu))
-        XB = 1/(1+np.exp(-1*np.multiply(param,X)))
+        m = np.multiply(param, X)
+        XB = 1 / ( 1 + np.exp (-1 * m))
+        #print("XB "+str(XB.shape))
+        #mu = 1 / ( 1 + np.exp (-1 * np.multiply (param, X)))
+        #XB = np.multiply(param, X)
+        #print(XB.shape)
         #XB=np.log(XB/(1-XB))
     else:
         XB = np.multiply(param, X)
@@ -210,17 +215,30 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
 
     for iters in tqdm(range(1, max_iter + 1), desc='Backfitting'):
         new_XB = np.zeros_like(X)
+
         params = np.zeros_like(X)
 
         for j in range(k):
-            temp_y = XB[:, j].reshape((-1, 1))
-            temp_y = temp_y + err
+
+            if isinstance(family, Binomial):
+                ni_old = np.log((XB[:,j])/(1-XB[:,j]))
+                temp_y = (ni_old + ((optim_model.y.reshape(-1) - XB[:,j].reshape(-1))/XB[:,j].reshape(-1)*(1-XB[:,j].reshape(-1)))).reshape(-1,1)
+                print(temp_y.shape)
+            #temp_y = ((XB[:,j] + (y - mu[:,j]))/(mu[:,j] * ( 1 - mu[:,j] )))
+            #print(temp_y.shape)
+            else:
+                temp_y = XB[:, j].reshape((-1, 1))
+            #temp_y = (1 / (1+np.exp((-1*(np.multiply(temp_X ,param.reshape(-1,1)))+err))).reshape(-1))
+
+            #temp_y = y_new
+            #temp_y = temp_y + err
+            #print(min(err))
             temp_X = X[:, j].reshape((-1, 1))
 
-            #if isinstance(family, Binomial):
-                #bw_class = bw_func_g(temp_y, temp_X)
-            #else:
-            bw_class = bw_func(temp_y, temp_X)
+            if isinstance(family, Binomial):
+                bw_class = bw_func_g(temp_y, temp_X)
+            else:
+                bw_class = bw_func(temp_y, temp_X)
 
             if np.all(bw_stable_counter == bws_same_times):
                 #If in backfitting, all bws not changing in bws_same_times (default 3) iterations
@@ -232,15 +250,25 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
                 else:
                     bw_stable_counter = np.ones(k)
 
-            #if isinstance(family, Binomial):
-                #optim_model = gwr_func_g(temp_y, temp_X, bw)
+            if isinstance(family, Binomial):
+                optim_model = gwr_func_g(temp_y, temp_X, bw)
 
-            #else:
-            optim_model = gwr_func(temp_y, temp_X, bw)
+            else:
+                optim_model = gwr_func(temp_y, temp_X, bw)
+            #err=(temp_y - optim_model.predy).reshape(-1,1)
+            #print(err.shape)
             err = optim_model.resid_response.reshape((-1, 1))
+            #print(err.shape)
             param = optim_model.params.reshape((-1, ))
-            #new_XB[:,j] = 1/(1+np.exp(-1*np.sum(temp_X * param, axis=1).reshape(-1)))
-            new_XB[:, j] = optim_model.predy.reshape(-1)
+            #print(param.shape)
+            #print(temp_X.shape)
+            #print(err.shape)
+            #new_XB[:, j] = 1 / (1+np.exp(-1*np.multiply(temp_X ,param)+err)).reshape(-1)
+            new_XB[:, j] = 1 / (1+np.exp((-1*(np.multiply(temp_X ,param.reshape(-1,1)))))).reshape(-1)
+            #new_XB[:,j] =  optim_model.predy.reshape(-1)
+            #new_XB[:,j] = np.multiply(param, temp_X).reshape(-1)
+            #new_XB[:, j] = optim_model.predy.reshape(-1)
+            #neww_XB[:, j] = (1 / (1+np.exp((-1*(np.multiply(temp_X ,param.reshape(-1,1)))+err))).reshape(-1))
             #new_XB[:, j] = np.log(new_XB[:,j]/(1-new_XB[:,j]))
             params[:, j] = param
             bws[j] = bw
@@ -249,6 +277,8 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
         den = np.sum(np.sum(new_XB, axis=1)**2)
         score = (num / den)**0.5
         XB = new_XB
+        #mu = new_mu
+        #XXB = neww_XB
 
         if rss_score:
             if isinstance(family, Poisson):
