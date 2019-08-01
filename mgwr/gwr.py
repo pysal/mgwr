@@ -1484,7 +1484,8 @@ class MGWR(GWR):
 
         for i in range(n):
             wi = self._build_wi(i, self.bw_init).reshape(-1, 1)
-            if isinstance(self.family, Poisson):
+            if isinstance(self.family, (Poisson, Binomial)):
+            #if isinstance(self.family, Poisson):
                 wi=wi.reshape(-1,1)
                 rslt = iwls(self.y, self.X, self.family, self.offset, None, wi=wi)
                 inv_xtx_xt = rslt[5]
@@ -1510,7 +1511,9 @@ class MGWR(GWR):
                     for i in range(len(chunk_index_Aj)):
                         index = chunk_index_Aj[i]
                         wi = self._build_wi(index, self.bws_history[iter_i, j])
-                        if isinstance(self.family, Poisson):
+
+                        if isinstance(self.family, (Poisson, Binomial)):
+                        #if isinstance(self.family, Poisson):
                             Xj = Xj.reshape(-1,1)
                             wi = wi.reshape(-1,1)
                             rslt = iwls(self.y, Xj, self.family, self.offset, None, wi=wi)
@@ -1559,7 +1562,9 @@ class MGWR(GWR):
             predy = self.offset*(np.exp(np.sum(self.X * params, axis=1).reshape(-1, 1)))
 
         elif isinstance(self.family,Binomial):
-            predy = 1/(1+np.exp(-1*np.sum(self.X * params, axis=1).reshape(-1, 1)))
+            #XXB = np.multiply(param, X)
+            #p = np.exp(XXB) / ( 1 + np.exp (XXB))
+            predy = (np.exp(np.sum(self.X * params, axis=1).reshape(-1, 1)))/(1+np.exp(np.sum(self.X * params, axis=1).reshape(-1, 1)))
 
         else:
             predy = np.sum(self.X * params, axis=1).reshape(-1, 1)

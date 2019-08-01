@@ -6,7 +6,6 @@ import numpy as np
 from copy import deepcopy
 from spglm.family import Gaussian, Binomial, Poisson
 
-
 def golden_section(a, c, delta, function, tol, max_iter, int_score=False,
                    verbose=False):
     """
@@ -181,19 +180,16 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
     err = optim_model.resid_response.reshape((-1, 1))
     param = optim_model.params
 
+    ni = np.multiply(param, X)
+    p = np.exp(ni) / ( 1 + np.exp (ni))
+    w = (p)*(1-p)
+
     if isinstance(family, Poisson):
         XB = offset*np.exp(np.multiply(param,X))
+
     elif isinstance(family, Binomial):
-        #v = np.multiply(X, param)
-        #XB = 1 / (1 + np.exp(-1 * v))
-        #XB = v + ((1 / (mu * (1 - mu))) * (y - mu))
-        m = np.multiply(param, X)
-        XB = 1 / ( 1 + np.exp (-1 * m))
-        #print("XB "+str(XB.shape))
-        #mu = 1 / ( 1 + np.exp (-1 * np.multiply (param, X)))
-        #XB = np.multiply(param, X)
-        #print(XB.shape)
-        #XB=np.log(XB/(1-XB))
+        XB = ni + ((y - p)/(p*(1-p)))
+
     else:
         XB = np.multiply(param, X)
 
@@ -215,28 +211,25 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
 
     for iters in tqdm(range(1, max_iter + 1), desc='Backfitting'):
         new_XB = np.zeros_like(X)
+        new_p = np.zeros_like(X)
+        new_ni = np.zeros_like(X)
+        new_w = np.zeros_like(X)
 
         params = np.zeros_like(X)
 
         for j in range(k):
-
-            if isinstance(family, Binomial):
-                ni_old = np.log((XB[:,j])/(1-XB[:,j]))
-                temp_y = (ni_old + ((optim_model.y.reshape(-1) - XB[:,j].reshape(-1))/XB[:,j].reshape(-1)*(1-XB[:,j].reshape(-1)))).reshape(-1,1)
-                print(temp_y.shape)
-            #temp_y = ((XB[:,j] + (y - mu[:,j]))/(mu[:,j] * ( 1 - mu[:,j] )))
-            #print(temp_y.shape)
-            else:
-                temp_y = XB[:, j].reshape((-1, 1))
-            #temp_y = (1 / (1+np.exp((-1*(np.multiply(temp_X ,param.reshape(-1,1)))+err))).reshape(-1))
-
-            #temp_y = y_new
-            #temp_y = temp_y + err
-            #print(min(err))
+            temp_y = XB[:,j].reshape((-1, 1))
+            temp_y = temp_y + err
             temp_X = X[:, j].reshape((-1, 1))
+            temp_w = w[:,j].reshape((-1, 1))
+
+            temp_X_w = np.multiply(temp_X, temp_w)
+            temp_y_w = np.multiply(temp_y, temp_w)
 
             if isinstance(family, Binomial):
-                bw_class = bw_func_g(temp_y, temp_X)
+                bw_class = bw_func_g(temp_y_w, temp_X_w)
+                #If only weighted x is used, Nan values are encountered in some interations
+
             else:
                 bw_class = bw_func(temp_y, temp_X)
 
@@ -251,41 +244,42 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
                     bw_stable_counter = np.ones(k)
 
             if isinstance(family, Binomial):
-                optim_model = gwr_func_g(temp_y, temp_X, bw)
+                optim_model = gwr_func_g(temp_y_w, temp_X_w, bw)
 
             else:
                 optim_model = gwr_func(temp_y, temp_X, bw)
-            #err=(temp_y - optim_model.predy).reshape(-1,1)
-            #print(err.shape)
+
             err = optim_model.resid_response.reshape((-1, 1))
-            #print(err.shape)
+
             param = optim_model.params.reshape((-1, ))
-            #print(param.shape)
-            #print(temp_X.shape)
-            #print(err.shape)
-            #new_XB[:, j] = 1 / (1+np.exp(-1*np.multiply(temp_X ,param)+err)).reshape(-1)
-            new_XB[:, j] = 1 / (1+np.exp((-1*(np.multiply(temp_X ,param.reshape(-1,1)))))).reshape(-1)
-            #new_XB[:,j] =  optim_model.predy.reshape(-1)
-            #new_XB[:,j] = np.multiply(param, temp_X).reshape(-1)
-            #new_XB[:, j] = optim_model.predy.reshape(-1)
-            #neww_XB[:, j] = (1 / (1+np.exp((-1*(np.multiply(temp_X ,param.reshape(-1,1)))+err))).reshape(-1))
-            #new_XB[:, j] = np.log(new_XB[:,j]/(1-new_XB[:,j]))
+
+            new_ni[:,j] = np.multiply(param, temp_X.reshape(-1))
+            new_p[:,j] = np.exp(new_ni[:,j])/(1+np.exp(new_ni[:,j]))
+            new_XB[:,j] = new_ni[:,j] + ((y.reshape(-1) - new_p[:,j])/(new_p[:,j]*(1-new_p[:,j])))
+            new_w[:,j] = new_p[:,j]*(1-new_p[:,j])
+
             params[:, j] = param
             bws[j] = bw
 
-        num = np.sum((new_XB - XB)**2) / n
-        den = np.sum(np.sum(new_XB, axis=1)**2)
-        score = (num / den)**0.5
+        if isinstance(family, Binomial):
+            num = np.sum((new_ni - ni)**2) / n
+            den = np.sum(np.sum(new_ni, axis=1)**2)
+            score = (num / den)**0.5
+        else:
+            num = np.sum((new_XB - XB)**2) / n
+            den = np.sum(np.sum(new_XB, axis=1)**2)
+            score = (num / den)**0.5
         XB = new_XB
-        #mu = new_mu
-        #XXB = neww_XB
+        p = new_p
+        ni = new_ni
+        w = new_w
 
         if rss_score:
             if isinstance(family, Poisson):
                 predy = offset*(np.exp(np.sum(X * params, axis=1).reshape(-1, 1)))
 
             elif isinstance(family,Binomial):
-                predy = 1/(1+np.exp(-1*np.sum(X * params, axis=1).reshape(-1, 1)))
+                predy = (np.exp(np.sum(X * params, axis=1).reshape(-1, 1)))/(1+np.exp(np.sum(X * params, axis=1).reshape(-1, 1)))
 
             else:
                 predy = np.sum(np.multiply(params, X), axis=1).reshape((-1, 1))
