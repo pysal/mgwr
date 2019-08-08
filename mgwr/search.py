@@ -5,7 +5,6 @@ __author__ = "Taylor Oshan"
 import numpy as np
 from copy import deepcopy
 from spglm.family import Gaussian, Binomial, Poisson
-import seaborn as sns
 
 def golden_section(a, c, delta, function, tol, max_iter, int_score=False,
                    verbose=False):
@@ -226,7 +225,6 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
             temp_w = np.sqrt(w[:,j]).reshape((-1, 1))
             temp_X_w = np.multiply(temp_X, temp_w)
             temp_y_w = np.multiply(temp_y, temp_w)
-            sns.distplot(temp_y)
 
             if isinstance(family, Binomial):
                 bw_class = bw_func_g(temp_y_w, temp_X_w)
