@@ -5,6 +5,7 @@ __author__ = "Taylor Oshan"
 import numpy as np
 from copy import deepcopy
 from spglm.family import Gaussian, Binomial, Poisson
+import seaborn as sns
 
 def golden_section(a, c, delta, function, tol, max_iter, int_score=False,
                    verbose=False):
@@ -179,7 +180,7 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
     bw_gwr = bw
     err = optim_model.resid_response.reshape((-1, 1))
     param = optim_model.params
-
+    old_param=param
     ni = np.multiply(param, X)
     p = np.exp(ni) / ( 1 + np.exp (ni))
     w = (p)*(1-p)
@@ -214,6 +215,7 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
         new_p = np.zeros_like(X)
         new_ni = np.zeros_like(X)
         new_w = np.zeros_like(X)
+        new_add = np.zeros_like(X)
 
         params = np.zeros_like(X)
 
@@ -221,15 +223,13 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
             temp_y = XB[:,j].reshape((-1, 1))
             temp_y = temp_y + err
             temp_X = X[:, j].reshape((-1, 1))
-            temp_w = w[:,j].reshape((-1, 1))
-
+            temp_w = np.sqrt(w[:,j]).reshape((-1, 1))
             temp_X_w = np.multiply(temp_X, temp_w)
             temp_y_w = np.multiply(temp_y, temp_w)
+            sns.distplot(temp_y)
 
             if isinstance(family, Binomial):
                 bw_class = bw_func_g(temp_y_w, temp_X_w)
-                #If only weighted x is used, Nan values are encountered in some interations
-
             else:
                 bw_class = bw_func(temp_y, temp_X)
 
@@ -249,30 +249,37 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
             else:
                 optim_model = gwr_func(temp_y, temp_X, bw)
 
-            err = optim_model.resid_response.reshape((-1, 1))
+            err = (ni[:,j]-new_ni[:,j]).reshape(-1,1)
 
-            param = optim_model.params.reshape((-1, ))
+            param = optim_model.params.reshape((-1, ))/(temp_w**0.5).reshape(-1)
 
-            new_ni[:,j] = np.multiply(param, temp_X.reshape(-1))
-            new_p[:,j] = np.exp(new_ni[:,j])/(1+np.exp(new_ni[:,j]))
-            new_XB[:,j] = new_ni[:,j] + ((y.reshape(-1) - new_p[:,j])/(new_p[:,j]*(1-new_p[:,j])))
+            new_ni[:,j] = np.multiply(param.reshape(-1), temp_X_w.reshape(-1))
+            new_p[:,j] = np.exp(new_ni[:,j])/(1+(np.exp(new_ni[:,j])))
+
+            if isinstance(family, (Poisson, Gaussian)):
+                new_XB[:,j] = optim_model.predy.reshape(-1)
+            else:
+                new_XB[:,j] = new_ni[:,j] + ((y.reshape(-1) - new_p[:,j])/(new_p[:,j]*(1-new_p[:,j])))
+
             new_w[:,j] = new_p[:,j]*(1-new_p[:,j])
-
             params[:, j] = param
             bws[j] = bw
 
         if isinstance(family, Binomial):
-            num = np.sum((new_ni - ni)**2) / n
-            den = np.sum(np.sum(new_ni, axis=1)**2)
+            num = np.sum((params - old_param)**2) / n
+            den = np.sum(np.sum(params, axis=1)**2)
             score = (num / den)**0.5
         else:
             num = np.sum((new_XB - XB)**2) / n
             den = np.sum(np.sum(new_XB, axis=1)**2)
             score = (num / den)**0.5
+
         XB = new_XB
         p = new_p
         ni = new_ni
         w = new_w
+        add = new_add
+        old_param = params
 
         if rss_score:
             if isinstance(family, Poisson):
