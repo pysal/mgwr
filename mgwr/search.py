@@ -220,7 +220,9 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
 
         for j in range(k):
             temp_y = XB[:,j].reshape((-1, 1))
-            temp_y = temp_y + err
+            if isinstance(family, (Poisson,Gaussian)):
+                temp_y = temp_y + err
+
             temp_X = X[:, j].reshape((-1, 1))
             temp_w = np.sqrt(w[:,j]).reshape((-1, 1))
             temp_X_w = np.multiply(temp_X, temp_w)
@@ -247,9 +249,10 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
             else:
                 optim_model = gwr_func(temp_y, temp_X, bw)
 
-            err = (ni[:,j]-new_ni[:,j]).reshape(-1,1)
+            err = optim_model.resid_response.reshape((-1,1))
+            #Needs further investigation
 
-            param = optim_model.params.reshape((-1, ))/(temp_w**0.5).reshape(-1)
+            param = optim_model.params.reshape((-1, ))
 
             new_ni[:,j] = np.multiply(param.reshape(-1), temp_X_w.reshape(-1))
             new_p[:,j] = np.exp(new_ni[:,j])/(1+(np.exp(new_ni[:,j])))
@@ -260,7 +263,7 @@ def multi_bw(init, y, X, n, k, family, offset, tol, max_iter, rss_score, gwr_fun
                 new_XB[:,j] = new_ni[:,j] + ((y.reshape(-1) - new_p[:,j])/(new_p[:,j]*(1-new_p[:,j])))
 
             new_w[:,j] = new_p[:,j]*(1-new_p[:,j])
-            params[:, j] = param
+            params[:, j] = param*2
             bws[j] = bw
 
         if isinstance(family, Binomial):
