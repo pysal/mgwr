@@ -1449,7 +1449,10 @@ class MGWR(GWR):
         self.bws_history = selector.bw[1]  #bws history in backfitting
         self.bw_init = self.selector.bw_init  #initialization bandiwdth
         self.family = family
-        self.offset = offset
+        if offset is None:
+            self.offset = np.ones((len(y), 1))
+        else:
+            self.offset = offset * 1.0
         GWR.__init__(self, coords, y, X, self.bw_init, family=self.family,
                      offset=self.offset, sigma2_v1=sigma2_v1, kernel=kernel,
                      fixed=fixed, constant=constant, spherical=spherical,
@@ -1459,7 +1462,6 @@ class MGWR(GWR):
         self.points = None
         self.P = None
         self.family = family
-        self.offset = offset
         self.exog_resid = None
         self.exog_scale = None
         self_fit_params = None
