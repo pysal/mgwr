@@ -136,7 +136,7 @@ class Sel_BW(object):
     >>> pov = np.array(data.by_col('PctPov')).reshape((-1,1))
     >>> african_amer = np.array(data.by_col('PctBlack')).reshape((-1,1))
     >>> X = np.hstack([rural, pov, african_amer])
-    
+
     Golden section search AICc - adaptive bisquare
 
     >>> bw = Sel_BW(coords, y, X).search(criterion='AICc')
@@ -213,7 +213,7 @@ class Sel_BW(object):
                          min value used in bandwidth search
         bw_max         : float
                          max value used in bandwidth search
-        multi_bw_min   : list 
+        multi_bw_min   : list
                          min values used for each covariate in mgwr bandwidth search.
                          Must be either a single value or have one value for
                          each covariate including the intercept
@@ -391,10 +391,10 @@ class Sel_BW(object):
                 bw_min=bw_min, bw_max=bw_max, interval=interval, tol=tol,
                 max_iter=max_iter, pool=self.pool, verbose=False)
 
-        self.bw = multi_bw(self.init_multi, y, X, n, k, family, self.tol_multi,
-                           self.max_iter_multi, self.rss_score, gwr_func,
-                           bw_func, sel_func, multi_bw_min, multi_bw_max,
-                           bws_same_times, verbose=self.verbose)
+        self.bw = multi_bw(self.init_multi, y, X, n, k, family, offset,
+                           self.tol_multi, self.max_iter_multi, self.rss_score,
+                           gwr_func, bw_func, sel_func, multi_bw_min,
+                           multi_bw_max, bws_same_times, verbose=self.verbose)
 
     def _init_section(self, X_glob, X_loc, coords, constant):
         if len(X_glob) > 0:
