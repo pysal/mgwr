@@ -37,8 +37,10 @@ install:
         echo 'testing pypi libpysal spglm';
     else
         echo 'testing git libpysal spglm';
-        pip install https://github.com/pysal/libpysal/archive/master.zip;
-        pip install https://github.com/pysal/spglm/archive/master.zip;
+        git clone https://github.com/pysal/libpysal.git;
+        cd libpysal; pip install .; cd ../;
+        git clone https://github.com/pysal/spglm.git;
+        cd spglm; pip install .; cd ../;
     fi;
 
 script:
