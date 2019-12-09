@@ -35,18 +35,19 @@ before_install:
   conda info --all
 
 install:
-  - conda install --yes pip
-  - pip install -r requirements.txt
-  - pip install -r requirements_tests.txt
-  - if "$PYSAL_PYPI"; then
-        echo 'testing pypi libpysal spglm';
-    else
-        echo 'testing git libpysal spglm';
-        git clone https://github.com/pysal/libpysal.git;
-        cd libpysal; pip install .; cd ../;
-        git clone https://github.com/pysal/spglm.git;
-        cd spglm; pip install .; cd ../;
-    fi;
+- |
+  conda install --yes pip
+  pip install -r requirements.txt
+  pip install -r requirements_tests.txt
+  if "$PYSAL_PYPI"; then
+      echo 'testing pypi libpysal spglm';
+  else
+      echo 'testing git libpysal spglm';
+      git clone https://github.com/pysal/libpysal.git;
+      cd libpysal; pip install .; cd ../;
+      git clone https://github.com/pysal/spglm.git;
+      cd spglm; pip install .; cd ../;
+  fi;
 
 script:
   - python setup.py sdist >/dev/null
