@@ -20,31 +20,40 @@ matrix:
         env: PYSAL_PYPI=false
 
 before_install:
-  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-  - chmod +x miniconda.sh
-  - ./miniconda.sh -b -p ./miniconda
-  - export PATH=`pwd`/miniconda/bin:$PATH
-  - conda update --yes conda
-  - conda config --add channels conda-forge
-  - conda create -y -q -n test-env python=$TRAVIS_PYTHON_VERSION
-  - source activate test-env
+- |
+  wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+  chmod +x miniconda.sh
+  ./miniconda.sh -b -p ./miniconda
+  export PATH=`pwd`/miniconda/bin:$PATH
+  conda config --set always_yes yes --set changeps1 no --set show_channel_urls true
+  conda update --quiet conda
+  conda config --add channels conda-forge
+  conda config --set channel_priority strict
+  conda config --set safety_checks disabled
+  conda create -y -q -n test-env python=$TRAVIS_PYTHON_VERSION
+  source activate test-env
+  conda info --all
 
 install:
-  - conda install --yes pip
-  - pip install -r requirements.txt
-  - pip install -r requirements_tests.txt
-  - if "$PYSAL_PYPI"; then
-        echo 'testing pypi libpysal spglm';
-    else
-        echo 'testing git libpysal spglm';
-        pip install https://github.com/pysal/libpysal/archive/master.zip;
-        pip install https://github.com/pysal/spglm/archive/master.zip;
-    fi;
+- |
+  conda install --yes pip
+  pip install -r requirements.txt
+  pip install -r requirements_tests.txt
+  if "$PYSAL_PYPI"; then
+      echo 'testing pypi libpysal spglm';
+  else
+      echo 'testing git libpysal spglm';
+      git clone https://github.com/pysal/libpysal.git;
+      cd libpysal; pip install .; cd ../;
+      git clone https://github.com/pysal/spglm.git;
+      cd spglm; pip install .; cd ../;
+  fi;
 
 script:
-  - python setup.py sdist >/dev/null
-  - python setup.py install
-  - nosetests --verbose --with-coverage --cover-package=mgwr
+  - |
+    python setup.py sdist >/dev/null
+    python setup.py install
+    nosetests --verbose --with-coverage --cover-package=mgwr
 
 notifications:
     email:
