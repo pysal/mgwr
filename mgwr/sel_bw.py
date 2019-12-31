@@ -427,8 +427,8 @@ class Sel_BW(object):
                 local_cdist(coords[i],coords,spherical=self.spherical))
                     for i in range(n)]))
                     
-            a = np.min(sq_dists) / 2.0
-            c = np.max(sq_dists) * 2.0
+            a = min_dist / 2.0
+            c = max_dist * 2.0
 
         if self.bw_min is not None:
             a = self.bw_min

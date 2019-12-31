@@ -361,9 +361,13 @@ class TestGWRGaussian(unittest.TestCase):
             rslt.filter_tvals(),
             self.MGWR[[s + "_filter_tvalues" for s in varnames]].values,
             atol=1e-07)
+            
+        np.testing.assert_allclose(rslt.get_bws_intervals(selector),
+                                   [(92.0, 99.0), (99.0, 101.0), (99.0, 136.0), (122.0, 158.0)])
+        
         np.testing.assert_allclose(rslt.local_collinearity()[0].flatten(),
                                    self.MGWR.local_collinearity, atol=1e-07)
-
+    
     def test_Prediction(self):
         coords = np.array(self.coords)
         index = np.arange(len(self.y))

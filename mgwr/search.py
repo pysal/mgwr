@@ -220,11 +220,6 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
                 bw = bws[j]
             else:
                 bw = sel_func(bw_class, multi_bw_min[j], multi_bw_max[j])
-                if bw == bws[j]:
-                    bw_stable_counter[j] += 1
-                else:
-                    bw_stable_counter = np.ones(k)
-                
                 gwr_sel_hist.append(deepcopy(bw_class.sel_hist))
 
             optim_model = gwr_func(temp_y, temp_X, bw)
