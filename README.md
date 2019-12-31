@@ -19,5 +19,8 @@ Features
 - Monte Carlo test for spatial variability of parameter estimate surfaces
 - GWR-based spatial prediction
 - MGWR model calibration via GAM iterative backfitting for Gaussian model
+- Parallel computing for GWR and MGWR
 - MGWR covariate-specific inference, including a multiple hypothesis test
-  correction and local collinearity   
+  correction and local collinearity 
+- Bandwidth confidence intervals for GWR and MGWR
+  
