@@ -1054,7 +1054,7 @@ class GWRResults(GLMResults):
     def use_t(self):
         return None
     
-    def get_bws_intervals(self, selector, pval=0.95):
+    def get_bws_intervals(self, selector, level=0.95):
         """
         Computes bandwidths confidence interval (CI) for GWR.
         The CI is based on Akaike weights and the bandwidth search algorithm used.
@@ -1082,7 +1082,7 @@ class GWRResults(GLMResults):
         #Calculate cum. AICc weights
         aiccs['cum_w_ak'] = aiccs.w_aic_ak.cumsum()
         #Find index where the cum weights above p-val
-        index = len(aiccs[aiccs.cum_w_ak < pval]) + 1
+        index = len(aiccs[aiccs.cum_w_ak < level]) + 1
         #Get bw boundaries
         interval = (aiccs.iloc[:index,:].bw.min(),aiccs.iloc[:index,:].bw.max())
         return interval
@@ -1906,7 +1906,7 @@ class MGWRResults(GWRResults):
         raise NotImplementedError('Not yet implemented for MGWR')
     
     #Function for getting BWs intervals
-    def get_bws_intervals(self, selector, pval=0.95):
+    def get_bws_intervals(self, selector, level=0.95):
         """
         Computes bandwidths confidence intervals (CIs) for MGWR.
         The CIs are based on Akaike weights and the bandwidth search algorithm used.
@@ -1935,7 +1935,7 @@ class MGWRResults(GWRResults):
             #Calculate cum. AICc weights
             aiccs['cum_w_ak'] = aiccs.w_aic_ak.cumsum()
             #Find index where the cum weights above p-val
-            index = len(aiccs[aiccs.cum_w_ak < pval]) + 1
+            index = len(aiccs[aiccs.cum_w_ak < level]) + 1
             #Get bw boundaries
             interval = (aiccs.iloc[:index,:].bw.min(),aiccs.iloc[:index,:].bw.max())
             intervals += [interval]

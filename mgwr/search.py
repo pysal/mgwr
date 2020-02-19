@@ -90,13 +90,14 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False,
 
         output.append((opt_val, opt_score))
         
+        opt_val = np.round(opt_val, 2)
         if (opt_val, opt_score) not in output:
             output.append((opt_val, opt_score))
         
         diff = score_b - score_d
         score = opt_score
 
-    return np.round(opt_val, 2), opt_score, output
+    return opt_val, opt_score, output
 
 
 def equal_interval(l_bound, u_bound, interval, function, int_score=False,
