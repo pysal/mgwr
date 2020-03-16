@@ -89,10 +89,15 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False,
             d = c - delta * np.abs(c - a)
 
         output.append((opt_val, opt_score))
+        
+        opt_val = np.round(opt_val, 2)
+        if (opt_val, opt_score) not in output:
+            output.append((opt_val, opt_score))
+        
         diff = score_b - score_d
         score = opt_score
 
-    return np.round(opt_val, 2), opt_score, output
+    return opt_val, opt_score, output
 
 
 def equal_interval(l_bound, u_bound, interval, function, int_score=False,
@@ -138,19 +143,10 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False,
         print(score_a)
         print("Bandwidth:", a, ", score:", "{0:.2f}".format(score_a[0]))
 
-    score_c = function(c)
-    if verbose:
-        print("Bandwidth:", c, ", score:", "{0:.2f}".format(score_c[0]))
-
     output.append((a, score_a))
-    output.append((c, score_c))
 
-    if score_a < score_c:
-        opt_val = a
-        opt_score = score_a
-    else:
-        opt_val = c
-        opt_score = score_c
+    opt_val = a
+    opt_score = score_a
 
     while b < c:
         score_b = function(b)
@@ -162,6 +158,16 @@ def equal_interval(l_bound, u_bound, interval, function, int_score=False,
             opt_val = b
             opt_score = score_b
         b = b + interval
+
+    score_c = function(c)
+    if verbose:
+        print("Bandwidth:", c, ", score:", "{0:.2f}".format(score_c[0]))
+
+    output.append((c, score_c))
+
+    if score_c < opt_score:
+        opt_val = c
+        opt_score = score_c
 
     return opt_val, opt_score, output
 
@@ -189,8 +195,9 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
     scores = []
     delta = 1e6
     BWs = []
-    bw_stable_counter = np.ones(k)
+    bw_stable_counter = 0
     bws = np.empty(k)
+    gwr_sel_hist = []
 
     try:
         from tqdm.auto import tqdm  #if they have it, let users have a progress bar
@@ -209,15 +216,12 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
             temp_X = X[:, j].reshape((-1, 1))
             bw_class = bw_func(temp_y, temp_X)
 
-            if np.all(bw_stable_counter == bws_same_times):
-                #If in backfitting, all bws not changing in bws_same_times (default 3) iterations
+            if bw_stable_counter >= bws_same_times:
+                #If in backfitting, all bws not changing in bws_same_times (default 5) iterations
                 bw = bws[j]
             else:
                 bw = sel_func(bw_class, multi_bw_min[j], multi_bw_max[j])
-                if bw == bws[j]:
-                    bw_stable_counter[j] += 1
-                else:
-                    bw_stable_counter = np.ones(k)
+                gwr_sel_hist.append(deepcopy(bw_class.sel_hist))
 
             optim_model = gwr_func(temp_y, temp_X, bw)
             err = optim_model.resid_response.reshape((-1, 1))
@@ -225,7 +229,13 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
             new_XB[:, j] = optim_model.predy.reshape(-1)
             params[:, j] = param
             bws[j] = bw
-
+    
+        #If bws remain the same as from previous iteration
+        if (iters > 1) and np.all(BWs[-1] == bws):
+            bw_stable_counter += 1
+        else:
+            bw_stable_counter = 0
+    
         num = np.sum((new_XB - XB)**2) / n
         den = np.sum(np.sum(new_XB, axis=1)**2)
         score = (num / den)**0.5
@@ -248,4 +258,4 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
             break
 
     opt_bws = BWs[-1]
-    return (opt_bws, np.array(BWs), np.array(scores), params, err, bw_gwr)
+    return (opt_bws, np.array(BWs), np.array(scores), params, err, gwr_sel_hist, bw_gwr)

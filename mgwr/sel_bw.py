@@ -10,7 +10,7 @@ import multiprocessing as mp
 from scipy.spatial.distance import pdist
 from scipy.optimize import minimize_scalar
 from spglm.family import Gaussian, Poisson, Binomial
-from .kernels import Kernel
+from .kernels import Kernel,local_cdist
 from .gwr import GWR
 from .search import golden_section, equal_interval, multi_bw
 from .diagnostics import get_AICc, get_AIC, get_BIC, get_CV
@@ -201,7 +201,7 @@ class Sel_BW(object):
                max_iter=200, init_multi=None, tol_multi=1.0e-5,
                rss_score=False, max_iter_multi=200, multi_bw_min=[None],
                multi_bw_max=[None
-                             ], bws_same_times=3, pool=None, verbose=False):
+                             ], bws_same_times=5, pool=None, verbose=False):
         """
         Method to select one unique bandwidth for a gwr model or a
         bandwidth vector for a mgwr model.
@@ -245,7 +245,7 @@ class Sel_BW(object):
                          routine and False to use a smooth function; default is
                          False
         bws_same_times : If bandwidths keep the same between iterations for
-                         bws_same_times (default 3) in backfitting, then use the
+                         bws_same_times (default 5) in backfitting, then use the
                          current set of bandwidths as final bandwidths.
         pool           : A multiprocessing Pool object to enbale parallel fitting;
                          default is None
@@ -312,10 +312,12 @@ class Sel_BW(object):
         if self.multi:
             self._mbw()
             self.params = self.bw[3]  #params n by k
+            self.sel_hist = self.bw[-2] #bw searching history
             self.bw_init = self.bw[
                 -1]  #scalar, optimal bw from initial gwr model
         else:
             self._bw()
+            self.sel_hist = self.bw[-1]
 
         self.pool = None
         return self.bw[0]
@@ -418,9 +420,15 @@ class Sel_BW(object):
             a = 40 + 2 * n_vars
             c = n
         else:
-            sq_dists = pdist(coords)
-            a = np.min(sq_dists) / 2.0
-            c = np.max(sq_dists) * 2.0
+            min_dist = np.min(np.array([np.min(np.delete(
+                local_cdist(coords[i],coords,spherical=self.spherical),i))
+                    for i in range(n)]))
+            max_dist = np.max(np.array([np.max(
+                local_cdist(coords[i],coords,spherical=self.spherical))
+                    for i in range(n)]))
+                    
+            a = min_dist / 2.0
+            c = max_dist * 2.0
 
         if self.bw_min is not None:
             a = self.bw_min

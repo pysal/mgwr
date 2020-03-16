@@ -1053,6 +1053,40 @@ class GWRResults(GLMResults):
     @cache_readonly
     def use_t(self):
         return None
+    
+    def get_bws_intervals(self, selector, level=0.95):
+        """
+        Computes bandwidths confidence interval (CI) for GWR.
+        The CI is based on Akaike weights and the bandwidth search algorithm used.
+        Details are in Li et al. (2020) Annals of AAG
+
+        Returns a tuple with lower and upper bound of the bw CI.
+        e.g. (100, 300)
+        """
+        
+        try:
+            import pandas as pd
+        except ImportError:
+            return
+        
+        #Get AICcs and associated bw from the last iteration of back-fitting and make a DataFrame
+        aiccs = pd.DataFrame(list(zip(*selector.sel_hist))[1],columns=["aicc"])
+        aiccs['bw'] = list(zip(*selector.sel_hist))[0]
+        #Sort DataFrame by the AICc values
+        aiccs = aiccs.sort_values(by=['aicc'])
+        #Calculate delta AICc
+        d_aic_ak = aiccs.aicc - aiccs.aicc.min()
+        #Calculate AICc weights
+        w_aic_ak = np.exp(-0.5*d_aic_ak) / np.sum(np.exp(-0.5*d_aic_ak))
+        aiccs['w_aic_ak'] = w_aic_ak/np.sum(w_aic_ak)
+        #Calculate cum. AICc weights
+        aiccs['cum_w_ak'] = aiccs.w_aic_ak.cumsum()
+        #Find index where the cum weights above p-val
+        index = len(aiccs[aiccs.cum_w_ak < level]) + 1
+        #Get bw boundaries
+        interval = (aiccs.iloc[:index,:].bw.min(),aiccs.iloc[:index,:].bw.max())
+        return interval
+    
 
     def local_collinearity(self):
         """
@@ -1870,6 +1904,43 @@ class MGWRResults(GWRResults):
     @cache_readonly
     def predictions(self):
         raise NotImplementedError('Not yet implemented for MGWR')
+    
+    #Function for getting BWs intervals
+    def get_bws_intervals(self, selector, level=0.95):
+        """
+        Computes bandwidths confidence intervals (CIs) for MGWR.
+        The CIs are based on Akaike weights and the bandwidth search algorithm used.
+        Details are in Li et al. (2020) Annals of AAG
+
+        Returns a list of confidence intervals. e.g. [(40, 60), (100, 180), (150, 300)]
+            
+        """
+        intervals = []
+        try:
+            import pandas as pd
+        except ImportError:
+            return
+        
+        for j in range(self.k):
+            #Get AICcs and associated bw from the last iteration of back-fitting and make a DataFrame
+            aiccs = pd.DataFrame(list(zip(*selector.sel_hist[-self.k+j]))[1],columns=["aicc"])
+            aiccs['bw'] = list(zip(*selector.sel_hist[-self.k+j]))[0]
+            #Sort DataFrame by the AICc values
+            aiccs = aiccs.sort_values(by=['aicc'])
+            #Calculate delta AICc
+            d_aic_ak = aiccs.aicc - aiccs.aicc.min()
+            #Calculate AICc weights
+            w_aic_ak = np.exp(-0.5*d_aic_ak) / np.sum(np.exp(-0.5*d_aic_ak))
+            aiccs['w_aic_ak'] = w_aic_ak/np.sum(w_aic_ak)
+            #Calculate cum. AICc weights
+            aiccs['cum_w_ak'] = aiccs.w_aic_ak.cumsum()
+            #Find index where the cum weights above p-val
+            index = len(aiccs[aiccs.cum_w_ak < level]) + 1
+            #Get bw boundaries
+            interval = (aiccs.iloc[:index,:].bw.min(),aiccs.iloc[:index,:].bw.max())
+            intervals += [interval]
+        return intervals
+
 
     def local_collinearity(self):
         """
