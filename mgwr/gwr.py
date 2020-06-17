@@ -351,6 +351,7 @@ class GWR(GLM):
                 return GWRResults(self, params, predy, S, CCT, influ, tr_STS,
                                   w)
 
+
     def predict(self, points, P, exog_scale=None, exog_resid=None,
                 fit_params={}):
         """
@@ -1248,7 +1249,9 @@ class GWRResults(GLMResults):
 class GWRResultsLite(object):
     """
     Lightweight GWR that computes the minimum diagnostics needed for bandwidth
-    selection
+    selection.
+    
+    See FastGWR,Li et al., 2019, IJGIS.
 
     Parameters
     ----------
@@ -1554,6 +1557,7 @@ class MGWR(GWR):
     def fit(self, n_chunks=1, pool=None):
         """
         Compute MGWR inference by chunk to reduce memory footprint.
+        See Li and Fotheringham, 2020, IJGIS.
         
         Parameters
         ----------
@@ -1598,7 +1602,55 @@ class MGWR(GWR):
         else:
             R = None
         return MGWRResults(self, params, predy, CCT, ENP_j, w, R)
+    
+    
+    def exact_fit(self):
+        """
+        A closed-form solution to MGWR estimates and inference,
+        the backfitting in self.fit() will converge to this solution.
+        
+        Note: this would require large memory when n > 5,000.
+        See Li and Fotheringham, 2020, IJGIS, pg.4.
+        
+        Returns
+        -------
+                      : MGWRResults
+        """
+        
+        P = []
+        Q = []
+        I = np.eye(self.n)
+        for j1 in range(self.k):
+            Aj = GWR(self.coords,self.y,self.X[:,j1].reshape(-1,1),bw=self.bws[j1],hat_matrix=True,constant=False).fit().S
+            Pj = []
+            for j2 in range(self.k):
+                if j1 == j2:
+                    Pj.append(I)
+                else:
+                    Pj.append(Aj)
+            P.append(Pj)
+            Q.append([Aj])
+    
+        P = np.block(P)
+        Q = np.block(Q)
+        R = np.linalg.solve(P, Q)
+        f = R.dot(self.y)
 
+        params =  f/self.X.T.reshape(-1,1)
+        params = params.reshape(-1,self.n).T
+
+        R = np.stack(np.split(R,self.k),axis=2)
+        ENP_j = np.trace(R, axis1=0, axis2=1)
+        predy = np.sum(self.X * params, axis=1).reshape(-1, 1)
+        w = np.ones(self.n)
+
+        CCT = np.zeros((self.n,self.k))
+        for j in range(self.k):
+            CCT[:, j] = ((R[:, :, j] / self.X[:, j].reshape(-1, 1))**2).sum(axis=1)
+        
+        return MGWRResults(self, params, predy, CCT, ENP_j, w, R)
+    
+    
     def predict(self):
         '''
         Not implemented.
