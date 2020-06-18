@@ -299,7 +299,12 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(rslt_hat.R, rslt_hat_2.R, atol=1e-07)
         np.testing.assert_allclose(
             rslt_hat.S.dot(std_y).flatten(), self.MGWR.predy, atol=1e-07)
-
+            
+        exact_rslt = model.exact_fit()
+        
+        np.testing.assert_allclose(exact_rslt.R, rslt_hat.R,atol=1e-04)
+        np.testing.assert_allclose(exact_rslt.params, rslt_hat.params,atol=1e-04)
+        
         varnames = ['X0', 'X1', 'X2', 'X3']
 
         # def suffixed(x):
