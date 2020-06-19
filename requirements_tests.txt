@@ -1,6 +1,6 @@
 nose
 nose-progressive
 nose-exclude
-coverage
+coverage==4.5.4
 coveralls
 pandas
