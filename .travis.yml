@@ -53,7 +53,7 @@ script:
   - |
     python setup.py sdist >/dev/null
     python setup.py install
-    nosetests --verbose --with-coverage --cover-package=mgwr
+    nosetests --exe --verbose --with-coverage --cover-package=mgwr
 
 notifications:
     email:
