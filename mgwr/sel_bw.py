@@ -357,7 +357,7 @@ class Sel_BW(object):
     def _mbw(self):
         y = self.y
         if self.constant:
-            X = USER.check_constant(self.X_loc)
+            X,keep_x,warn = USER.check_constant(self.X_loc)
         else:
             X = self.X_loc
         n, k = X.shape
