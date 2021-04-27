@@ -134,7 +134,7 @@ class GWR(GLM):
     spherical     : boolean
                     True for shperical coordinates (long-lat),
                     False for projected coordinates (defalut).
-                    
+
     hat_matrix    : boolean
                     True to store full n by n hat matrix,
                     False to not store full hat matrix to minimize memory footprint (defalut).
@@ -517,10 +517,10 @@ class GWRResults(GLMResults):
 
     R2                  : float
                           R-squared for the entire model (1- RSS/TSS)
-                          
+
     adj_R2              : float
                           adjusted R-squared for the entire model
-                          
+
     aic                 : float
                           Akaike information criterion
 
@@ -576,11 +576,11 @@ class GWRResults(GLMResults):
     pDev                : float
                           local percent of deviation accounted for; analogous to
                           r-squared for GLM's
-                          
+
     D2                  : float
                           percent deviance explained for GLM, equivaleng to R2 for
                           Gaussian.
-                          
+
     adj_D2              : float
                           adjusted percent deviance explained, equivaleng to adjusted
                           R2 for Gaussian.
@@ -1054,7 +1054,7 @@ class GWRResults(GLMResults):
     @cache_readonly
     def use_t(self):
         return None
-    
+
     def get_bws_intervals(self, selector, level=0.95):
         """
         Computes bandwidths confidence interval (CI) for GWR.
@@ -1064,12 +1064,12 @@ class GWRResults(GLMResults):
         Returns a tuple with lower and upper bound of the bw CI.
         e.g. (100, 300)
         """
-        
+
         try:
             import pandas as pd
         except ImportError:
             return
-        
+
         #Get AICcs and associated bw from the last iteration of back-fitting and make a DataFrame
         aiccs = pd.DataFrame(list(zip(*selector.sel_hist))[1],columns=["aicc"])
         aiccs['bw'] = list(zip(*selector.sel_hist))[0]
@@ -1087,7 +1087,7 @@ class GWRResults(GLMResults):
         #Get bw boundaries
         interval = (aiccs.iloc[:index,:].bw.min(),aiccs.iloc[:index,:].bw.max())
         return interval
-    
+
 
     def local_collinearity(self):
         """
@@ -1214,7 +1214,13 @@ class GWRResults(GLMResults):
         init_sd = np.std(self.params, axis=0)
         SDs = []
 
-        for x in range(n_iters):
+        try:
+            from tqdm.auto import tqdm  # if they have it, let users have a progress bar
+        except ImportError:
+            def tqdm(x, desc=''):  # otherwise, just passthrough the range
+                return x
+
+        for x in tqdm(range(n_iters), desc='Testing'):
             temp_coords = np.random.permutation(self.model.coords)
             temp_sel.coords = temp_coords
             temp_bw = temp_sel.search(**search_params)
@@ -1250,7 +1256,7 @@ class GWRResultsLite(object):
     """
     Lightweight GWR that computes the minimum diagnostics needed for bandwidth
     selection.
-    
+
     See FastGWR,Li et al., 2019, IJGIS.
 
     Parameters
@@ -1558,15 +1564,15 @@ class MGWR(GWR):
         """
         Compute MGWR inference by chunk to reduce memory footprint.
         See Li and Fotheringham, 2020, IJGIS.
-        
+
         Parameters
         ----------
 
         n_chunks      : integer, optional
-                        A number of chunks parameter to reduce memory usage. 
+                        A number of chunks parameter to reduce memory usage.
                         e.g. n_chunks=2 should reduce overall memory usage by 2.
         pool          : A multiprocessing Pool object to enable parallel fitting; default is None.
-                        
+
         Returns
         -------
                       : MGWRResults
@@ -1602,21 +1608,21 @@ class MGWR(GWR):
         else:
             R = None
         return MGWRResults(self, params, predy, CCT, ENP_j, w, R)
-    
-    
+
+
     def exact_fit(self):
         """
         A closed-form solution to MGWR estimates and inference,
         the backfitting in self.fit() will converge to this solution.
-        
+
         Note: this would require large memory when n > 5,000.
         See Li and Fotheringham, 2020, IJGIS, pg.4.
-        
+
         Returns
         -------
                       : MGWRResults
         """
-        
+
         P = []
         Q = []
         I = np.eye(self.n)
@@ -1630,7 +1636,7 @@ class MGWR(GWR):
                     Pj.append(Aj)
             P.append(Pj)
             Q.append([Aj])
-    
+
         P = np.block(P)
         Q = np.block(Q)
         R = np.linalg.solve(P, Q)
@@ -1647,10 +1653,10 @@ class MGWR(GWR):
         CCT = np.zeros((self.n,self.k))
         for j in range(self.k):
             CCT[:, j] = ((R[:, :, j] / self.X[:, j].reshape(-1, 1))**2).sum(axis=1)
-        
+
         return MGWRResults(self, params, predy, CCT, ENP_j, w, R)
-    
-    
+
+
     def predict(self):
         '''
         Not implemented.
@@ -1778,7 +1784,7 @@ class MGWRResults(GWRResults):
 
     R2                  : float
                           R-squared for the entire model (1- RSS/TSS)
-                          
+
     adj_R2              : float
                           adjusted R-squared for the entire model
 
@@ -1956,7 +1962,7 @@ class MGWRResults(GWRResults):
     @cache_readonly
     def predictions(self):
         raise NotImplementedError('Not yet implemented for MGWR')
-    
+
     #Function for getting BWs intervals
     def get_bws_intervals(self, selector, level=0.95):
         """
@@ -1965,14 +1971,14 @@ class MGWRResults(GWRResults):
         Details are in Li et al. (2020) Annals of AAG
 
         Returns a list of confidence intervals. e.g. [(40, 60), (100, 180), (150, 300)]
-            
+
         """
         intervals = []
         try:
             import pandas as pd
         except ImportError:
             return
-        
+
         for j in range(self.k):
             #Get AICcs and associated bw from the last iteration of back-fitting and make a DataFrame
             aiccs = pd.DataFrame(list(zip(*selector.sel_hist[-self.k+j]))[1],columns=["aicc"])
@@ -2088,7 +2094,14 @@ class MGWRResults(GWRResults):
         init_sd = np.std(self.params, axis=0)
         SDs = []
 
-        for x in range(n_iters):
+        try:
+            from tqdm.auto import tqdm  # if they have it, let users have a progress bar
+        except ImportError:
+
+            def tqdm(x, desc=''):  # otherwise, just passthrough the range
+                return x
+
+        for x in tqdm(range(n_iters), desc='Testing'):
             temp_coords = np.random.permutation(self.model.coords)
             temp_sel.coords = temp_coords
             temp_sel.search(**search_params)
