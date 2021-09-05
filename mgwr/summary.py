@@ -15,7 +15,7 @@ def summaryModel(self):
 def summaryGLM(self):
 
     XNames = ["X" + str(i) for i in range(self.k)]
-    glm_rslt = GLM(self.model.y, self.model.X, constant=False,
+    glm_rslt = GLM(self.model.y, self.model.X, constant=False, offset = self.model.offset,
                    family=self.family).fit()
 
     summary = "%s\n" % ('Global Regression Results')
