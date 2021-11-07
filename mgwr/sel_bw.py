@@ -335,7 +335,7 @@ class Sel_BW(object):
                                       self.constant)
             delta = 0.38197  #1 - (np.sqrt(5.0)-1.0)/2.0
             self.bw = golden_section(a, c, delta, gwr_func, self.tol,
-                                     self.max_iter, self.int_score,
+                                     self.max_iter, self.bw_max, self.int_score,
                                      self.verbose)
         elif self.search_method == 'interval':
             self.bw = equal_interval(self.bw_min, self.bw_max, self.interval,

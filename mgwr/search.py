@@ -5,8 +5,7 @@ __author__ = "Taylor Oshan"
 import numpy as np
 from copy import deepcopy
 
-
-def golden_section(a, c, delta, function, tol, max_iter, int_score=False,
+def golden_section(a, c, delta, function, tol, max_iter, bw_max, int_score=False,
                    verbose=False):
     """
     Golden section search routine
@@ -43,8 +42,13 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False,
     output          : list of tuples
                       searching history
     """
-    b = a + delta * np.abs(c - a)
-    d = c - delta * np.abs(c - a)
+    if c == np.inf:
+        b = a + delta * np.abs(n - a)
+        d = n - delta * np.abs(n - a)
+    else:
+        b = a + delta * np.abs(c - a)
+        d = c - delta * np.abs(c - a)
+    
     opt_score = np.inf
     diff = 1.0e9
     iters = 0
@@ -96,16 +100,18 @@ def golden_section(a, c, delta, function, tol, max_iter, int_score=False,
         
         diff = score_b - score_d
         score = opt_score
-
-    score_ols = function(np.inf)
-    output.append((np.inf, score_ols))
-            
-    if score_ols <= opt_score:
-        opt_score = score_ols
-        opt_val = np.inf
         
-    if verbose:
-        print("Bandwidth: ", np.inf, ", score: ",
+    
+    if a == np.inf or bw_max == np.inf:
+        score_ols = function(np.inf)
+        output.append((np.inf, score_ols))
+            
+        if score_ols <= opt_score:
+            opt_score = score_ols
+            opt_val = np.inf
+        
+        if verbose:
+            print("Bandwidth: ", np.inf, ", score: ",
                     "{0:.2f}".format(score_ols[0]))
 
     return opt_val, opt_score, output
