@@ -231,6 +231,10 @@ class GWR(GLM):
         self.hat_matrix = hat_matrix
 
     def _build_wi(self, i, bw):
+    
+        if bw == np.inf:
+            wi = np.ones((self.n))
+            return wi
 
         try:
             wi = Kernel(i, self.coords, bw, fixed=self.fixed,
