@@ -3,6 +3,7 @@
 __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
 import copy
+from typing import Optional
 import numpy as np
 import numpy.linalg as la
 from scipy.stats import t
@@ -1247,13 +1248,29 @@ class GWRResults(GLMResults):
             predictions = np.sum(P * self.params, axis=1).reshape((-1, 1))
         return predictions
 
-    def summary(self):
+    def summary(self, as_str: bool = False) -> Optional[str]:
         """
         Print out GWR summary
+
+        Parameters
+        ----------
+        as_str        : bool
+                        optional parameters to specify that summary results
+                        should be returned as str and not printed to stdout
+
+        Returns
+        -------
+
+        summary        : Optional[str]
+                        optional GWR summary string if `as_str` is True
         """
         summary = summaryModel(self) + summaryGLM(self) + summaryGWR(self)
+        
+        if as_str:
+            return summary
+        
         print(summary)
-        return
+        return None
 
 
 class GWRResultsLite(object):
@@ -2116,10 +2133,26 @@ class MGWRResults(GWRResults):
         p_vals = (np.sum(np.array(SDs) > init_sd, axis=0) / float(n_iters))
         return p_vals
 
-    def summary(self):
+    def summary(self, as_str: bool=False) -> Optional[str]:
         """
         Print out MGWR summary
+
+        Parameters
+        ----------
+        as_str        : bool
+                        optional parameters to specify that summary results
+                        should be returned as str and not printed to stdout
+
+        Returns
+        -------
+
+        summary        : Optional[str]
+                        optional MGWR summary string if `as_str` is True
         """
         summary = summaryModel(self) + summaryGLM(self) + summaryMGWR(self)
+        
+        if as_str:
+            return summary
+        
         print(summary)
         return
