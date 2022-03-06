@@ -12,7 +12,7 @@
    unittests:
      name: ${{ matrix.os }}, ${{ matrix.environment-file }}
      runs-on: ${{ matrix.os }}
-     timeout-minutes: 60 
+     timeout-minutes: 150 
      strategy:
        matrix:
          os: ['macos-latest', 'ubuntu-latest', 'windows-latest']
