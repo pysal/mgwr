@@ -45,12 +45,12 @@
        
        - name: run tests - bash
          shell: bash -l {0}
-         run: pytest -v mgwr --cov=mgwr --cov-report=xml --timeout=60
+         run: pytest -v mgwr --cov=mgwr --cov-report=xml --timeout=300
          if: matrix.os != 'windows-latest'
        
        - name: run tests - powershell
          shell: powershell
-         run: pytest -v mgwr --cov=mgwr --cov-report=xml --timeout=60
+         run: pytest -v mgwr --cov=mgwr --cov-report=xml --timeout=300
          if: matrix.os == 'windows-latest'
        
        - name: codecov
