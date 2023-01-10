@@ -33,6 +33,7 @@
        - name: install spglm via pip
          shell: bash -l {0}
          run: pip install git+https://github.com/pysal/spglm.git@master
+         upgrade: true
          
        - name: install spreg via pip
          shell: bash -l {0}
