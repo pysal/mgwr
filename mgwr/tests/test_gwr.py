@@ -299,12 +299,12 @@ class TestGWRGaussian(unittest.TestCase):
         np.testing.assert_allclose(rslt_hat.R, rslt_hat_2.R, atol=1e-07)
         np.testing.assert_allclose(
             rslt_hat.S.dot(std_y).flatten(), self.MGWR.predy, atol=1e-07)
-            
+
         exact_rslt = model.exact_fit()
-        
+
         np.testing.assert_allclose(exact_rslt.R, rslt_hat.R,atol=1e-04)
         np.testing.assert_allclose(exact_rslt.params, rslt_hat.params,atol=1e-04)
-        
+
         varnames = ['X0', 'X1', 'X2', 'X3']
 
         # def suffixed(x):
@@ -366,13 +366,13 @@ class TestGWRGaussian(unittest.TestCase):
             rslt.filter_tvals(),
             self.MGWR[[s + "_filter_tvalues" for s in varnames]].values,
             atol=1e-07)
-            
+
         np.testing.assert_allclose(rslt.get_bws_intervals(selector),
                                    [(92.0, 99.0), (99.0, 101.0), (99.0, 136.0), (122.0, 158.0)])
-        
+
         np.testing.assert_allclose(rslt.local_collinearity()[0].flatten(),
                                    self.MGWR.local_collinearity, atol=1e-07)
-    
+
     def test_Prediction(self):
         coords = np.array(self.coords)
         index = np.arange(len(self.y))
@@ -502,7 +502,7 @@ class TestGWRPoisson(unittest.TestCase):
     def setUp(self):
         data_path = os.path.join(
             os.path.dirname(__file__), 'tokyo/Tokyomortality.csv')
-        data = io.open(data_path, mode='Ur')
+        data = io.open(data_path, mode='r')
         self.coords = list(
             zip(data.by_col('X_CENTROID'), data.by_col('Y_CENTROID')))
         self.y = np.array(data.by_col('db2564')).reshape((-1, 1))

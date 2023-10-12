@@ -189,7 +189,7 @@ class TestGWRSelBWPoisson(unittest.TestCase):
     def setUp(self):
         data_path = os.path.join(
             os.path.dirname(__file__), 'tokyo/Tokyomortality.csv')
-        data = io.open(data_path, mode='Ur')
+        data = io.open(data_path, mode='r')
         self.coords = list(
             zip(data.by_col('X_CENTROID'), data.by_col('Y_CENTROID')))
         self.y = np.array(data.by_col('db2564')).reshape((-1, 1))
