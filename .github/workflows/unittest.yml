@@ -20,6 +20,7 @@
          include:
            - environment-file: .ci/311-DEV.yaml
              os: ubuntu-latest
+       fail-fast: false
      defaults:
        run:
          shell: bash -l {0}
