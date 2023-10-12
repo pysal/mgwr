@@ -34,7 +34,7 @@
            environment-file: ${{ matrix.environment-file }}
            micromamba-version: 'latest'
        - name: install spglm via pip
-         run: pip install --upgrade git+https://github.com/pysal/spglm.git@main
+         run: pip install --upgrade --no-deps git+https://github.com/pysal/spglm.git@main
 
        - name: install spreg via pip
          run: pip install spreg
