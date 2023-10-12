@@ -20,39 +20,39 @@
          include:
            - environment-file: .ci/39-DEV.yaml
              os: ubuntu-latest
-    
+
      steps:
        - name: checkout repo
-         uses: actions/checkout@v2
-       
+         uses: actions/checkout@v4
+
        - name: setup micromamba
-         uses: mamba-org/provision-with-micromamba@main
+         uses: mamba-org/setup-micromamba@v1
          with:
            environment-file: ${{ matrix.environment-file }}
            micromamba-version: 'latest'
        - name: install spglm via pip
          shell: bash -l {0}
-         run: pip install --upgrade git+https://github.com/pysal/spglm.git@master
-         
+         run: pip install --upgrade git+https://github.com/pysal/spglm.git@main
+
        - name: install spreg via pip
          shell: bash -l {0}
-         run: pip install spreg 
-       
+         run: pip install spreg
+
        - name: install bleeding edge libpysal (only Ubuntu / Python 3.9)
          shell: bash -l {0}
-         run: pip install git+https://github.com/pysal/libpysal.git@master
+         run: pip install git+https://github.com/pysal/libpysal.git@main
          if: matrix.os == 'ubuntu-latest' && contains(matrix.environment-file, 'DEV')
-       
+
        - name: run tests - bash
          shell: bash -l {0}
          run: pytest -v mgwr --cov=mgwr --cov-report=xml --timeout=300
          if: matrix.os != 'windows-latest'
-       
+
        - name: run tests - powershell
          shell: powershell
          run: pytest -v mgwr --cov=mgwr --cov-report=xml --timeout=300
          if: matrix.os == 'windows-latest'
-       
+
        - name: codecov
          uses: codecov/codecov-action@v2
          with:
