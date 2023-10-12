@@ -16,9 +16,9 @@
      strategy:
        matrix:
          os: ['macos-latest', 'ubuntu-latest', 'windows-latest']
-         environment-file: [.ci/37.yaml, .ci/38.yaml, .ci/39.yaml]
+         environment-file: [.ci/39.yaml, .ci/310.yaml, .ci/311.yaml]
          include:
-           - environment-file: .ci/39-DEV.yaml
+           - environment-file: .ci/311-DEV.yaml
              os: ubuntu-latest
      defaults:
        run:
