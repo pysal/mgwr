@@ -211,7 +211,7 @@ class GWR(GLM):
         """
         Initialize class
         """
-        GLM.__init__(self, y, X, family, constant=constant)
+        GLM.__init__(self, y, X, family, constant=constant, offset=offset)
         self.constant = constant
         self.sigma2_v1 = sigma2_v1
         self.coords = np.array(coords)
