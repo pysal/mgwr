@@ -14,7 +14,12 @@ def summaryModel(self):
 
 def summaryGLM(self):
 
-    XNames = ["X" + str(i) for i in range(self.k)]
+    if self.name_x is not None:
+        XNames = list(self.name_x)
+        if len(XNames) < self.k:
+            XNames = ["Intercept"] + XNames
+    else:
+        XNames = ["X" + str(i) for i in range(self.k)]
     glm_rslt = GLM(self.model.y, self.model.X, constant=False,
                    family=self.family).fit()
 
@@ -47,14 +52,20 @@ def summaryGLM(self):
                                                 '-' * 10, '-' * 10)
     for i in range(self.k):
         summary += "%-31s %10.3f %10.3f %10.3f %10.3f\n" % (
-            XNames[i], glm_rslt.params[i], glm_rslt.bse[i],
+            XNames[i][:30], glm_rslt.params[i], glm_rslt.bse[i],
             glm_rslt.tvalues[i], glm_rslt.pvalues[i])
     summary += "\n"
     return summary
 
 
 def summaryGWR(self):
-    XNames = ["X" + str(i) for i in range(self.k)]
+    if self.name_x is not None:
+        XNames = list(self.name_x)
+        if len(XNames) < self.k:
+            XNames = ["Intercept"] + XNames
+
+    else:
+        XNames = ["X" + str(i) for i in range(self.k)]
 
     summary = "%s\n" % ('Geographically Weighted Regression (GWR) Results')
     summary += '-' * 75 + '\n'
@@ -111,7 +122,7 @@ def summaryGWR(self):
         '-' * 20, '-' * 10, '-' * 10, '-' * 10, '-' * 10, '-' * 10)
     for i in range(self.k):
         summary += "%-20s %10.3f %10.3f %10.3f %10.3f %10.3f\n" % (
-            XNames[i], np.mean(self.params[:, i]), np.std(self.params[:, i]),
+            XNames[i][:20], np.mean(self.params[:, i]), np.std(self.params[:, i]),
             np.min(self.params[:, i]), np.median(self.params[:, i]),
             np.max(self.params[:, i]))
 
@@ -122,7 +133,13 @@ def summaryGWR(self):
 
 def summaryMGWR(self):
 
-    XNames = ["X" + str(i) for i in range(self.k)]
+    if self.name_x is not None:
+        XNames = list(self.name_x)
+        if len(XNames) < self.k:
+            XNames = ["Intercept"] + XNames
+
+    else:
+        XNames = ["X" + str(i) for i in range(self.k)]
 
     summary = ''
     summary += "%s\n" % (
@@ -182,7 +199,7 @@ def summaryMGWR(self):
         '-' * 20, '-' * 10, '-' * 10, '-' * 10, '-' * 10, '-' * 10)
     for i in range(self.k):
         summary += "%-20s %10.3f %10.3f %10.3f %10.3f %10.3f\n" % (
-            XNames[i], np.mean(self.params[:, i]), np.std(self.params[:, i]),
+            XNames[i][:20], np.mean(self.params[:, i]), np.std(self.params[:, i]),
             np.min(self.params[:, i]), np.median(self.params[:, i]),
             np.max(self.params[:, i]))
 
