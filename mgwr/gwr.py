@@ -5,13 +5,13 @@ __author__ = "Taylor Oshan Tayoshan@gmail.com"
 import copy
 from typing import Optional
 import numpy as np
-import numpy.linalg as la
+from scipy import linalg as la
 from scipy.stats import t
 from scipy.special import factorial
 from itertools import combinations as combo
 from spglm.family import Gaussian, Binomial, Poisson
 from spglm.glm import GLM, GLMResults
-from spglm.iwls import iwls, _compute_betas_gwr
+from spglm.iwls import iwls, _compute_betas_gwr, _low_rank_hat
 from spglm.utils import cache_readonly
 from .diagnostics import get_AIC, get_AICc, get_BIC, corr
 from .kernels import *
@@ -257,7 +257,11 @@ class GWR(GLM):
         wi = self._build_wi(i, self.bw).reshape(-1, 1)  #local spatial weights
 
         if isinstance(self.family, Gaussian):
-            betas, inv_xtx_xt = _compute_betas_gwr(self.y, self.X, wi)
+            betas, rank = _compute_betas_gwr(self.y, self.X, wi)
+            if rank < self.X.shape[1]:
+                inv_xtx_xt = _low_rank_hat(self.X)
+            else:
+                inv_xtx_xt = la.solve(self.X.T @ self.X, self.X)
             predy = np.dot(self.X[i], betas)[0]
             resid = self.y[i] - predy
             influ = np.dot(self.X[i], inv_xtx_xt[:, i])
