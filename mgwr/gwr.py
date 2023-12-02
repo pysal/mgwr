@@ -1671,7 +1671,7 @@ class MGWR(GWR):
         Q = []
         I = np.eye(self.n)
         for j1 in range(self.k):
-            Aj = GWR(self.coords,self.y,self.X[:,j1].reshape(-1,1),bw=self.bws[j1],hat_matrix=True,constant=False).fit().S
+            Aj = GWR(self.coords,self.y,self.X[:,j1].reshape(-1,1),bw=self.bws[j1],hat_matrix=True,constant=False,n_jobs=self.n_jobs).fit().S
             Pj = []
             for j2 in range(self.k):
                 if j1 == j2:

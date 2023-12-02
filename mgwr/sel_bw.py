@@ -385,7 +385,7 @@ class Sel_BW(object):
         def bw_func(y, X):
             selector = Sel_BW(coords, y, X, X_glob=[], family=family,
                               kernel=kernel, fixed=fixed, offset=offset,
-                              constant=False, spherical=self.spherical)
+                              constant=False, spherical=self.spherical,n_jobs=self.n_jobs)
             return selector
 
         def sel_func(bw_func, bw_min=None, bw_max=None):
