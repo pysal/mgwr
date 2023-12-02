@@ -6,7 +6,6 @@ __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
 import spreg.user_output as USER
 import numpy as np
-import multiprocessing as mp
 from scipy.spatial.distance import pdist
 from scipy.optimize import minimize_scalar
 from spglm.family import Gaussian, Poisson, Binomial
@@ -59,6 +58,8 @@ class Sel_BW(object):
     spherical      : boolean
                      True for shperical coordinates (long-lat),
                      False for projected coordinates (defalut).
+    n_jobs         : integer
+                     The number of jobs (default 1) to run in parallel. -1 means using all processors.
 
     Attributes
     ----------
@@ -201,7 +202,7 @@ class Sel_BW(object):
                max_iter=200, init_multi=None, tol_multi=1.0e-5,
                rss_score=False, max_iter_multi=200, multi_bw_min=[None],
                multi_bw_max=[None
-                             ], bws_same_times=5, pool=None, verbose=False):
+                             ], bws_same_times=5, verbose=False):
         """
         Method to select one unique bandwidth for a gwr model or a
         bandwidth vector for a mgwr model.
@@ -247,8 +248,6 @@ class Sel_BW(object):
         bws_same_times : If bandwidths keep the same between iterations for
                          bws_same_times (default 5) in backfitting, then use the
                          current set of bandwidths as final bandwidths.
-        pool           : A multiprocessing Pool object to enbale parallel fitting;
-                         default is None
         verbose        : Boolean
                          If true, bandwidth searching history is printed out; default is False.
 
@@ -268,7 +267,6 @@ class Sel_BW(object):
         self.bw_min = bw_min
         self.bw_max = bw_max
         self.bws_same_times = bws_same_times
-        self.pool = pool
         self.verbose = verbose
 
         if len(multi_bw_min) == k:
@@ -319,14 +317,13 @@ class Sel_BW(object):
             self._bw()
             self.sel_hist = self.bw[-1]
 
-        self.pool = None
         return self.bw[0]
 
     def _bw(self):
         gwr_func = lambda bw: getDiag[self.criterion](GWR(
             self.coords, self.y, self.X_loc, bw, family=self.family, kernel=
             self.kernel, fixed=self.fixed, constant=self.constant, offset=self.
-            offset, spherical=self.spherical).fit(lite=True, pool=self.pool))
+            offset, spherical=self.spherical, n_jobs=self.n_jobs).fit(lite=True))
 
         self._optimized_function = gwr_func
 
@@ -381,8 +378,8 @@ class Sel_BW(object):
         def gwr_func(y, X, bw):
             return GWR(coords, y, X, bw, family=family, kernel=kernel,
                        fixed=fixed, offset=offset, constant=False,
-                       spherical=self.spherical, hat_matrix=False).fit(
-                           lite=True, pool=self.pool)
+                       spherical=self.spherical, hat_matrix=False,n_jobs=self.n_jobs).fit(
+                           lite=True)
 
         def bw_func(y, X):
             selector = Sel_BW(coords, y, X, X_glob=[], family=family,
@@ -394,7 +391,7 @@ class Sel_BW(object):
             return bw_func.search(
                 search_method=search_method, criterion=criterion,
                 bw_min=bw_min, bw_max=bw_max, interval=interval, tol=tol,
-                max_iter=max_iter, pool=self.pool, verbose=False)
+                max_iter=max_iter, verbose=False)
 
         self.bw = multi_bw(self.init_multi, y, X, n, k, family, self.tol_multi,
                            self.max_iter_multi, self.rss_score, gwr_func,
