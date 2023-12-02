@@ -176,7 +176,7 @@ class Sel_BW(object):
 
     def __init__(self, coords, y, X_loc, X_glob=None, family=Gaussian(),
                  offset=None, kernel='bisquare', fixed=False, multi=False,
-                 constant=True, spherical=False):
+                 constant=True, spherical=False,n_jobs=1):
         self.coords = np.array(coords)
         self.y = y
         self.X_loc = X_loc
@@ -195,6 +195,7 @@ class Sel_BW(object):
         self._functions = []
         self.constant = constant
         self.spherical = spherical
+        self.n_jobs = n_jobs
         self.search_params = {}
 
     def search(self, search_method='golden_section', criterion='AICc',

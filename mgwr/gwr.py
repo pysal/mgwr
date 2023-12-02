@@ -1631,7 +1631,7 @@ class MGWR(GWR):
                      desc=''):  #otherwise, just passthrough the range
                 return x
 
-        if self.n_jobs = -1:
+        if self.n_jobs == -1:
             max_processors = os.cpu_count()
             self.n_chunks = max_processors * n_chunks
         else:
