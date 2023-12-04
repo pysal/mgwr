@@ -1639,7 +1639,7 @@ class MGWR(GWR):
                 return x
 
         if pool:
-            warnings.warn("The pool parameter is no longer used and will have no effect; parallelization is default and implemented using joblib instead.", RuntimeWarning)
+            warnings.warn("The pool parameter is no longer used and will have no effect; parallelization is default and implemented using joblib instead.", RuntimeWarning, stacklevel=2)
             
         if self.n_jobs == -1:
             max_processors = os.cpu_count()
