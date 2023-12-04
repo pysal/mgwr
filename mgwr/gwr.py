@@ -3,6 +3,7 @@
 __author__ = "Taylor Oshan Tayoshan@gmail.com"
 
 import copy
+import os
 from typing import Optional
 import numpy as np
 import numpy.linalg as la
@@ -13,10 +14,10 @@ from spglm.family import Gaussian, Binomial, Poisson
 from spglm.glm import GLM, GLMResults
 from spglm.iwls import iwls, _compute_betas_gwr
 from spglm.utils import cache_readonly
+from joblib import Parallel, delayed
 from .diagnostics import get_AIC, get_AICc, get_BIC, corr
 from .kernels import *
 from .summary import *
-import multiprocessing as mp
 
 
 class GWR(GLM):
@@ -85,6 +86,10 @@ class GWR(GLM):
 
     name_x        : list of strings
                     Names of independent variables for use in output
+
+    n_jobs        : integer
+                    The number of jobs (default 1) to run in parallel. -1 means using all processors.
+                            
 
     Attributes
     ----------
@@ -210,7 +215,7 @@ class GWR(GLM):
 
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
                  sigma2_v1=True, kernel='bisquare', fixed=False, constant=True,
-                 spherical=False, hat_matrix=False, name_x=None):
+                 spherical=False, hat_matrix=False, name_x=None,n_jobs=1):
         """
         Initialize class
         """
@@ -234,6 +239,7 @@ class GWR(GLM):
         self.spherical = spherical
         self.hat_matrix = hat_matrix
         self.name_x = name_x
+        self.n_jobs = n_jobs
 
     def _build_wi(self, i, bw):
 
@@ -285,7 +291,7 @@ class GWR(GLM):
             return influ, resid, predy, betas.reshape(-1), w, Si, tr_STS_i, CCT
 
     def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls',
-            lite=False, pool=None):
+            lite=False):
         """
         Method that fits a model with a particular estimation routine.
 
@@ -312,7 +318,6 @@ class GWR(GLM):
                         bandwidth selection (could speed up
                         bandwidth selection for GWR) or to estimate
                         a full GWR. Default is False.
-        pool          : A multiprocessing Pool object to enable parallel fitting; default is None.
 
         Returns
         -------
@@ -335,11 +340,7 @@ class GWR(GLM):
             else:
                 m = self.points.shape[0]
 
-            if pool:
-                rslt = pool.map(self._local_fit,
-                                range(m))  #parallel using mp.Pool
-            else:
-                rslt = map(self._local_fit, range(m))  #sequential
+            rslt = Parallel(n_jobs=self.n_jobs)(delayed(self._local_fit)(i) for i in range(m))
 
             rslt_list = list(zip(*rslt))
             influ = np.array(rslt_list[0]).reshape(-1, 1)
@@ -1492,6 +1493,9 @@ class MGWR(GWR):
     name_x        : list of strings
                     Names of independent variables for use in output
 
+    n_jobs        : integer
+                    The number of jobs (default 1) to run in parallel. -1 means using all processors.
+
     Examples
     --------
 
@@ -1521,7 +1525,7 @@ class MGWR(GWR):
 
     def __init__(self, coords, y, X, selector, sigma2_v1=True,
                  kernel='bisquare', fixed=False, constant=True,
-                 spherical=False, hat_matrix=False, name_x=None):
+                 spherical=False, hat_matrix=False, name_x=None,n_jobs=1):
         """
         Initialize class
         """
@@ -1544,6 +1548,7 @@ class MGWR(GWR):
         self.exog_scale = None
         self_fit_params = None
         self.name_x = name_x
+        self.n_jobs = n_jobs
 
     def _chunk_compute_R(self, chunk_id=0):
         """
@@ -1599,7 +1604,7 @@ class MGWR(GWR):
             return ENP_j, CCT, pR
         return ENP_j, CCT
 
-    def fit(self, n_chunks=1, pool=None):
+    def fit(self, n_chunks=1):
         """
         Compute MGWR inference by chunk to reduce memory footprint.
         See Li and Fotheringham, 2020, IJGIS.
@@ -1610,7 +1615,6 @@ class MGWR(GWR):
         n_chunks      : integer, optional
                         A number of chunks parameter to reduce memory usage.
                         e.g. n_chunks=2 should reduce overall memory usage by 2.
-        pool          : A multiprocessing Pool object to enable parallel fitting; default is None.
 
         Returns
         -------
@@ -1627,15 +1631,16 @@ class MGWR(GWR):
                      desc=''):  #otherwise, just passthrough the range
                 return x
 
-        if pool:
-            self.n_chunks = pool._processes * n_chunks
-            rslt = tqdm(
-                pool.imap(self._chunk_compute_R, range(self.n_chunks)),
-                total=self.n_chunks, desc='Inference')
+        if self.n_jobs == -1:
+            max_processors = os.cpu_count()
+            self.n_chunks = max_processors * n_chunks
         else:
-            self.n_chunks = n_chunks
-            rslt = map(self._chunk_compute_R,
-                       tqdm(range(self.n_chunks), desc='Inference'))
+            self.n_chunks = self.n_jobs * n_chunks
+
+        # Using joblib for parallel processing with a tqdm progress bar
+        rslt = tqdm(Parallel(n_jobs=self.n_jobs)(
+                    delayed(self._chunk_compute_R)(i) for i in range(self.n_chunks)),
+                total=self.n_chunks, desc='Inference')
 
         rslt_list = list(zip(*rslt))
         ENP_j = np.sum(np.array(rslt_list[0]), axis=0)
@@ -1666,7 +1671,7 @@ class MGWR(GWR):
         Q = []
         I = np.eye(self.n)
         for j1 in range(self.k):
-            Aj = GWR(self.coords,self.y,self.X[:,j1].reshape(-1,1),bw=self.bws[j1],hat_matrix=True,constant=False).fit().S
+            Aj = GWR(self.coords,self.y,self.X[:,j1].reshape(-1,1),bw=self.bws[j1],hat_matrix=True,constant=False,n_jobs=self.n_jobs).fit().S
             Pj = []
             for j2 in range(self.k):
                 if j1 == j2:
