@@ -5,6 +5,7 @@ __author__ = "Taylor Oshan Tayoshan@gmail.com"
 import copy
 import os
 from typing import Optional
+import warnings
 import numpy as np
 import numpy.linalg as la
 from scipy.stats import t
@@ -88,7 +89,7 @@ class GWR(GLM):
                     Names of independent variables for use in output
 
     n_jobs        : integer
-                    The number of jobs (default 1) to run in parallel. -1 means using all processors.
+                    The number of jobs (default -1) to run in parallel. -1 means using all processors.
                             
 
     Attributes
@@ -215,7 +216,7 @@ class GWR(GLM):
 
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
                  sigma2_v1=True, kernel='bisquare', fixed=False, constant=True,
-                 spherical=False, hat_matrix=False, name_x=None,n_jobs=1):
+                 spherical=False, hat_matrix=False, name_x=None,n_jobs=-1):
         """
         Initialize class
         """
@@ -291,7 +292,7 @@ class GWR(GLM):
             return influ, resid, predy, betas.reshape(-1), w, Si, tr_STS_i, CCT
 
     def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls',
-            lite=False):
+            lite=False,pool=None):
         """
         Method that fits a model with a particular estimation routine.
 
@@ -318,6 +319,7 @@ class GWR(GLM):
                         bandwidth selection (could speed up
                         bandwidth selection for GWR) or to estimate
                         a full GWR. Default is False.
+        pool          : None, deprecated and not used.
 
         Returns
         -------
@@ -332,6 +334,9 @@ class GWR(GLM):
         self.fit_params['max_iter'] = max_iter
         self.fit_params['solve'] = solve
         self.fit_params['lite'] = lite
+
+        if pool:
+            warnings.warn("The pool parameter is no longer used and will have no effect; parallelization is default and implemented using joblib instead.", RuntimeWarning, stacklevel=2)
 
         if solve.lower() == 'iwls':
 
@@ -1604,7 +1609,7 @@ class MGWR(GWR):
             return ENP_j, CCT, pR
         return ENP_j, CCT
 
-    def fit(self, n_chunks=1):
+    def fit(self, n_chunks=1,pool=None):
         """
         Compute MGWR inference by chunk to reduce memory footprint.
         See Li and Fotheringham, 2020, IJGIS.
@@ -1615,6 +1620,8 @@ class MGWR(GWR):
         n_chunks      : integer, optional
                         A number of chunks parameter to reduce memory usage.
                         e.g. n_chunks=2 should reduce overall memory usage by 2.
+        
+        pool          : None, deprecated and not used
 
         Returns
         -------
@@ -1631,6 +1638,9 @@ class MGWR(GWR):
                      desc=''):  #otherwise, just passthrough the range
                 return x
 
+        if pool:
+            warnings.warn("The pool parameter is no longer used and will have no effect; parallelization is default and implemented using joblib instead.", RuntimeWarning, stacklevel=2)
+            
         if self.n_jobs == -1:
             max_processors = os.cpu_count()
             self.n_chunks = max_processors * n_chunks
