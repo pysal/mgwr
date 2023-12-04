@@ -293,7 +293,7 @@ class Sel_BW(object):
                 " covariates including the intercept")
 
         if pool:
-            warnings.warn("The pool parameter is no longer used and will have no effect; parallelization is default and implemented using joblib instead.", RuntimeWarning)
+            warnings.warn("The pool parameter is no longer used and will have no effect; parallelization is default and implemented using joblib instead.", RuntimeWarning, stacklevel=2)
 
         
         self.interval = interval
