@@ -59,7 +59,7 @@ class Sel_BW(object):
                      True for shperical coordinates (long-lat),
                      False for projected coordinates (defalut).
     n_jobs         : integer
-                     The number of jobs (default 1) to run in parallel. -1 means using all processors.
+                     The number of jobs (default -1) to run in parallel. -1 means using all processors.
 
     Attributes
     ----------
@@ -176,7 +176,7 @@ class Sel_BW(object):
 
     def __init__(self, coords, y, X_loc, X_glob=None, family=Gaussian(),
                  offset=None, kernel='bisquare', fixed=False, multi=False,
-                 constant=True, spherical=False,n_jobs=1):
+                 constant=True, spherical=False,n_jobs=-1):
         self.coords = np.array(coords)
         self.y = y
         self.X_loc = X_loc

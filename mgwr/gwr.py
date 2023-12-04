@@ -88,7 +88,7 @@ class GWR(GLM):
                     Names of independent variables for use in output
 
     n_jobs        : integer
-                    The number of jobs (default 1) to run in parallel. -1 means using all processors.
+                    The number of jobs (default -1) to run in parallel. -1 means using all processors.
                             
 
     Attributes
@@ -215,7 +215,7 @@ class GWR(GLM):
 
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
                  sigma2_v1=True, kernel='bisquare', fixed=False, constant=True,
-                 spherical=False, hat_matrix=False, name_x=None,n_jobs=1):
+                 spherical=False, hat_matrix=False, name_x=None,n_jobs=-1):
         """
         Initialize class
         """
