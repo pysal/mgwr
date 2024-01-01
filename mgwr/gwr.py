@@ -90,7 +90,7 @@ class GWR(GLM):
 
     n_jobs        : integer
                     The number of jobs (default -1) to run in parallel. -1 means using all processors.
-                            
+
 
     Attributes
     ----------
@@ -1620,7 +1620,7 @@ class MGWR(GWR):
         n_chunks      : integer, optional
                         A number of chunks parameter to reduce memory usage.
                         e.g. n_chunks=2 should reduce overall memory usage by 2.
-        
+
         pool          : None, deprecated and not used
 
         Returns
@@ -1640,7 +1640,7 @@ class MGWR(GWR):
 
         if pool:
             warnings.warn("The pool parameter is no longer used and will have no effect; parallelization is default and implemented using joblib instead.", RuntimeWarning, stacklevel=2)
-            
+
         if self.n_jobs == -1:
             max_processors = os.cpu_count()
             self.n_chunks = max_processors * n_chunks
@@ -1886,7 +1886,7 @@ class MGWRResults(GWRResults):
 
     """
 
-    def __init__(self, model, params, predy, CCT, ENP_j, w, R, x_name=None):
+    def __init__(self, model, params, predy, CCT, ENP_j, w, R, name_x=None):
         """
         Initialize class
         """
@@ -1896,7 +1896,7 @@ class MGWRResults(GWRResults):
         if model.hat_matrix:
             self.S = np.sum(self.R, axis=2)
         self.predy = predy
-        self.x_name = x_name
+        self.name_x = name_x
 
     @cache_readonly
     def tr_S(self):
