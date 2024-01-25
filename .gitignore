@@ -9,6 +9,7 @@ notebooks/.ipynb_checkpoints/
 *.bak
 .eggs/
 *.egg-info/
+.vscode/*
 
 # Packages
 *.egg

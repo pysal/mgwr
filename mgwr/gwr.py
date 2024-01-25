@@ -17,8 +17,10 @@ from spglm.iwls import iwls, _compute_betas_gwr
 from spglm.utils import cache_readonly
 from joblib import Parallel, delayed
 from .diagnostics import get_AIC, get_AICc, get_BIC, corr
-from .kernels import *
-from .summary import *
+from .kernels import Kernel
+from .summary import summaryModel, summaryGLM, summaryGWR, summaryMGWR
+import multiprocessing as mp
+from .sel_bw import Sel_BW
 
 
 class GWR(GLM):
@@ -185,7 +187,7 @@ class GWR(GLM):
 
     Examples
     --------
-    #basic model calibration
+    # basic model calibration
 
     >>> import libpysal as ps
     >>> from mgwr.gwr import GWR
@@ -216,7 +218,7 @@ class GWR(GLM):
 
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
                  sigma2_v1=True, kernel='bisquare', fixed=False, constant=True,
-                 spherical=False, hat_matrix=False, name_x=None,n_jobs=-1):
+                 spherical=False, hat_matrix=False):
         """
         Initialize class
         """
@@ -227,10 +229,7 @@ class GWR(GLM):
         self.bw = bw
         self.kernel = kernel
         self.fixed = fixed
-        if offset is None:
-            self.offset = np.ones((self.n, 1))
-        else:
-            self.offset = offset * 1.0
+        self.offset = np.ones((self.n, 1)) if offset is None else offset * 1.0
         self.fit_params = {}
 
         self.points = None
@@ -252,16 +251,16 @@ class GWR(GLM):
             wi = Kernel(i, self.coords, bw, fixed=self.fixed,
                         function=self.kernel, points=self.points,
                         spherical=self.spherical).kernel
-        except BaseException:
-            raise  # TypeError('Unsupported kernel function  ', kernel)
+        except BaseException as e:
+            raise TypeError('Unsupported kernel function  ', self.kernel) from e
 
         return wi
 
-    def _local_fit(self, i):
+    def _local_fit(self, i: int) -> tuple:
         """
         Local fitting at location i.
         """
-        wi = self._build_wi(i, self.bw).reshape(-1, 1)  #local spatial weights
+        wi = self._build_wi(i, self.bw).reshape(-1, 1)  # local spatial weights
 
         if isinstance(self.family, Gaussian):
             betas, inv_xtx_xt = _compute_betas_gwr(self.y, self.X, wi)
@@ -282,17 +281,17 @@ class GWR(GLM):
             betas = rslt[0]
 
         if self.fit_params['lite']:
-            return influ, resid, predy, betas.reshape(-1)
-        else:
-            Si = np.dot(self.X[i], inv_xtx_xt).reshape(-1)
-            tr_STS_i = np.sum(Si * Si * w * w)
-            CCT = np.diag(np.dot(inv_xtx_xt, inv_xtx_xt.T)).reshape(-1)
-            if not self.hat_matrix:
-                Si = None
-            return influ, resid, predy, betas.reshape(-1), w, Si, tr_STS_i, CCT
+            return (influ, resid, predy, betas.reshape(-1))
+
+        Si = np.dot(self.X[i], inv_xtx_xt).reshape(-1)
+        tr_STS_i = np.sum(Si * Si * w * w)
+        CCT = np.diag(np.dot(inv_xtx_xt, inv_xtx_xt.T)).reshape(-1)
+        if not self.hat_matrix:
+            Si = None
+        return (influ, resid, predy, betas.reshape(-1), w, Si, tr_STS_i, CCT)
 
     def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls',
-            lite=False,pool=None):
+            lite=False, pool=None):
         """
         Method that fits a model with a particular estimation routine.
 
@@ -340,12 +339,13 @@ class GWR(GLM):
 
         if solve.lower() == 'iwls':
 
-            if self.points is None:
-                m = self.y.shape[0]
-            else:
-                m = self.points.shape[0]
+            m = self.y.shape[0] if self.points is None else self.points.shape[0]
 
-            rslt = Parallel(n_jobs=self.n_jobs)(delayed(self._local_fit)(i) for i in range(m))
+            if pool:
+                rslt = pool.map(self._local_fit,
+                                range(m))  #parallel using mp.Pool
+            else:
+                rslt = map(self._local_fit, range(m))  #sequential
 
             rslt_list = list(zip(*rslt))
             influ = np.array(rslt_list[0]).reshape(-1, 1)
@@ -364,7 +364,7 @@ class GWR(GLM):
                 tr_STS = np.sum(np.array(rslt_list[-2]))
                 CCT = np.array(rslt_list[-1])
                 return GWRResults(self, params, predy, S, CCT, influ, tr_STS,
-                                  w, self.name_x)
+                                  w)
 
 
     def predict(self, points, P, exog_scale=None, exog_resid=None,
@@ -401,24 +401,22 @@ class GWR(GLM):
             self.exog_scale = exog_scale
             self.exog_resid = exog_resid
         else:
-            raise InputError('exog_scale and exog_resid must both either be'
+            raise ValueError('exog_scale and exog_resid must both either be'
                              'None or specified')
         self.points = points
         if self.constant:
             P = np.hstack([np.ones((len(P), 1)), P])
-            self.P = P
-        else:
-            self.P = P
+        self.P = P
         gwr = self.fit(**fit_params)
 
         return gwr
 
     @cache_readonly
-    def df_model(self):
+    def df_model(self) -> None:
         return None
 
     @cache_readonly
-    def df_resid(self):
+    def df_resid(self) -> None:
         return None
 
 
@@ -621,7 +619,7 @@ class GWRResults(GLMResults):
     """
 
     def __init__(self, model, params, predy, S, CCT, influ, tr_STS=None,
-                 w=None, name_x=None):
+                 w=None):
         GLMResults.__init__(self, model, params, predy, w)
         self.offset = model.offset
         if w is not None:
@@ -635,13 +633,13 @@ class GWRResults(GLMResults):
         self.name_x=name_x
 
     @cache_readonly
-    def W(self):
+    def W(self) -> np.array:
         W = np.array(
             [self.model._build_wi(i, self.model.bw) for i in range(self.n)])
         return W
 
     @cache_readonly
-    def resid_ss(self):
+    def resid_ss(self) -> np.array:
         if self.model.points is not None:
             raise NotImplementedError('Not available for GWR prediction')
         else:
@@ -649,14 +647,11 @@ class GWRResults(GLMResults):
         return np.dot(u, u.T)
 
     @cache_readonly
-    def scale(self, scale=None):
-        if isinstance(self.family, Gaussian):
-            scale = self.sigma2
-        else:
-            scale = 1.0
+    def scale(self, scale=None) -> float:
+        scale = self.sigma2 if isinstance(self.family, Gaussian) else 1.0
         return scale
 
-    def cov_params(self, cov, exog_scale=None):
+    def cov_params(self, cov: np.array, exog_scale=None) -> np.array:
         """
         Returns scaled covariance parameters
 
@@ -670,20 +665,17 @@ class GWRResults(GLMResults):
         Scaled covariance parameters
 
         """
-        if exog_scale is not None:
-            return cov * exog_scale
-        else:
-            return cov * self.scale
+        return cov * exog_scale if exog_scale is not None else cov * self.scale
 
     @cache_readonly
-    def tr_S(self):
+    def tr_S(self) -> np.array:
         """
         trace of S (hat) matrix
         """
         return np.sum(self.influ)
 
     @cache_readonly
-    def ENP(self):
+    def ENP(self) -> int:
         """
         effective number of parameters
 
@@ -693,20 +685,14 @@ class GWRResults(GLMResults):
 
         and the form depends on the specification of sigma2
         """
-        if self.model.sigma2_v1:
-            return self.tr_S
-        else:
-            return 2 * self.tr_S - self.tr_STS
+        return self.tr_S if self.model.sigma2_v1 else 2 * self.tr_S - self.tr_STS
 
     @cache_readonly
-    def y_bar(self):
+    def y_bar(self) -> np.array:
         """
         weighted mean of y
         """
-        if self.model.points is not None:
-            n = len(self.model.points)
-        else:
-            n = self.n
+        n = len(self.model.points) if self.model.points is not None else self.n
         off = self.offset.reshape((-1, 1))
         arr_ybar = np.zeros(shape=(self.n, 1))
         for i in range(n):
@@ -716,7 +702,7 @@ class GWRResults(GLMResults):
         return arr_ybar
 
     @cache_readonly
-    def TSS(self):
+    def TSS(self) -> np.array:
         """
         geographically weighted total sum of squares
 
@@ -726,10 +712,7 @@ class GWRResults(GLMResults):
         relationships.
 
         """
-        if self.model.points is not None:
-            n = len(self.model.points)
-        else:
-            n = self.n
+        n = len(self.model.points) if self.model.points is not None else self.n
         TSS = np.zeros(shape=(n, 1))
         for i in range(n):
             TSS[i] = np.sum(
@@ -739,7 +722,7 @@ class GWRResults(GLMResults):
         return TSS
 
     @cache_readonly
-    def RSS(self):
+    def RSS(self) -> np.array:
         """
         geographically weighted residual sum of squares
 
@@ -762,7 +745,7 @@ class GWRResults(GLMResults):
         return RSS
 
     @cache_readonly
-    def localR2(self):
+    def localR2(self) -> np.array:
         """
         local R square
 
@@ -777,7 +760,7 @@ class GWRResults(GLMResults):
             raise NotImplementedError('Only applicable to Gaussian')
 
     @cache_readonly
-    def sigma2(self):
+    def sigma2(self) -> np.array:
         """
         residual variance
 
@@ -805,7 +788,7 @@ class GWRResults(GLMResults):
             return self.resid_ss / (self.n - 2.0 * self.tr_S + self.tr_STS)
 
     @cache_readonly
-    def std_res(self):
+    def std_res(self) -> np.array:
         """
         standardized residuals
 
@@ -818,7 +801,7 @@ class GWRResults(GLMResults):
             (-1, 1)) / (np.sqrt(self.scale * (1.0 - self.influ)))
 
     @cache_readonly
-    def bse(self):
+    def bse(self) -> np.array:
         """
         standard errors of Betas
 
@@ -830,7 +813,7 @@ class GWRResults(GLMResults):
         return np.sqrt(self.CCT)
 
     @cache_readonly
-    def cooksD(self):
+    def cooksD(self) -> np.array:
         """
         Influence: leading diagonal of S Matrix
 
@@ -843,7 +826,7 @@ class GWRResults(GLMResults):
         return self.std_res**2 * self.influ / (self.tr_S * (1.0 - self.influ))
 
     @cache_readonly
-    def deviance(self):
+    def deviance(self) -> np.array:
         off = self.offset.reshape((-1, 1)).T
         y = self.y
         ybar = self.y_bar
@@ -859,19 +842,19 @@ class GWRResults(GLMResults):
         return dev.reshape((-1, 1))
 
     @cache_readonly
-    def resid_deviance(self):
+    def resid_deviance(self) -> np.array:
         if isinstance(self.family, Gaussian):
             raise NotImplementedError(
                 'deviance not currently used for Gaussian')
-        else:
-            off = self.offset.reshape((-1, 1)).T
-            y = self.y
-            ybar = self.y_bar
-            global_dev_res = ((self.family.resid_dev(self.y, self.mu))**2)
-            dev_res = np.repeat(global_dev_res.flatten(), self.n)
-            dev_res = dev_res.reshape((self.n, self.n))
-            dev_res = np.sum(dev_res * self.W.T, axis=0)
-            return dev_res.reshape((-1, 1))
+
+        # off = self.offset.reshape((-1, 1)).T
+        # y = self.y
+        # ybar = self.y_bar
+        global_dev_res = ((self.family.resid_dev(self.y, self.mu))**2)
+        dev_res = np.repeat(global_dev_res.flatten(), self.n)
+        dev_res = dev_res.reshape((self.n, self.n))
+        dev_res = np.sum(dev_res * self.W.T, axis=0)
+        return dev_res.reshape((-1, 1))
 
     @cache_readonly
     def pDev(self):
@@ -922,13 +905,12 @@ class GWRResults(GLMResults):
         n = self.n
         if alpha is not None:
             alpha = np.abs(alpha) / 2.0
-            critical = t.ppf(1 - alpha, n - 1)
         else:
             alpha = np.abs(self.adj_alpha[1]) / 2.0
-            critical = t.ppf(1 - alpha, n - 1)
+        critical = t.ppf(1 - alpha, n - 1)
         return critical
 
-    def filter_tvals(self, critical_t=None, alpha=None):
+    def filter_tvals(self, critical_t=None, alpha=None) -> np.array:
         """
         Utility function to set tvalues with an absolute value smaller than the
         absolute value of the alpha (critical) value to 0. If critical_t
@@ -957,7 +939,7 @@ class GWRResults(GLMResults):
                           where absolute tvalues less than the absolute value of
                           alpha have been set to 0.
         """
-        n = self.n
+        # n = self.n
         if critical_t is not None:
             critical = critical_t
         else:
@@ -977,27 +959,27 @@ class GWRResults(GLMResults):
         return self.n - 2.0 * self.tr_S + self.tr_STS
 
     @cache_readonly
-    def normalized_cov_params(self):
+    def normalized_cov_params(self) -> None:
         return None
 
     @cache_readonly
-    def resid_pearson(self):
+    def resid_pearson(self) -> None:
         return None
 
     @cache_readonly
-    def resid_working(self):
+    def resid_working(self) -> None:
         return None
 
     @cache_readonly
-    def resid_anscombe(self):
+    def resid_anscombe(self) -> None:
         return None
 
     @cache_readonly
-    def pearson_chi2(self):
+    def pearson_chi2(self) -> None:
         return None
 
     @cache_readonly
-    def llnull(self):
+    def llnull(self) -> None:
         return None
 
     @cache_readonly
@@ -1058,26 +1040,26 @@ class GWRResults(GLMResults):
         return get_BIC(self)
 
     @cache_readonly
-    def pseudoR2(self):
+    def pseudoR2(self) -> None:
         return None
 
     @cache_readonly
-    def adj_pseudoR2(self):
+    def adj_pseudoR2(self) -> None:
         return None
 
     @cache_readonly
-    def pvalues(self):
+    def pvalues(self) -> None:
         return None
 
     @cache_readonly
-    def conf_int(self):
+    def conf_int(self) -> None:
         return None
 
     @cache_readonly
-    def use_t(self):
+    def use_t(self) -> None:
         return None
 
-    def get_bws_intervals(self, selector, level=0.95):
+    def get_bws_intervals(self, selector, level: float = 0.95) -> float:
         """
         Computes bandwidths confidence interval (CI) for GWR.
         The CI is based on Akaike weights and the bandwidth search algorithm used.
@@ -1092,26 +1074,31 @@ class GWRResults(GLMResults):
         except ImportError:
             return
 
-        #Get AICcs and associated bw from the last iteration of back-fitting and make a DataFrame
+        # Get AICcs and associated bw from the last iteration of back-fitting and make a DataFrame
         aiccs = pd.DataFrame(list(zip(*selector.sel_hist))[1],columns=["aicc"])
         aiccs['bw'] = list(zip(*selector.sel_hist))[0]
-        #Sort DataFrame by the AICc values
+
+        # Sort DataFrame by the AICc values
         aiccs = aiccs.sort_values(by=['aicc'])
-        #Calculate delta AICc
+
+        # Calculate delta AICc
         d_aic_ak = aiccs.aicc - aiccs.aicc.min()
-        #Calculate AICc weights
-        w_aic_ak = np.exp(-0.5*d_aic_ak) / np.sum(np.exp(-0.5*d_aic_ak))
-        aiccs['w_aic_ak'] = w_aic_ak/np.sum(w_aic_ak)
-        #Calculate cum. AICc weights
+
+        # Calculate AICc weights
+        w_aic_ak = np.exp(-0.5 * d_aic_ak) / np.sum(np.exp(-0.5 * d_aic_ak))
+        aiccs['w_aic_ak'] = w_aic_ak / np.sum(w_aic_ak)
+
+        # Calculate cum. AICc weights
         aiccs['cum_w_ak'] = aiccs.w_aic_ak.cumsum()
-        #Find index where the cum weights above p-val
+
+        # Find index where the cum weights above p-val
         index = len(aiccs[aiccs.cum_w_ak < level]) + 1
-        #Get bw boundaries
-        interval = (aiccs.iloc[:index,:].bw.min(),aiccs.iloc[:index,:].bw.max())
+
+        # Get bw boundaries
+        interval = (aiccs.iloc[:index, :].bw.min(), aiccs.iloc[:index, :].bw.max())
         return interval
 
-
-    def local_collinearity(self):
+    def local_collinearity(self) -> tuple:
         """
         Computes several indicators of multicollinearity within a geographically
         weighted design matrix, including:
@@ -1179,9 +1166,9 @@ class GWRResults(GLMResults):
         local_CN = vdp_idx[:, nvar - 1].reshape((-1, 1))
         VDP = vdp_pi[:, nvar - 1, :]
 
-        return corr_mat, vifs_mat, local_CN, VDP
+        return (corr_mat, vifs_mat, local_CN, VDP)
 
-    def spatial_variability(self, selector, n_iters=1000, seed=None):
+    def spatial_variability(self, selector, n_iters: int = 1000, seed: int = None) -> float:
         """
         Method to compute a Monte Carlo test of spatial variability for each
         estimated coefficient surface.
@@ -1228,11 +1215,7 @@ class GWRResults(GLMResults):
         kernel = temp_gwr.kernel
         fixed = temp_gwr.fixed
 
-        if self.model.constant:
-            X = self.X[:, 1:]
-        else:
-            X = self.X
-
+        X = self.X[:, 1:] if self.model.constant else self.X
         init_sd = np.std(self.params, axis=0)
         SDs = []
 
@@ -1256,7 +1239,7 @@ class GWRResults(GLMResults):
         return p_vals
 
     @cache_readonly
-    def predictions(self):
+    def predictions(self) -> float:
         P = self.model.P
         if P is None:
             raise TypeError('predictions only avaialble if predict'
@@ -1327,7 +1310,11 @@ class GWRResultsLite(object):
 
     """
 
-    def __init__(self, model, resid, influ, params):
+    def __init__(self,
+                 model: GWR,
+                 resid: np.array,
+                 influ: np.array,
+                 params: np.array) -> None:
         self.y = model.y
         self.family = model.family
         self.n = model.n
@@ -1530,20 +1517,21 @@ class MGWR(GWR):
 
     def __init__(self, coords, y, X, selector, sigma2_v1=True,
                  kernel='bisquare', fixed=False, constant=True,
-                 spherical=False, hat_matrix=False, name_x=None,n_jobs=1):
+                 spherical=False, hat_matrix=False):
         """
-        Initialize class
+            Initialize class
         """
         self.selector = selector
-        self.bws = self.selector.bw[0]  #final set of bandwidth
-        self.bws_history = selector.bw[1]  #bws history in backfitting
-        self.bw_init = self.selector.bw_init  #initialization bandiwdth
-        self.family = Gaussian(
-        )  # manually set since we only support Gassian MGWR for now
+        self.bws = self.selector.bw[0]  # final set of bandwidth
+        self.bws_history = selector.bw[1]  # bws history in backfitting
+        self.bw_init = self.selector.bw_init  # initialization bandiwdth
+        self.family = Gaussian()  # manually set since we only support Gassian MGWR for now
+
         GWR.__init__(self, coords, y, X, self.bw_init, family=self.family,
                      sigma2_v1=sigma2_v1, kernel=kernel, fixed=fixed,
                      constant=constant, spherical=spherical,
                      hat_matrix=hat_matrix)
+
         self.selector = selector
         self.sigma2_v1 = sigma2_v1
         self.points = None
@@ -1555,7 +1543,7 @@ class MGWR(GWR):
         self.name_x = name_x
         self.n_jobs = n_jobs
 
-    def _chunk_compute_R(self, chunk_id=0):
+    def _chunk_compute_R(self, chunk_id=0) -> tuple:
         """
         Compute MGWR inference by chunks to reduce memory footprint.
         """
@@ -1571,7 +1559,7 @@ class MGWR(GWR):
         init_pR = np.zeros((n, len(chunk_index)))
         init_pR[chunk_index, :] = np.eye(len(chunk_index))
         pR = np.zeros((n, len(chunk_index),
-                       k))  #partial R: n by chunk_size by k
+                       k))  # partial R: n by chunk_size by k
 
         for i in range(n):
             wi = self._build_wi(i, self.bw_init).reshape(-1, 1)
@@ -1579,7 +1567,7 @@ class MGWR(GWR):
             P = np.linalg.solve(xT.dot(self.X), xT).dot(init_pR).T
             pR[i, :, :] = P * self.X[i]
 
-        err = init_pR - np.sum(pR, axis=2)  #n by chunk_size
+        err = init_pR - np.sum(pR, axis=2)  # n by chunk_size
 
         for iter_i in range(self.bws_history.shape[0]):
             for j in range(k):
@@ -1605,9 +1593,7 @@ class MGWR(GWR):
         for i in range(len(chunk_index)):
             ENP_j += pR[chunk_index[i], i, :]
 
-        if self.hat_matrix:
-            return ENP_j, CCT, pR
-        return ENP_j, CCT
+        return (ENP_j, CCT, pR) if self.hat_matrix else (ENP_j, CCT)
 
     def fit(self, n_chunks=1,pool=None):
         """
@@ -1631,11 +1617,11 @@ class MGWR(GWR):
         predy = np.sum(self.X * params, axis=1).reshape(-1, 1)
 
         try:
-            from tqdm.autonotebook import tqdm  #progress bar
+            from tqdm.autonotebook import tqdm  # progress bar
         except ImportError:
 
             def tqdm(x, total=0,
-                     desc=''):  #otherwise, just passthrough the range
+                     desc=''):  # otherwise, just passthrough the range
                 return x
 
         if pool:
@@ -1661,8 +1647,7 @@ class MGWR(GWR):
             R = np.hstack(rslt_list[2])
         else:
             R = None
-        return MGWRResults(self, params, predy, CCT, ENP_j, w, R, self.name_x)
-
+        return MGWRResults(self, params, predy, CCT, ENP_j, w, R)
 
     def exact_fit(self):
         """
@@ -1681,7 +1666,7 @@ class MGWR(GWR):
         Q = []
         I = np.eye(self.n)
         for j1 in range(self.k):
-            Aj = GWR(self.coords,self.y,self.X[:,j1].reshape(-1,1),bw=self.bws[j1],hat_matrix=True,constant=False,n_jobs=self.n_jobs).fit().S
+            Aj = GWR(self.coords,self.y,self.X[:,j1].reshape(-1,1),bw=self.bws[j1],hat_matrix=True,constant=False).fit().S
             Pj = []
             for j2 in range(self.k):
                 if j1 == j2:
@@ -1696,10 +1681,10 @@ class MGWR(GWR):
         R = np.linalg.solve(P, Q)
         f = R.dot(self.y)
 
-        params =  f/self.X.T.reshape(-1,1)
-        params = params.reshape(-1,self.n).T
+        params = f / self.X.T.reshape(-1, 1)
+        params = params.reshape(-1, self.n).T
 
-        R = np.stack(np.split(R,self.k),axis=2)
+        R = np.stack(np.split(R, self.k), axis=2)
         ENP_j = np.trace(R, axis1=0, axis2=1)
         predy = np.sum(self.X * params, axis=1).reshape(-1, 1)
         w = np.ones(self.n)
@@ -1709,7 +1694,6 @@ class MGWR(GWR):
             CCT[:, j] = ((R[:, :, j] / self.X[:, j].reshape(-1, 1))**2).sum(axis=1)
 
         return MGWRResults(self, params, predy, CCT, ENP_j, w, R)
-
 
     def predict(self):
         '''
@@ -1886,7 +1870,7 @@ class MGWRResults(GWRResults):
 
     """
 
-    def __init__(self, model, params, predy, CCT, ENP_j, w, R, name_x=None):
+    def __init__(self, model, params, predy, CCT, ENP_j, w, R):
         """
         Initialize class
         """
@@ -1949,10 +1933,9 @@ class MGWRResults(GWRResults):
         n = self.n
         if alpha is not None:
             alpha = np.abs(alpha) / 2.0
-            critical = t.ppf(1 - alpha, n - 1)
         else:
             alpha = np.abs(self.adj_alpha_j[:, 1]) / 2.0
-            critical = t.ppf(1 - alpha, n - 1)
+        critical = t.ppf(1 - alpha, n - 1)
         return critical
 
     def filter_tvals(self, critical_t=None, alpha=None):
@@ -2021,7 +2004,7 @@ class MGWRResults(GWRResults):
     def predictions(self):
         raise NotImplementedError('Not yet implemented for MGWR')
 
-    #Function for getting BWs intervals
+    # Function for getting BWs intervals
     def get_bws_intervals(self, selector, level=0.95):
         """
         Computes bandwidths confidence intervals (CIs) for MGWR.
@@ -2038,25 +2021,30 @@ class MGWRResults(GWRResults):
             return
 
         for j in range(self.k):
-            #Get AICcs and associated bw from the last iteration of back-fitting and make a DataFrame
-            aiccs = pd.DataFrame(list(zip(*selector.sel_hist[-self.k+j]))[1],columns=["aicc"])
-            aiccs['bw'] = list(zip(*selector.sel_hist[-self.k+j]))[0]
-            #Sort DataFrame by the AICc values
+            # Get AICcs and associated bw from the last iteration of back-fitting and make a DataFrame
+            aiccs = pd.DataFrame(list(zip(*selector.sel_hist[-self.k + j]))[1], columns=["aicc"])
+            aiccs['bw'] = list(zip(*selector.sel_hist[-self.k + j]))[0]
+
+            # Sort DataFrame by the AICc values
             aiccs = aiccs.sort_values(by=['aicc'])
-            #Calculate delta AICc
+
+            # Calculate delta AICc
             d_aic_ak = aiccs.aicc - aiccs.aicc.min()
-            #Calculate AICc weights
-            w_aic_ak = np.exp(-0.5*d_aic_ak) / np.sum(np.exp(-0.5*d_aic_ak))
-            aiccs['w_aic_ak'] = w_aic_ak/np.sum(w_aic_ak)
-            #Calculate cum. AICc weights
+
+            # Calculate AICc weights
+            w_aic_ak = np.exp(-0.5 * d_aic_ak) / np.sum(np.exp(-0.5 * d_aic_ak))
+            aiccs['w_aic_ak'] = w_aic_ak / np.sum(w_aic_ak)
+
+            # Calculate cum. AICc weights
             aiccs['cum_w_ak'] = aiccs.w_aic_ak.cumsum()
-            #Find index where the cum weights above p-val
+
+            # Find index where the cum weights above p-val
             index = len(aiccs[aiccs.cum_w_ak < level]) + 1
-            #Get bw boundaries
-            interval = (aiccs.iloc[:index,:].bw.min(),aiccs.iloc[:index,:].bw.max())
+
+            # Get bw boundaries
+            interval = (aiccs.iloc[:index, :].bw.min(), aiccs.iloc[:index, :].bw.max())
             intervals += [interval]
         return intervals
-
 
     def local_collinearity(self):
         """
@@ -2144,11 +2132,7 @@ class MGWRResults(GWRResults):
 
         search_params = temp_sel.search_params
 
-        if self.model.constant:
-            X = self.X[:, 1:]
-        else:
-            X = self.X
-
+        X = self.X[:, 1:] if self.model.constant else self.X
         init_sd = np.std(self.params, axis=0)
         SDs = []
 
@@ -2170,7 +2154,7 @@ class MGWRResults(GWRResults):
         p_vals = (np.sum(np.array(SDs) > init_sd, axis=0) / float(n_iters))
         return p_vals
 
-    def summary(self, as_str: bool=False) -> Optional[str]:
+    def summary(self, as_str: bool = False) -> Optional[str]:
         """
         Print out MGWR summary
 
@@ -2192,4 +2176,4 @@ class MGWRResults(GWRResults):
             return summary
 
         print(summary)
-        return
+        return None
