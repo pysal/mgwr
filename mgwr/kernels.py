@@ -15,7 +15,7 @@ except ImportError:
 
 
 @njit
-def local_cdist(coords_i: np.array, coords: np.array, spherical: bool) -> float:
+def local_cdist(coords_i: np.array, coords: np.array, spherical: bool) -> np.array:
     """
     Compute Haversine (spherical=True) or Euclidean (spherical=False) distance for a local kernel.
 
@@ -55,10 +55,26 @@ class Kernel(object):
     GWR kernel function specifications.
     """
 
-    def __init__(self, i: int, data: np.array,
-                 bw: float = None, fixed: bool = True,
-                 function: str = 'triangular', eps: float = 1.0000001,
-                 ids=None, points: np.array = None, spherical=False):
+    def __init__(self, i: int,
+                 data: np.array,
+                 bw: float = None,
+                 fixed: bool = True,
+                 function: str = 'triangular',
+                 eps: float = 1.0000001,
+                 points: np.array = None,
+                 spherical=False) -> None:
+        """Kernel function specifications
+
+        Args:
+            i (int): index of focal point
+            data (np.array): n-by-2 array of coordinates for n observations
+            bw (float, optional): the bandwidth for the kernel function. Defaults to None.
+            fixed (bool, optional): whether to implement fixed bandwidth or not. Defaults to True.
+            function (str, optional): specify kernel function, 7 candidate kernel functions. Defaults to 'triangular'.
+            eps (float, optional): exploration value. Defaults to 1.0000001.
+            points (np.array, optional): whether to use points to calculate bandwidth. Defaults to None.
+            spherical (bool, optional): whether to use to calculate bandwidth spatially. Defaults to False.
+        """
 
         if points is None:
             self.dvec = local_cdist(data[i], data, spherical).reshape(-1)

@@ -32,6 +32,13 @@ def shift_colormap(cmap: LinearSegmentedColormap,
 
     Returns:
         LinearSegmentedColormap: A new colormap that has been shifted.
+
+    Examples:
+        >>> import numpy as np
+        >>> import matplotlib.pyplot as plt
+        >>> from mgwr.utils import shift_colormap
+        >>> cmap = plt.cm.seismic
+        >>> cmap = shift_colormap(cmap, start=0, midpoint=1 - 5/(5 + 15), stop=1, name='shiftedcmap')
     """
 
     import matplotlib as mpl
@@ -71,13 +78,20 @@ def truncate_colormap(cmap: LinearSegmentedColormap,
     Function to truncate a colormap by selecting a subset of the original colormap's values
 
     Args:
-        cmap : Matplotlib colormap to be altered
-        min_val : Minimum value of the original colormap to include in the truncated colormap
-        max_val : Maximum value of the original colormap to include in the truncated colormap
-        n : Number of intervals between the min and max values for the gradient of the truncated colormap
+        cmap (LinearSegmentedColormap) : Matplotlib colormap to be altered
+        min_val (float) : Minimum value of the original colormap to include in the truncated colormap
+        max_val (float) : Maximum value of the original colormap to include in the truncated colormap
+        n (int) : Number of intervals between the min and max values for the gradient of the truncated colormap
 
     Returns:
-        new_cmap : A new colormap that has been shifted.
+        new_camap (LinearSegmentedColormap) : A new colormap that has been truncated.
+
+    Examples:
+        >>> import numpy as np
+        >>> import matplotlib.pyplot as plt
+        >>> from mgwr.utils import truncate_colormap
+        >>> cmap = plt.cm.seismic
+        >>> cmap = truncate_colormap(cmap, min_val=0.0, max_val=0.5, n=100)
     '''
 
     import matplotlib as mpl
@@ -105,28 +119,46 @@ def compare_surfaces(data: pd.DataFrame,
     Function that creates comparative visualization of GWR and MGWR surfaces.
 
     Args:
-        data   : pandas or geopandas Dataframe
-                gwr/mgwr results
-        var1   : string
-                name of gwr parameter estimate column in frame
-        var2   : string
-                name of mgwr parameter estimate column in frame
-        gwr_t  : string
-                name of gwr t-values column in frame associated with var1
-        gwr_bw : float
-                bandwidth for gwr model for var1
-        mgwr_t : string
-                name of mgwr t-values column in frame associated with var2
-        mgwr_bw: float
-                bandwidth for mgwr model for var2
-        name   : string
-                common variable name to use for title
-        kwargs1:
-                additional plotting arguments for gwr surface
-        kwargs2:
-                additional plotting arguments for mgwr surface
-        savefig: string, optional
-                path to save the figure. Default is None. Not to save figure.
+        data (pandas or geopandas Dataframe) : gwr/mgwr results
+        var1 (string) : name of gwr parameter estimate column in frame
+        var2 (string) : name of mgwr parameter estimate column in frame
+        gwr_t (string) : name of gwr t-values column in frame associated with var1
+        gwr_bw (float) : bandwidth for gwr model for var1
+        mgwr_t (string) : name of mgwr t-values column in frame associated with var2
+        mgwr_bw (float) : bandwidth for mgwr model for var2
+        name (string) : common variable name to use for title
+        kwargs1 : additional plotting arguments for gwr surface
+        kwargs2 : additional plotting arguments for mgwr surface
+        savefig (string, optional) : path to save the figure. Default is None. Not to save figure.
+
+    Returns:
+        None
+
+    Examples:
+        >>> import numpy as np
+        >>> import matplotlib.pyplot as plt
+        >>> from mgwr.utils import compare_surfaces
+        >>> from mgwr.gwr import GWR, MGWR
+        >>> from libpysal.examples import load_example
+        >>> from libpysal import io
+        >>> from libpysal.weights import Queen
+
+        >>> data = io.open(io.get_path('GData_utm.csv'))
+        >>> coords = list(zip(data['X'].values, data['Y'].values))
+        >>> y = data['PctBach'].values.reshape((-1,1))
+        >>> X = data[['PctFB', 'PctBlack', 'PctRural']].values
+        >>> bw = 100
+
+        >>> gwr_selector = Sel_BW(coords, y, X, kernel='gaussian')
+        >>> gwr_bw = gwr_selector.search(bw_min=25)
+        >>> gwr_model = GWR(coords, y, X, gwr_bw, kernel='gaussian')
+        >>> gwr_results = gwr_model.fit()
+
+        >>> mgwr_selector = Sel_BW(coords, y, X, kernel='gaussian')
+        >>> mgwr_bw = mgwr_selector.search(bw_min=25)
+        >>> mgwr_model = MGWR(coords, y, X, mgwr_bw, kernel='gaussian')
+        >>> mgwr_results = mgwr_model.fit()
+        >>> compare_surfaces(data, 'PctFB', 'PctFB', gwr_results.tvalues, gwr_bw, mgwr_results.tvalues, mgwr_bw, 'PctFB', {}, {}, savefig='compare_surfaces.png')
     '''
     import matplotlib.pyplot as plt
     import geopandas as gp
@@ -139,10 +171,10 @@ def compare_surfaces(data: pd.DataFrame,
     ax1.set_title('MGWR ' + name + ' Surface (BW: ' + str(mgwr_bw) + ')',
                   fontsize=40)
 
-    #Set color map
+    # Set color map
     cmap = plt.cm.seismic
 
-    #Find min and max values of the two combined datasets
+    # Find min and max values of the two combined datasets
     gwr_min = data[var1].min()
     gwr_max = data[var1].max()
     mgwr_min = data[var2].min()
@@ -153,9 +185,11 @@ def compare_surfaces(data: pd.DataFrame,
     # If all values are negative use the negative half of the colormap
     if (vmin < 0) & (vmax < 0):
         cmap = truncate_colormap(cmap, 0.0, 0.5)
+
     # If all values are positive use the positive half of the colormap
     elif (vmin > 0) & (vmax > 0):
         cmap = truncate_colormap(cmap, 0.5, 1.0)
+
     # Otherwise, there are positive and negative values so the colormap so zero is the midpoint
     else:
         cmap = shift_colormap(cmap, start=0.0,

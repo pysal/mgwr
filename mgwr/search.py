@@ -6,9 +6,14 @@ import numpy as np
 from copy import deepcopy
 
 
-def golden_section(a: float, c: float, delta: float,
-                   function, tol: float, max_iter: int,
-                   bw_max: float, int_score: bool = False,
+def golden_section(a: float,
+                   c: float,
+                   delta: float,
+                   function,
+                   tol: float,
+                   max_iter: int,
+                   bw_max: float,
+                   int_score: bool = False,
                    verbose: bool = False) -> list:
     """
     Golden section search routine
@@ -33,6 +38,7 @@ def golden_section(a: float, c: float, delta: float,
         opt_score (kernel): optimal score
         output (list of tuples): searching history
     """
+
     if c == np.inf:
         b = a + delta * np.abs(n - a)
         d = n - delta * np.abs(n - a)
@@ -73,7 +79,6 @@ def golden_section(a: float, c: float, delta: float,
             c = d
             d = b
             b = a + delta * np.abs(c - a)
-
         else:
             opt_val = d
             opt_score = score_d
@@ -170,18 +175,57 @@ def equal_interval(l_bound: float,
     return [opt_val, opt_score, output]
 
 
-def multi_bw(init, y, X, n, k, family, tol, max_iter: int, rss_score, gwr_func,
-             bw_func, sel_func, multi_bw_min, multi_bw_max, bws_same_times,
+def multi_bw(init: float,
+             y: np.array,
+             X: np.array,
+             n: float | int,
+             k: int,
+             tol: float,
+             max_iter: int,
+             rss_score: bool,
+             gwr_func,
+             bw_func,
+             sel_func,
+             multi_bw_min: list,
+             multi_bw_max: list,
+             bws_same_times: int = 5,
              verbose=False) -> tuple:
+    """Multiscale GWR bandwidth search procedure using iterative GAM backfitting
+
+    Args:
+        init (float): the initial bandwidth value
+        y (np.array): the dependent variable
+        X (np.array): the independent variables
+        n (float | int): total number of observations
+        k (int): number of independent variables
+        tol (float): tolerance used to determine convergence
+        max_iter (int): maximum iterations if no convergence to tolerance
+        rss_score (float): True for RSS score, False for SOC score
+        gwr_func (_type_): the GWR function
+        bw_func (_type_): the bandwidth function
+        sel_func (_type_): the bandwidth selection function
+        multi_bw_min (list): multi-scale bandwidth minimum values
+        multi_bw_max (list): multi-scale bandwidth maximum values
+        bws_same_times (int, optional): all bandwidth will change in this iteration while back-fitting. Defaults to 5.
+        verbose (bool, optional): True for printing bandwidth and score at each iteration. Defaults to False.
+
+    Returns:
+        tuple: (optimal bandwidth,
+                bandwidths history,
+                scores history,
+                parameters,
+                residuals,
+                bandwidth selection history,
+                bandwidth from GWR)
     """
-    Multiscale GWR bandwidth search procedure using iterative GAM backfitting
-    """
+
     if init is None:
         bw = sel_func(bw_func(y, X))
         optim_model = gwr_func(y, X, bw)
     else:
         bw = init
         optim_model = gwr_func(y, X, init)
+
     bw_gwr = bw
     err = optim_model.resid_response.reshape((-1, 1))
     param = optim_model.params
