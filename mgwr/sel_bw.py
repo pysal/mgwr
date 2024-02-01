@@ -133,7 +133,7 @@ class Sel_BW(object):
                multi_bw_max: list = [None],
                bws_same_times: int = 5,
                pool: mp.Pool = None,
-               verbose: bool = False) -> np.array | float:
+               verbose: bool = False) -> tuple[np.array, float]:
         """Method to select one unique bandwidth for a gwr model or a bandwidth vector for a mgwr model.
 
         Args:
