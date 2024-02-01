@@ -4,27 +4,32 @@ from spglm.glm import GLM
 from .diagnostics import get_AICc
 
 
-def summaryModel(self):
-    summary = '=' * 75 + '\n'
-    summary += "%-54s %20s\n" % ('Model type', self.family.__class__.__name__)
-    summary += "%-60s %14d\n" % ('Number of observations:', self.n)
-    summary += "%-60s %14d\n\n" % ('Number of covariates:', self.k)
+def summaryModel(self) -> str:
+    """Summary of model
+
+    Returns:
+        str: print out the model summary information
+    """
+    summary = f"{'=' * 75} \n"
+    summary += f"{'Model type':<54s} {self.family.__class__.__name__:20s}\n"
+    summary += f"{'Number of observations:':<60s} {self.n:14d}\n"
+    summary += f"{'Number of covariates:':<60s} {self.k:14d}\n\n"
     return summary
 
 
-def summaryGLM(self):
+def summaryGLM(self) -> str:
+    """Summary of GLM
 
-    if self.name_x is not None:
-        XNames = list(self.name_x)
-        if len(XNames) < self.k:
-            XNames = ["Intercept"] + XNames
-    else:
-        XNames = ["X" + str(i) for i in range(self.k)]
+    Returns:
+        str: print out the GLM summary information
+    """
+
+    XNames = [f"X{i}" for i in range(self.k)]
     glm_rslt = GLM(self.model.y, self.model.X, constant=False,
                    family=self.family).fit()
 
-    summary = "%s\n" % ('Global Regression Results')
-    summary += '-' * 75 + '\n'
+    summary = "Global Regression Results\n"
+    summary += f"{'-' * 75} \n"
 
     if isinstance(self.family, Gaussian):
         summary += "%-62s %12.3f\n" % ('Residual sum of squares:',
@@ -52,20 +57,20 @@ def summaryGLM(self):
                                                 '-' * 10, '-' * 10)
     for i in range(self.k):
         summary += "%-31s %10.3f %10.3f %10.3f %10.3f\n" % (
-            XNames[i][:30], glm_rslt.params[i], glm_rslt.bse[i],
+            XNames[i], glm_rslt.params[i], glm_rslt.bse[i],
             glm_rslt.tvalues[i], glm_rslt.pvalues[i])
     summary += "\n"
     return summary
 
 
-def summaryGWR(self):
-    if self.name_x is not None:
-        XNames = list(self.name_x)
-        if len(XNames) < self.k:
-            XNames = ["Intercept"] + XNames
+def summaryGWR(self) -> str:
+    """Summary of GWR
 
-    else:
-        XNames = ["X" + str(i) for i in range(self.k)]
+    Returns:
+        str: print out the GWR summary information
+    """
+
+    XNames = ["X" + str(i) for i in range(self.k)]
 
     summary = "%s\n" % ('Geographically Weighted Regression (GWR) Results')
     summary += '-' * 75 + '\n'
@@ -122,7 +127,7 @@ def summaryGWR(self):
         '-' * 20, '-' * 10, '-' * 10, '-' * 10, '-' * 10, '-' * 10)
     for i in range(self.k):
         summary += "%-20s %10.3f %10.3f %10.3f %10.3f %10.3f\n" % (
-            XNames[i][:20], np.mean(self.params[:, i]), np.std(self.params[:, i]),
+            XNames[i], np.mean(self.params[:, i]), np.std(self.params[:, i]),
             np.min(self.params[:, i]), np.median(self.params[:, i]),
             np.max(self.params[:, i]))
 
@@ -131,15 +136,14 @@ def summaryGWR(self):
     return summary
 
 
-def summaryMGWR(self):
+def summaryMGWR(self) -> str:
+    """Summary of MGWR
 
-    if self.name_x is not None:
-        XNames = list(self.name_x)
-        if len(XNames) < self.k:
-            XNames = ["Intercept"] + XNames
+    Returns:
+        str: print out the MGWR summary information
+    """
 
-    else:
-        XNames = ["X" + str(i) for i in range(self.k)]
+    XNames = ["X" + str(i) for i in range(self.k)]
 
     summary = ''
     summary += "%s\n" % (
@@ -199,7 +203,7 @@ def summaryMGWR(self):
         '-' * 20, '-' * 10, '-' * 10, '-' * 10, '-' * 10, '-' * 10)
     for i in range(self.k):
         summary += "%-20s %10.3f %10.3f %10.3f %10.3f %10.3f\n" % (
-            XNames[i][:20], np.mean(self.params[:, i]), np.std(self.params[:, i]),
+            XNames[i], np.mean(self.params[:, i]), np.std(self.params[:, i]),
             np.min(self.params[:, i]), np.median(self.params[:, i]),
             np.max(self.params[:, i]))
 
