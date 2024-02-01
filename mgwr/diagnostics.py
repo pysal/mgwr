@@ -30,7 +30,7 @@ def get_AICc(gwr):
     return aicc
 
 
-def get_AIC(gwr):
+def get_AIC(gwr) -> np.array:
     """
     Get AIC calue
 
@@ -51,7 +51,7 @@ def get_AIC(gwr):
     return aic
 
 
-def get_BIC(gwr):
+def get_BIC(gwr) -> np.array:
     """
     Get BIC value
 
@@ -72,7 +72,7 @@ def get_BIC(gwr):
     return bic
 
 
-def get_CV(gwr):
+def get_CV(gwr) -> np.array:
     """
     Get CV value
 
@@ -89,7 +89,7 @@ def get_CV(gwr):
     return cv
 
 
-def corr(cov):
+def corr(cov) -> np.array:
     invsd = np.diag(1 / np.sqrt(np.diag(cov)))
     cors = np.dot(np.dot(invsd, cov), invsd)
     return cors
