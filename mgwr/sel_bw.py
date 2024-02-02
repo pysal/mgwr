@@ -31,22 +31,25 @@ class Sel_BW(object):
         y (np.array): n*1, dependent variable
         X_loc (np.array): n*k2, local independent variable, including intercept
         X_glob (np.array, optional): n*k1, fixed independent variable. Defaults to None.
-        family (Gaussian, optional): function object/instance, underlying probability model:
-                                    Gaussian(), Poisson(), Binomial(). Defaults to Gaussian().
-        offset (np.array, optional): n*1, the offset variable at the ith location. For Poisson
-                                    model this term is often the size of the population at risk or the expected size of the outcome in spatial epidemiology. Default is None where Ni becomes 1.0 for all locations
+        family (Gaussian, optional): function object/instance,
+            underlying probability model: Gaussian(), Poisson(), Binomial(). Defaults to Gaussian().
+        offset (np.array, optional): n*1, the offset variable at the ith location.
+            For Poisson model this term is often the size of the population at risk
+            or the expected size of the outcome in spatial epidemiology.
+            Default is None where Ni becomes 1.0 for all locations
         kernel (str, optional): kernel function: 'gaussian', 'bisquare', 'exponential'.
-                                Defaults to 'bisquare'.
+            Defaults to 'bisquare'.
         fixed (bool, optional): True for fixed bandwidth and False for adaptive (NN).
-                                Defaults to False.
-        multi (bool, optional): True for multiple (covaraite-specific) bandwidths. False for a
-                                traditional (same for  all covariates) bandwdith.
-                                Defaults to False.
-        constant (bool, optional): True to include intercept (default) in model and
-                                    False to exclude intercept. Defaults to True.
+            Defaults to False.
+        multi (bool, optional): True for multiple (covaraite-specific) bandwidths.
+            False for a traditional (same for  all covariates) bandwdith.
+            Defaults to False.
+        constant (bool, optional): True to include intercept (default) in model
+            and False to exclude intercept. Defaults to True.
         spherical (bool, optional): True for shperical coordinates (long-lat),
-                    False for projected coordinates (defalut).
-                    Defaults to False.
+            False for projected coordinates (defalut).
+            Defaults to False.
+
     Examples:
         >>> import libpysal as ps
         >>> from mgwr.sel_bw import Sel_BW

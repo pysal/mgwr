@@ -39,10 +39,9 @@ except ImportError:
 # ones.
 # Enable google docstring style and numpy docstring style with napoleon
 extensions = [  # 'sphinx_gallery.gen_gallery',
-    'sphinxcontrib.bibtex', 'numpydoc',
     'sphinx.ext.autodoc', 'sphinx.ext.autosummary', 'sphinx.ext.viewcode',
-    'sphinx.ext.mathjax', 'sphinx.ext.doctest', 'sphinx.ext.napoleon',
-    'sphinx.ext.intersphinx', 'matplotlib.sphinxext.plot_directive'
+    'sphinxcontrib.bibtex', 'sphinx.ext.mathjax', 'sphinx.ext.doctest',
+    'sphinx.ext.intersphinx', 'numpydoc', 'matplotlib.sphinxext.plot_directive'
 ]
 
 # Napoleon settings
@@ -127,7 +126,7 @@ html_theme_options = {
     False,
 
     # Render the current pages TOC in the navbar. (Default: true)
-    'navbar_pagenav': True,
+    'navbar_pagenav': False,
     # 'navbar_pagenav': False,
 
     # No sidebar
@@ -135,11 +134,11 @@ html_theme_options = {
     True,
 
     # Tab name for the current pages TOC. (Default: "Page")
-    'navbar_pagenav_name': "Page",
+    # 'navbar_pagenav_name': "Page",
 
     # Global TOC depth for "site" navbar tab. (Default: 1)
     # Switching to -1 shows all levels.
-    'globaltoc_depth': 2,
+    'globaltoc_depth': 1,
 
     # Include hidden TOCs in Site navbar?
     #
@@ -148,17 +147,15 @@ html_theme_options = {
     # will break.
     #
     # Values: "true" (default) or "false"
-    'globaltoc_includehidden':
-    "true",
+    'globaltoc_includehidden': "false",
 
     # HTML navbar class (Default: "navbar") to attach to <div> element.
     # For black navbar, do "navbar navbar-inverse"
-    'navbar_class': "navbar navbar-inverse",
+    # 'navbar_class': "navbar navbar-inverse",
 
     # Fix navigation bar to top of page?
     # Values: "true" (default) or "false"
-    'navbar_fixed_top':
-    "true",
+    'navbar_fixed_top': "true",
 
     # Location of link to source.
     # Options are "nav" (default), "footer" or anything else to exclude.
@@ -249,7 +246,7 @@ texinfo_documents = [
 
 # Generate the API documentation when building
 autosummary_generate = True
-numpydoc_show_class_members = True
+numpydoc_show_class_members = False
 class_members_toctree = True
 numpydoc_show_inherited_class_members = True
 numpydoc_use_plots = True
@@ -257,9 +254,8 @@ numpydoc_use_plots = True
 # display the source code for Plot directive
 plot_include_source = True
 
-#
 # def setup(app):
-#     app.add_stylesheet("pysal-styles.css")
+#     app.add_css_stylesheet("pysal-styles.css")
 
 # add style file to html output
 html_css_files = ['pysal-styles.css', "_static/pysal-styles.css"]

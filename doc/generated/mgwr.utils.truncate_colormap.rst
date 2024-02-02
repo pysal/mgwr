@@ -1,4 +1,4 @@
-mgwr.utils.truncate\_colormap
+﻿mgwr.utils.truncate\_colormap
 =============================
 
 .. currentmodule:: mgwr.utils

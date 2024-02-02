@@ -11,16 +11,15 @@ def shift_colormap(cmap: LinearSegmentedColormap,
                    stop: float = 1.0,
                    name: str = 'shiftedcmap') -> LinearSegmentedColormap:
 
-    """
-    Function to offset the "center" of a colormap. Useful for
-    data with a negative min and positive max and you want the
-    middle of the colormap's dynamic range to be at zero
+    """Function to offset the "center" of a colormap.
+    Useful for data with a negative min and positive max
+    and you want the middle of the colormap's dynamic range to be at zero
 
     Args:
         cmap (LinearSegmentedColormap): The matplotlib colormap to be altered
         start (float): Offset from lowest point in the colormap's range.
-            Defaults to 0.0 (no lower ofset). Should be between
-            0.0 and `midpoint`.
+            Defaults to 0.0 (no lower ofset).
+            Should be between 0.0 and `midpoint`.
         midpoint (float): The new center of the colormap. Defaults to 0.5 (no shift). Should be between 0.0 and 1.0.
             In general, this should be  1 - vmax/(vmax + abs(vmin))
             For example if your data range from -15.0 to +5.0 and
@@ -92,6 +91,7 @@ def truncate_colormap(cmap: LinearSegmentedColormap,
         >>> from mgwr.utils import truncate_colormap
         >>> cmap = plt.cm.seismic
         >>> cmap = truncate_colormap(cmap, min_val=0.0, max_val=0.5, n=100)
+
     '''
 
     import matplotlib as mpl
@@ -159,6 +159,7 @@ def compare_surfaces(data: pd.DataFrame,
         >>> mgwr_model = MGWR(coords, y, X, mgwr_bw, kernel='gaussian')
         >>> mgwr_results = mgwr_model.fit()
         >>> compare_surfaces(data, 'PctFB', 'PctFB', gwr_results.tvalues, gwr_bw, mgwr_results.tvalues, mgwr_bw, 'PctFB', {}, {}, savefig='compare_surfaces.png')
+
     '''
     import matplotlib.pyplot as plt
     import geopandas as gp

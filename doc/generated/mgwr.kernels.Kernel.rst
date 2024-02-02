@@ -1,4 +1,4 @@
-mgwr.kernels.Kernel
+﻿mgwr.kernels.Kernel
 ===================
 
 .. currentmodule:: mgwr.kernels
