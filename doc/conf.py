@@ -175,7 +175,7 @@ html_theme_options = {
     # Choose Bootstrap version.
     # Values: "3" (default) or "2" (in quotes)
     'bootstrap_version':
-    "5",
+    "3",
 
     # Navigation bar menu
     'navbar_links': [
@@ -262,7 +262,7 @@ plot_include_source = True
 #     app.add_stylesheet("pysal-styles.css")
 
 # add style file to html output
-html_css_files = ['pysal-styles.css']
+html_css_files = ['pysal-styles.css', "_static/pysal-styles.css"]
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
