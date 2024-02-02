@@ -69,7 +69,7 @@ copyright = '2018, pysal developers'
 author = 'pysal developers'
 
 # The version info for the project you're documenting, acts as replacement for
-# |version| and |release|, also used in various other places throughout the
+# version and release, also used in various other places throughout the
 # built documents.
 #
 # The full version.

@@ -4,6 +4,7 @@ __author__ = "Taylor Oshan"
 
 import numpy as np
 from copy import deepcopy
+from typing import Union
 
 
 def golden_section(a: float,
@@ -178,7 +179,7 @@ def equal_interval(l_bound: float,
 def multi_bw(init: float,
              y: np.array,
              X: np.array,
-             n: float | int,
+             n: Union[float, int],
              k: int,
              tol: float,
              max_iter: int,
@@ -196,7 +197,7 @@ def multi_bw(init: float,
         init (float): the initial bandwidth value
         y (np.array): the dependent variable
         X (np.array): the independent variables
-        n (float | int): total number of observations
+        n (float or int): total number of observations
         k (int): number of independent variables
         tol (float): tolerance used to determine convergence
         max_iter (int): maximum iterations if no convergence to tolerance

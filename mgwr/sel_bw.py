@@ -181,7 +181,7 @@ class Sel_BW(object):
                             a single entry or a list containing an entry for each of k covariates including the intercept"
 
         Returns:
-            np.array | float: optimal bandwidth value or values; returns scalar for
+            np.array or float: optimal bandwidth value or values; returns scalar for
                          multi=False and array for multi=True; ordering of bandwidths
                          matches the ordering of the covariates (columns) of the
                          designs matrix, X
