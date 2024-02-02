@@ -1,6 +1,6 @@
-mgwr.kernels.local\_cdist
+﻿mgwr.kernels.local\_cdist
 =========================
 
-.. currentmodule:: mgwr
+.. currentmodule:: mgwr.kernels
 
-.. autoattribute:: kernels.local_cdist
+.. autofunction:: local_cdist

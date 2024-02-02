@@ -1,4 +1,4 @@
-mgwr.gwr.GWR
+﻿mgwr.gwr.GWR
 ============
 
 .. currentmodule:: mgwr.gwr
@@ -8,5 +8,26 @@ mgwr.gwr.GWR
    
    .. automethod:: __init__
 
+   
+   .. rubric:: Methods
 
+   .. autosummary::
+   
+      ~GWR.__init__
+      ~GWR.df_model
+      ~GWR.df_resid
+      ~GWR.fit
+      ~GWR.predict
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GWR.mean_y
+      ~GWR.std_y
+   
    

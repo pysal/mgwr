@@ -9,7 +9,7 @@ sphinx:
 formats: all
 
 python:
-    version: 3.7
+    # version: 3.10
     install:
         - requirements: requirements.txt
         - method: pip
@@ -17,3 +17,8 @@ python:
           extra_requirements:
               - tests
               - docs
+
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3.10"

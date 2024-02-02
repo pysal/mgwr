@@ -1,4 +1,4 @@
-mgwr.sel\_bw.Sel\_BW
+﻿mgwr.sel\_bw.Sel\_BW
 ====================
 
 .. currentmodule:: mgwr.sel_bw
@@ -8,6 +8,14 @@ mgwr.sel\_bw.Sel\_BW
    
    .. automethod:: __init__
 
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Sel_BW.__init__
+      ~Sel_BW.search
+   
    
 
    

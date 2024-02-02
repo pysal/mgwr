@@ -30,14 +30,13 @@ def setup_package():
     extras_reqs = reqs
 
     setup(
-        name='mgwr',  #name of package
+        name='mgwr',  # name of package
         version=__version__,
-        description=
-        'multiscale geographically weighted regression',  #short <80chr description
-        url='https://github.com/pysal/mgwr',  #github repo
+        description='multiscale geographically weighted regression',  # short <80chr description
+        url='https://github.com/pysal/mgwr',  # github repo
         maintainer='Taylor M. Oshan',
         maintainer_email='tayoshan@gmail.com',
-        python_requires='>3.5',
+        python_requires='>3.10',
         test_suite='nose.collector',
         tests_require=['nose'],
         keywords='spatial statistics',
@@ -50,8 +49,10 @@ def setup_package():
             'Topic :: Scientific/Engineering :: GIS',
             'License :: OSI Approved :: BSD License',
             'Programming Language :: Python',
-            'Programming Language :: Python :: 3.6',
-            'Programming Language :: Python :: 3.7'
+            'Programming Language :: Python :: 3.10',
+            'Programming Language :: Python :: 3.11',
+            'Programming Language :: Python :: 3.12',
+            'Programming Language :: Python :: 3.13'
         ],
         license='3-Clause BSD',
         packages=find_packages(),

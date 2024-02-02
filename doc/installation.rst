@@ -3,7 +3,7 @@
 Installation
 ============
 
-mgwr supports python `3.5`_ and `3.6`_ only. Please make sure that you are
+mgwr supports python `3.10`_ and later versions. Please make sure that you are
 operating in a python 3 environment.
 
 Installing released version
@@ -36,7 +36,7 @@ your fork. By making changes
 to your local clone and submitting a pull request to `pysal/mgwr`_, you can
 contribute to the mgwr development.
 
-.. _3.5: https://docs.python.org/3.5/
+.. _3.10: https://docs.python.org/3.10/
 .. _3.6: https://docs.python.org/3.6/
 .. _Python Package Index: https://pypi.org/project/mgwr/
 .. _pysal/mgwr: https://github.com/pysal/mgwr

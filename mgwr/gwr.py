@@ -185,6 +185,13 @@ class GWR(GLM):
                     estimated residuals using sampled locations; defualt is None
                     unless specified in predict method
 
+    Methods
+    -------
+    fit:            Fit a model
+    predict:        Predict y at locations given exogenous variables
+    df_model:       Model degrees of freedom
+    df_resid:       Residual degrees of freedom
+
     Examples
     --------
     # basic model calibration
@@ -636,6 +643,35 @@ class GWRResults(GLMResults):
 
     name_x        : list of strings
                     Names of independent variables for use in output
+
+    Methods
+    -------
+    D2:                 pseudo R squared for GWR
+    ENP:                effective number of parameters for GWR
+    R2:                 R squared for GWR
+    RSS:                residual sum of squares for GWR
+    TSS:                total sum of squares for GWR
+    adj_alpha:          adjusted alpha values to account for multiple testing
+    adj_D2:             adjusted pseudo R squared for GWR
+    adj_R2:             adjusted R squared for GWR
+    bse:                standard errors of the betas
+    conf_int:           confidence intervals
+    cooksD:             Cook's D for GWR
+    cov_params:         covariance parameters
+    critical_tval:      critical t value
+    filter_tvals:       filter t values based on p value
+    get_bws_intervals:  bandwidths intervals
+    localR2:            local R squared
+    local_collinearity: local collinearity diagnostics
+    pDev:               local percent of deviance accounted for
+    sigma2:             residual variance
+    spatial_variability: spatial variability diagnostics
+    std_res:            standardised residuals
+    summary:            summary of GWR model output
+    tr_S:               trace of S (hat) matrix
+    tvalues:            local t-statistics
+    y_bar:              weighted mean of y
+
     """
 
     def __init__(self,
