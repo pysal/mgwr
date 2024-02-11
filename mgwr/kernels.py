@@ -3,45 +3,78 @@
 __author__ = "Taylor Oshan tayoshan@gmail.com"
 
 import numpy as np
-#adaptive specifications should be parameterized with nn-1 to match original gwr
-#implementation. That is, pysal counts self neighbors with knn automatically.
+# adaptive specifications should be parameterized with nn-1 to match original gwr
+# implementation. That is, pysal counts self neighbors with knn automatically.
 
-#Soft dependency of numba's njit
+# Soft dependency of numba's njit
 try:
     from numba import njit
 except ImportError:
-
     def njit(func):
         return func
 
 
 @njit
-def local_cdist(coords_i, coords, spherical):
+def local_cdist(coords_i: np.array, coords: np.array, spherical: bool) -> np.array:
     """
     Compute Haversine (spherical=True) or Euclidean (spherical=False) distance for a local kernel.
+
+    Args:
+        coords_i (np.array): the coordinates for the ith observation
+        coords (np.array): the coordinates for all observations
+        spherical (bool): whether to use Haversine or Euclidean distance
+
+    Returns:
+        float: the distance between coords_i and coords in Haversine (spherical=True) or Euclidean (spherical=False)
+
+    Examples:
+        >>> import numpy as np
+        >>> from mgwr.kernels import local_cdist
+        >>> coords_i = np.array([0, 0])
+        >>> coords = np.array([[1, 1], [2, 2], [3, 3]])
+        >>> local_cdist(coords_i, coords, spherical=False)
+        array([1.41421356, 2.82842712, 4.24264069])
+        >>> local_cdist(coords_i, coords, spherical=True)
+        array([157.24938127, 314.49876253, 471.7481438 ])
     """
-    if spherical:
-        dLat = np.radians(coords[:, 1] - coords_i[1])
-        dLon = np.radians(coords[:, 0] - coords_i[0])
-        lat1 = np.radians(coords[:, 1])
-        lat2 = np.radians(coords_i[1])
-        a = np.sin(
-            dLat / 2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dLon / 2)**2
-        c = 2 * np.arcsin(np.sqrt(a))
-        R = 6371.0
-        return R * c
-    else:
+
+    if not spherical:
         return np.sqrt(np.sum((coords_i - coords)**2, axis=1))
+
+    dLat = np.radians(coords[:, 1] - coords_i[1])
+    dLon = np.radians(coords[:, 0] - coords_i[0])
+    lat1 = np.radians(coords[:, 1])
+    lat2 = np.radians(coords_i[1])
+    a = np.sin(dLat / 2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dLon / 2)**2
+    c = 2 * np.arcsin(np.sqrt(a))
+    return 6371.0 * c
 
 
 class Kernel(object):
     """
     GWR kernel function specifications.
-    
     """
 
-    def __init__(self, i, data, bw=None, fixed=True, function='triangular',
-                 eps=1.0000001, ids=None, points=None, spherical=False):
+    def __init__(self, i: int,
+                 data: np.array,
+                 bw: float = None,
+                 fixed: bool = True,
+                 function: str = 'triangular',
+                 eps: float = 1.0000001,
+                 points: np.array = None,
+                 spherical=False) -> None:
+        """Kernel function specifications
+
+        Args:
+            i (int): index of focal point
+            data (np.array): n-by-2 array of coordinates for n observations
+            bw (float, optional): the bandwidth for the kernel function. Defaults to None.
+            fixed (bool, optional): whether to implement fixed bandwidth or not. Defaults to True.
+            function (str, optional): specify kernel function, 7 candidate kernel functions. Defaults to 'triangular'.
+            eps (float, optional): exploration value. Defaults to 1.0000001.
+            points (np.array, optional): whether to use points to calculate bandwidth. Defaults to None.
+            spherical (bool, optional): whether to use to calculate bandwidth spatially. Defaults to False.
+        """
 
         if points is None:
             self.dvec = local_cdist(data[i], data, spherical).reshape(-1)
@@ -51,32 +84,27 @@ class Kernel(object):
         self.function = function.lower()
 
         if fixed:
-            self.bandwidth = float(bw)
+            self.bandwidth = bw
         else:
-            self.bandwidth = np.partition(
-                self.dvec,
-                int(bw) - 1)[int(bw) - 1] * eps  #partial sort in O(n) Time
+            # partial sort in O(n) Time
+            self.bandwidth = np.partition(self.dvec, int(bw) - 1)[int(bw) - 1] * eps
 
         self.kernel = self._kernel_funcs(self.dvec / self.bandwidth)
 
-        if self.function == "bisquare":  #Truncate for bisquare
+        # Truncate for bisquare
+        if self.function == "bisquare":
             self.kernel[(self.dvec >= self.bandwidth)] = 0
 
-    def _kernel_funcs(self, zs):
+    def _kernel_funcs(self, zs: float) -> float:
         # functions follow Anselin and Rey (2010) table 5.4
-        if self.function == 'triangular':
-            return 1 - zs
-        elif self.function == 'uniform':
-            return np.ones(zs.shape) * 0.5
-        elif self.function == 'quadratic':
-            return (3. / 4) * (1 - zs**2)
-        elif self.function == 'quartic':
-            return (15. / 16) * (1 - zs**2)**2
-        elif self.function == 'gaussian':
-            return np.exp(-0.5 * (zs)**2)
-        elif self.function == 'bisquare':
-            return (1 - (zs)**2)**2
-        elif self.function == 'exponential':
-            return np.exp(-zs)
-        else:
-            print('Unsupported kernel function', self.function)
+        func_dict = {
+            "triangular": 1 - zs,
+            "uniform": np.ones(zs.shape) * 0.5,
+            "quadratic": (3. / 4) * (1 - zs**2),
+            "quartic": (15. / 16) * (1 - zs**2)**2,
+            "gaussian": np.exp(-0.5 * (zs)**2),
+            "bisquare": (1 - (zs)**2)**2,
+            "exponential": np.exp(-zs)
+        }
+
+        return func_dict.get(self.function, "Unsupported kernel function")
