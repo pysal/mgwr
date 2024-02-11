@@ -18,8 +18,6 @@ from joblib import Parallel, delayed
 from .diagnostics import get_AIC, get_AICc, get_BIC, corr
 from .kernels import *
 from .summary import *
-from .kernels import *
-from .summary import *
 
 
 class GWR(GLM):
@@ -217,7 +215,7 @@ class GWR(GLM):
 
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
                  sigma2_v1=True, kernel='bisquare', fixed=False, constant=True,
-                 spherical=False, hat_matrix=False):
+                 spherical=False, hat_matrix=False, name_x=None,n_jobs=-1):
         """
         Initialize class
         """
@@ -293,7 +291,7 @@ class GWR(GLM):
             return influ, resid, predy, betas.reshape(-1), w, Si, tr_STS_i, CCT
 
     def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls',
-            lite=False, pool=None):
+            lite=False,pool=None):
         """
         Method that fits a model with a particular estimation routine.
 
@@ -1878,7 +1876,7 @@ class MGWRResults(GWRResults):
 
     """
 
-    def __init__(self, model, params, predy, CCT, ENP_j, w, R):
+    def __init__(self, model, params, predy, CCT, ENP_j, w, R, name_x=None):
         """
         Initialize class
         """
