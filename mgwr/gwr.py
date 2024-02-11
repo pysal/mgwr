@@ -5,6 +5,7 @@ __author__ = "Taylor Oshan Tayoshan@gmail.com"
 import copy
 import os
 from typing import Optional
+import warnings
 import numpy as np
 import numpy.linalg as la
 from scipy.stats import t
@@ -16,10 +17,8 @@ from spglm.iwls import iwls, _compute_betas_gwr
 from spglm.utils import cache_readonly
 from joblib import Parallel, delayed
 from .diagnostics import get_AIC, get_AICc, get_BIC, corr
-from .kernels import Kernel
-from .summary import summaryModel, summaryGLM, summaryGWR, summaryMGWR
-import multiprocessing as mp
-from .sel_bw import Sel_BW
+from .kernels import *
+from .summary import *
 
 
 class GWR(GLM):
@@ -90,7 +89,7 @@ class GWR(GLM):
                     Names of independent variables for use in output
 
     n_jobs        : integer
-                    The number of jobs (default 1) to run in parallel. -1 means using all processors.
+                    The number of jobs (default -1) to run in parallel. -1 means using all processors.
 
 
     Attributes
@@ -215,19 +214,9 @@ class GWR(GLM):
 
     """
 
-    def __init__(self,
-                 coords: list[tuple],
-                 y: np.array,
-                 X: np.array,
-                 bw: float,
-                 family: Gaussian = Gaussian(),
-                 offset: np.array = None,
-                 sigma2_v1: bool = True,
-                 kernel: str = 'bisquare',
-                 fixed: bool = False,
-                 constant: bool = True,
-                 spherical: bool = False,
-                 hat_matrix: bool = False) -> None:
+    def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
+                 sigma2_v1=True, kernel='bisquare', fixed=False, constant=True,
+                 spherical=False, hat_matrix=False, name_x=None,n_jobs=-1):
         """
         Initialize class
         """
@@ -253,7 +242,7 @@ class GWR(GLM):
         self.name_x = name_x
         self.n_jobs = n_jobs
 
-    def _build_wi(self, i: int, bw: float) -> np.array:
+    def _build_wi(self, i, bw):
 
         if bw == np.inf:
             wi = np.ones((self.n))
@@ -302,13 +291,8 @@ class GWR(GLM):
                 Si = None
             return influ, resid, predy, betas.reshape(-1), w, Si, tr_STS_i, CCT
 
-    def fit(self,
-            ini_params: np.array = None,
-            tol: float = 1.0e-5,
-            max_iter: int = 20,
-            solve: str = 'iwls',
-            lite: bool = False,
-            pool: mp.Pool = None):
+    def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls',
+            lite=False,pool=None):
         """
         Method that fits a model with a particular estimation routine.
 
@@ -335,6 +319,7 @@ class GWR(GLM):
                         bandwidth selection (could speed up
                         bandwidth selection for GWR) or to estimate
                         a full GWR. Default is False.
+        pool          : None, deprecated and not used.
 
         Returns
         -------
@@ -350,16 +335,17 @@ class GWR(GLM):
         self.fit_params['solve'] = solve
         self.fit_params['lite'] = lite
 
+        if pool:
+            warnings.warn("The pool parameter is no longer used and will have no effect; parallelization is default and implemented using joblib instead.", RuntimeWarning, stacklevel=2)
+
         if solve.lower() == 'iwls':
 
-            m = self.y.shape[0] if self.points is None else self.points.shape[0]
-
-            if pool:
-                # parallel using mp.Pool
-                rslt = pool.map(self._local_fit, range(m))
+            if self.points is None:
+                m = self.y.shape[0]
             else:
-                # sequential
-                rslt = map(self._local_fit, range(m))
+                m = self.points.shape[0]
+
+            rslt = Parallel(n_jobs=self.n_jobs)(delayed(self._local_fit)(i) for i in range(m))
 
             rslt_list = list(zip(*rslt))
             influ = np.array(rslt_list[0]).reshape(-1, 1)
@@ -368,20 +354,21 @@ class GWR(GLM):
 
             if lite:
                 return GWRResultsLite(self, resid, influ, params)
+            else:
+                predy = np.array(rslt_list[2]).reshape(-1, 1)
+                w = np.array(rslt_list[-4]).reshape(-1, 1)
+                if self.hat_matrix:
+                    S = np.array(rslt_list[-3])
+                else:
+                    S = None
+                tr_STS = np.sum(np.array(rslt_list[-2]))
+                CCT = np.array(rslt_list[-1])
+                return GWRResults(self, params, predy, S, CCT, influ, tr_STS,
+                                  w, self.name_x)
 
-            predy = np.array(rslt_list[2]).reshape(-1, 1)
-            w = np.array(rslt_list[-4]).reshape(-1, 1)
-            S = np.array(rslt_list[-3]) if self.hat_matrix else None
-            tr_STS = np.sum(np.array(rslt_list[-2]))
-            CCT = np.array(rslt_list[-1])
-            return GWRResults(self, params, predy, S, CCT, influ, tr_STS, w)
 
-    def predict(self,
-                points: np.array,
-                P: np.array,
-                exog_scale: float = None,
-                exog_resid: np.array = None,
-                fit_params: dict = {}):
+    def predict(self, points, P, exog_scale=None, exog_resid=None,
+                fit_params={}):
         """
         Method that predicts values of the dependent variable at un-sampled
         locations
@@ -628,18 +615,13 @@ class GWRResults(GLMResults):
                           p*1, predicted values generated by calling the GWR
                           predict method to predict dependent variable at
                           unsampled points ()
+
+    name_x        : list of strings
+                    Names of independent variables for use in output
     """
 
-    def __init__(self,
-                 model: GWR,
-                 params: np.array,
-                 predy: np.array,
-                 S: np.array,
-                 CCT: np.array,
-                 influ: np.array,
-                 tr_STS: float = None,
-                 w: np.array = None) -> None:
-
+    def __init__(self, model, params, predy, S, CCT, influ, tr_STS=None,
+                 w=None, name_x=None):
         GLMResults.__init__(self, model, params, predy, w)
         self.offset = model.offset
         if w is not None:
@@ -1546,17 +1528,9 @@ class MGWR(GWR):
 
     """
 
-    def __init__(self,
-                 coords: list[tuple],
-                 y: np.array,
-                 X: np.array,
-                 selector: Sel_BW,
-                 sigma2_v1: bool = True,
-                 kernel: str = 'bisquare',
-                 fixed: bool = False,
-                 constant: bool = True,
-                 spherical: bool = False,
-                 hat_matrix: bool = False) -> None:
+    def __init__(self, coords, y, X, selector, sigma2_v1=True,
+                 kernel='bisquare', fixed=False, constant=True,
+                 spherical=False, hat_matrix=False, name_x=None,n_jobs=1):
         """
         Initialize class
         """
@@ -1635,7 +1609,7 @@ class MGWR(GWR):
             return ENP_j, CCT, pR
         return ENP_j, CCT
 
-    def fit(self, n_chunks=1):
+    def fit(self, n_chunks=1,pool=None):
         """
         Compute MGWR inference by chunk to reduce memory footprint.
         See Li and Fotheringham, 2020, IJGIS.
@@ -1646,6 +1620,8 @@ class MGWR(GWR):
         n_chunks      : integer, optional
                         A number of chunks parameter to reduce memory usage.
                         e.g. n_chunks=2 should reduce overall memory usage by 2.
+
+        pool          : None, deprecated and not used
 
         Returns
         -------
@@ -1661,6 +1637,9 @@ class MGWR(GWR):
             def tqdm(x, total=0,
                      desc=''):  #otherwise, just passthrough the range
                 return x
+
+        if pool:
+            warnings.warn("The pool parameter is no longer used and will have no effect; parallelization is default and implemented using joblib instead.", RuntimeWarning, stacklevel=2)
 
         if self.n_jobs == -1:
             max_processors = os.cpu_count()
@@ -1678,8 +1657,11 @@ class MGWR(GWR):
         CCT = np.sum(np.array(rslt_list[1]), axis=0)
 
         w = np.ones(self.n)
-        R = np.hstack(rslt_list[2]) if self.hat_matrix else None
-        return MGWRResults(self, params, predy, CCT, ENP_j, w, R)
+        if self.hat_matrix:
+            R = np.hstack(rslt_list[2])
+        else:
+            R = None
+        return MGWRResults(self, params, predy, CCT, ENP_j, w, R, self.name_x)
 
 
     def exact_fit(self):
@@ -1699,12 +1681,7 @@ class MGWR(GWR):
         Q = []
         I = np.eye(self.n)
         for j1 in range(self.k):
-            Aj = GWR(self.coords,
-                     self.y,
-                     self.X[:, j1].reshape(-1, 1),
-                     bw=self.bws[j1],
-                     hat_matrix=True,
-                     constant=False).fit().S
+            Aj = GWR(self.coords,self.y,self.X[:,j1].reshape(-1,1),bw=self.bws[j1],hat_matrix=True,constant=False,n_jobs=self.n_jobs).fit().S
             Pj = []
             for j2 in range(self.k):
                 if j1 == j2:
@@ -1909,14 +1886,7 @@ class MGWRResults(GWRResults):
 
     """
 
-    def __init__(self,
-                 model: GWR,
-                 params: np.array,
-                 predy: np.array,
-                 CCT: np.array,
-                 ENP_j: int,
-                 w: np.array,
-                 R: np.array) -> None:
+    def __init__(self, model, params, predy, CCT, ENP_j, w, R, name_x=None):
         """
         Initialize class
         """
@@ -1926,7 +1896,7 @@ class MGWRResults(GWRResults):
         if model.hat_matrix:
             self.S = np.sum(self.R, axis=2)
         self.predy = predy
-        self.x_name = x_name
+        self.name_x = name_x
 
     @cache_readonly
     def tr_S(self):
