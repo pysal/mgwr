@@ -26,122 +26,39 @@ class Sel_BW(object):
     :cite:`fotheringham_geographically_2002`: Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
     Geographically weighted regression: the analysis of spatially varying relationships.
 
-    Parameters
-    ----------
-    y              : array
-                     n*1, dependent variable.
-    X_glob         : array
-                     n*k1, fixed independent variable.
-    X_loc          : array
-                     n*k2, local independent variable, including constant.
-    coords         : list of tuples
-                     (x,y) of points used in bandwidth selection
-    family         : family object/instance, optional
-                     underlying probability model: Gaussian(), Poisson(),
-                     Binomial(). Default is Gaussian().
-    offset         : array
-                     n*1, the offset variable at the ith location. For Poisson model
-                     this term is often the size of the population at risk or
-                     the expected size of the outcome in spatial epidemiology
-                     Default is None where Ni becomes 1.0 for all locations
-    kernel         : string, optional
-                     kernel function: 'gaussian', 'bisquare', 'exponential'.
-                     Default is 'bisquare'.
-    fixed          : boolean
-                     True for fixed bandwidth and False for adaptive (NN)
-    multi          : True for multiple (covaraite-specific) bandwidths
-                     False for a traditional (same for  all covariates)
-                     bandwdith; defualt is False.
-    constant       : boolean
-                     True to include intercept (default) in model and False to exclude
-                     intercept.
-    spherical      : boolean
-                     True for shperical coordinates (long-lat),
-                     False for projected coordinates (defalut).
-    n_jobs         : integer
-                     The number of jobs (default 1) to run in parallel. -1 means using all processors.
+    Args:
+        coords (list[tuple]): (x,y) of points used in bandwidth selection
+        y (np.array): n*1, dependent variable
+        X_loc (np.array): n*k2, local independent variable, including intercept
+        X_glob (np.array, optional): n*k1, fixed independent variable. Defaults to None.
+        family (Gaussian, optional): function object/instance, underlying probability model:
+                                    Gaussian(), Poisson(), Binomial(). Defaults to Gaussian().
+        offset (np.array, optional): n*1, the offset variable at the ith location. For Poisson
+                                    model this term is often the size of the population at risk or the expected size of the outcome in spatial epidemiology. Default is None where Ni becomes 1.0 for all locations
+        kernel (str, optional): kernel function: 'gaussian', 'bisquare', 'exponential'.
+                                Defaults to 'bisquare'.
+        fixed (bool, optional): True for fixed bandwidth and False for adaptive (NN).
+                                Defaults to False.
+        multi (bool, optional): True for multiple (covaraite-specific) bandwidths. False for a
+                                traditional (same for  all covariates) bandwdith.
+                                Defaults to False.
+        constant (bool, optional): True to include intercept (default) in model and
+                                    False to exclude intercept. Defaults to True.
+        spherical (bool, optional): True for shperical coordinates (long-lat),
+                    False for projected coordinates (defalut).
+                    Defaults to False.
+    Examples:
+        >>> import libpysal as ps
+        >>> from mgwr.sel_bw import Sel_BW
+        >>> data = ps.io.open(ps.examples.get_path('GData_utm.csv'))
+        >>> coords = list(zip(data.by_col('X'), data.by_col('Y')))
+        >>> y = np.array(data.by_col('PctBach')).reshape((-1,1))
+        >>> rural = np.array(data.by_col('PctRural')).reshape((-1,1))
+        >>> pov = np.array(data.by_col('PctPov')).reshape((-1,1))
+        >>> african_amer = np.array(data.by_col('PctBlack')).reshape((-1,1))
+        >>> X = np.hstack([rural, pov, african_amer])
 
-    Attributes
-    ----------
-    y              : array
-                     n*1, dependent variable.
-    X_glob         : array
-                     n*k1, fixed independent variable.
-    X_loc          : array
-                     n*k2, local independent variable, including constant.
-    coords         : list of tuples
-                     (x,y) of points used in bandwidth selection
-    family         : string
-                     GWR model type: 'Gaussian', 'logistic, 'Poisson''
-    kernel         : string
-                     type of kernel used and wether fixed or adaptive
-    fixed          : boolean
-                     True for fixed bandwidth and False for adaptive (NN)
-    criterion      : string
-                     bw selection criterion: 'AICc', 'AIC', 'BIC', 'CV'
-    search_method  : string
-                     bw search method: 'golden', 'interval'
-    bw_min         : float
-                     min value used in bandwidth search
-    bw_max         : float
-                     max value used in bandwidth search
-    interval       : float
-                     interval increment used in interval search
-    tol            : float
-                     tolerance used to determine convergence
-    max_iter       : integer
-                     max interations if no convergence to tol
-    multi          : True for multiple (covaraite-specific) bandwidths
-                     False for a traditional (same for  all covariates)
-                     bandwdith; defualt is False.
-    constant       : boolean
-                     True to include intercept (default) in model and False to exclude
-                     intercept.
-    offset         : array
-                     n*1, the offset variable at the ith location. For Poisson model
-                     this term is often the size of the population at risk or
-                     the expected size of the outcome in spatial epidemiology
-                     Default is None where Ni becomes 1.0 for all locations
-    spherical      : boolean
-                     True for shperical coordinates (long-lat),
-                     False for projected coordinates (defalut).
-    search_params  : dict
-                     stores search arguments
-    int_score      : boolan
-                     True if adaptive bandwidth is being used and bandwdith
-                     selection should be discrete. False
-                     if fixed bandwidth is being used and bandwidth does not have
-                     to be discrete.
-    bw             : scalar or array-like
-                     Derived optimal bandwidth(s). Will be a scalar for GWR
-                     (multi=False) and a list of scalars for MGWR (multi=True)
-                     with one bandwidth for each covariate.
-    S              : array
-                     n*n, hat matrix derived from the iterative backfitting
-                     algorthim for MGWR during bandwidth selection
-    R              : array
-                     n*n*k, partial hat matrices derived from the iterative
-                     backfitting algoruthm for MGWR during bandwidth selection.
-                     There is one n*n matrix for each of the k covariates.
-    params         : array
-                     n*k, calibrated parameter estimates for MGWR based on the
-                     iterative backfitting algorithm - computed and saved here to
-                     avoid having to do it again in the MGWR object.
-
-    Examples
-    --------
-
-    >>> import libpysal as ps
-    >>> from mgwr.sel_bw import Sel_BW
-    >>> data = ps.io.open(ps.examples.get_path('GData_utm.csv'))
-    >>> coords = list(zip(data.by_col('X'), data.by_col('Y')))
-    >>> y = np.array(data.by_col('PctBach')).reshape((-1,1))
-    >>> rural = np.array(data.by_col('PctRural')).reshape((-1,1))
-    >>> pov = np.array(data.by_col('PctPov')).reshape((-1,1))
-    >>> african_amer = np.array(data.by_col('PctBlack')).reshape((-1,1))
-    >>> X = np.hstack([rural, pov, african_amer])
-    
-    Golden section search AICc - adaptive bisquare
+        Golden section search AICc - adaptive bisquare
 
     >>> bw = Sel_BW(coords, y, X).search(criterion='AICc')
     >>> print(bw)
@@ -174,9 +91,19 @@ class Sel_BW(object):
 
     """
 
-    def __init__(self, coords, y, X_loc, X_glob=None, family=Gaussian(),
-                 offset=None, kernel='bisquare', fixed=False, multi=False,
-                 constant=True, spherical=False,n_jobs=1):
+    def __init__(self,
+                 coords: list[tuple],
+                 y: np.array,
+                 X_loc: np.array,
+                 X_glob: np.array = None,
+                 family: Gaussian = Gaussian(),
+                 offset: np.array = None,
+                 kernel: str = 'bisquare',
+                 fixed: bool = False,
+                 multi: bool = False,
+                 constant: bool = True,
+                 spherical: bool = False) -> None:
+
         self.coords = np.array(coords)
         self.y = y
         self.X_loc = X_loc
@@ -198,15 +125,24 @@ class Sel_BW(object):
         self.n_jobs = n_jobs
         self.search_params = {}
 
-    def search(self, search_method='golden_section', criterion='AICc',
-               bw_min=None, bw_max=None, interval=0.0, tol=1.0e-6,
-               max_iter=200, init_multi=None, tol_multi=1.0e-5,
-               rss_score=False, max_iter_multi=200, multi_bw_min=[None],
-               multi_bw_max=[None
-                             ], bws_same_times=5, verbose=False):
-        """
-        Method to select one unique bandwidth for a gwr model or a
-        bandwidth vector for a mgwr model.
+    def search(self,
+               search_method: str = 'golden_section',
+               criterion: str = 'AICc',
+               bw_min: float = None,
+               bw_max: float = None,
+               interval: float = 0.0,
+               tol: float = 1.0e-6,
+               max_iter: int = 200,
+               init_multi: float = None,
+               tol_multi: float = 1.0e-5,
+               rss_score: bool = False,
+               max_iter_multi: int = 200,
+               multi_bw_min: list = [None],
+               multi_bw_max: list = [None],
+               bws_same_times: int = 5,
+               pool: mp.Pool = None,
+               verbose: bool = False) -> np.array | float:
+        """Method to select one unique bandwidth for a gwr model or a bandwidth vector for a mgwr model.
 
         Parameters
         ----------
@@ -218,7 +154,7 @@ class Sel_BW(object):
                          min value used in bandwidth search
         bw_max         : float
                          max value used in bandwidth search
-        multi_bw_min   : list 
+        multi_bw_min   : list
                          min values used for each covariate in mgwr bandwidth search.
                          Must be either a single value or have one value for
                          each covariate including the intercept
@@ -248,14 +184,20 @@ class Sel_BW(object):
                          False
         bws_same_times : If bandwidths keep the same between iterations for
                          bws_same_times (default 5) in backfitting, then use the
-                         current set of bandwidths as final bandwidths.
-        verbose        : Boolean
-                         If true, bandwidth searching history is printed out; default is False.
+                         current set of bandwidths as final bandwidths. Defaults to 5.
+            pool (mp.Pool, optional): A multiprocessing Pool object to enbale parallel fitting. Defaults to None.
+            verbose (bool, optional): If true, bandwidth searching history is printed out. Defaults to False.
 
-        Returns
-        -------
-        bw             : scalar or array
-                         optimal bandwidth value or values; returns scalar for
+        Raises:
+            AttributeError: if multi_bw_min is not a list of length 1 or k, where k is the number of covariates,
+                            the attribute error is raised. "multi_bw_min must be either a list containing
+                            a single entry or a list containing an entry for each of k covariates including the intercept"
+            AttributeError: if multi_bw_max is not a list of length 1 or k, where k is the number of covariates,
+                            the attribute error is raised. "multi_bw_max must be either a list containing
+                            a single entry or a list containing an entry for each of k covariates including the intercept"
+
+        Returns:
+            np.array | float: optimal bandwidth value or values; returns scalar for
                          multi=False and array for multi=True; ordering of bandwidths
                          matches the ordering of the covariates (columns) of the
                          designs matrix, X
@@ -289,6 +231,10 @@ class Sel_BW(object):
                 "multi_bw_max must be either a list containing"
                 " a single entry or a list containing an entry for each of k"
                 " covariates including the intercept")
+
+        if pool:
+            warnings.warn("The pool parameter is no longer used and will have no effect; parallelization is default and implemented using joblib instead.", RuntimeWarning, stacklevel=2)
+
 
         self.interval = interval
         self.tol = tol
@@ -424,7 +370,7 @@ class Sel_BW(object):
             max_dist = np.max(np.array([np.max(
                 local_cdist(coords[i],coords,spherical=self.spherical))
                     for i in range(n)]))
-                    
+
             a = min_dist / 2.0
             c = max_dist * 2.0
 
