@@ -39,6 +39,3 @@ available for both approaches.
    Installation <installation>
    API <api>
    References <references>
-
-
-.. _PySAL: https://github.com/pysal/pysal

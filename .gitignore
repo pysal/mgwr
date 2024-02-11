@@ -25,3 +25,5 @@ develop-eggs
 lib
 lib64
 _build
+*sources*
+.pytest_cache

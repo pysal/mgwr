@@ -1,4 +1,4 @@
-mgwr.utils.shift\_colormap
+﻿mgwr.utils.shift\_colormap
 ==========================
 
 .. currentmodule:: mgwr.utils

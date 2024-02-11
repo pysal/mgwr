@@ -1,4 +1,4 @@
-mgwr.utils.compare\_surfaces
+﻿mgwr.utils.compare\_surfaces
 ============================
 
 .. currentmodule:: mgwr.utils
