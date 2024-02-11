@@ -331,7 +331,6 @@ class Sel_BW(object):
                            X,
                            n,
                            k,
-                           self.family,
                            self.tol_multi,
                            self.max_iter_multi,
                            self.rss_score,

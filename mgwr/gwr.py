@@ -20,7 +20,6 @@ from .diagnostics import get_AIC, get_AICc, get_BIC, corr
 from .kernels import Kernel
 from .summary import summaryModel, summaryGLM, summaryGWR, summaryMGWR
 import multiprocessing as mp
-# from .sel_bw import Sel_BW
 
 
 class GWR(GLM):
