@@ -48,7 +48,7 @@ def golden_section(a, c, delta, function, tol, max_iter, bw_max, int_score=False
     else:
         b = a + delta * np.abs(c - a)
         d = c - delta * np.abs(c - a)
-    
+
     opt_score = np.inf
     diff = 1.0e9
     iters = 0
@@ -85,6 +85,7 @@ def golden_section(a, c, delta, function, tol, max_iter, bw_max, int_score=False
             d = b
             b = a + delta * np.abs(c - a)
 
+
         else:
             opt_val = d
             opt_score = score_d
@@ -93,23 +94,23 @@ def golden_section(a, c, delta, function, tol, max_iter, bw_max, int_score=False
             d = c - delta * np.abs(c - a)
 
         output.append((opt_val, opt_score))
-        
+
         opt_val = np.round(opt_val, 2)
         if (opt_val, opt_score) not in output:
             output.append((opt_val, opt_score))
-        
+
         diff = score_b - score_d
         score = opt_score
-        
-    
+
+
     if a == np.inf or bw_max == np.inf:
         score_ols = function(np.inf)
         output.append((np.inf, score_ols))
-            
+
         if score_ols <= opt_score:
             opt_score = score_ols
             opt_val = np.inf
-        
+
         if verbose:
             print("Bandwidth: ", np.inf, ", score: ",
                     "{0:.2f}".format(score_ols[0]))
@@ -246,13 +247,13 @@ def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
             new_XB[:, j] = optim_model.predy.reshape(-1)
             params[:, j] = param
             bws[j] = bw
-    
+
         #If bws remain the same as from previous iteration
         if (iters > 1) and np.all(BWs[-1] == bws):
             bw_stable_counter += 1
         else:
             bw_stable_counter = 0
-    
+
         num = np.sum((new_XB - XB)**2) / n
         den = np.sum(np.sum(new_XB, axis=1)**2)
         score = (num / den)**0.5

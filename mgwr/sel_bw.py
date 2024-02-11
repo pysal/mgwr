@@ -20,6 +20,8 @@ getDiag = {'AICc': get_AICc, 'AIC': get_AIC, 'BIC': get_BIC, 'CV': get_CV}
 class Sel_BW(object):
     """
     Select bandwidth for kernel
+    """
+    Select bandwidth for kernel
 
     Methods: p211 - p213, bandwidth selection
 
@@ -146,26 +148,47 @@ class Sel_BW(object):
     >>> bw = Sel_BW(coords, y, X).search(criterion='AICc')
     >>> print(bw)
     93.0
+    >>> bw = Sel_BW(coords, y, X).search(criterion='AICc')
+    >>> print(bw)
+    93.0
 
+    Golden section search AIC - adaptive Gaussian
     Golden section search AIC - adaptive Gaussian
 
     >>> bw = Sel_BW(coords, y, X, kernel='gaussian').search(criterion='AIC')
     >>> print(bw)
     50.0
+    >>> bw = Sel_BW(coords, y, X, kernel='gaussian').search(criterion='AIC')
+    >>> print(bw)
+    50.0
 
+    Golden section search BIC - adaptive Gaussian
     Golden section search BIC - adaptive Gaussian
 
     >>> bw = Sel_BW(coords, y, X, kernel='gaussian').search(criterion='BIC')
     >>> print(bw)
     62.0
+    >>> bw = Sel_BW(coords, y, X, kernel='gaussian').search(criterion='BIC')
+    >>> print(bw)
+    62.0
 
+    Golden section search CV - adaptive Gaussian
     Golden section search CV - adaptive Gaussian
 
     >>> bw = Sel_BW(coords, y, X, kernel='gaussian').search(criterion='CV')
     >>> print(bw)
     68.0
+    >>> bw = Sel_BW(coords, y, X, kernel='gaussian').search(criterion='CV')
+    >>> print(bw)
+    68.0
 
     Interval AICc - fixed bisquare
+    Interval AICc - fixed bisquare
+
+    >>> sel = Sel_BW(coords, y, X, fixed=True)
+    >>> bw = sel.search(search_method='interval', bw_min=211001.0, bw_max=211035.0, interval=2)
+    >>> print(bw)
+    211025.0
 
     >>> sel = Sel_BW(coords, y, X, fixed=True)
     >>> bw = sel.search(search_method='interval', bw_min=211001.0, bw_max=211035.0, interval=2)
@@ -184,9 +207,17 @@ class Sel_BW(object):
             self.X_glob = X_glob
         else:
             self.X_glob = []
+        if X_glob is not None:
+            self.X_glob = X_glob
+        else:
+            self.X_glob = []
         self.family = family
         self.fixed = fixed
         self.kernel = kernel
+        if offset is None:
+            self.offset = np.ones((len(y), 1))
+        else:
+            self.offset = offset * 1.0
         if offset is None:
             self.offset = np.ones((len(y), 1))
         else:
@@ -208,17 +239,35 @@ class Sel_BW(object):
         Method to select one unique bandwidth for a gwr model or a
         bandwidth vector for a mgwr model.
 
-        Args:
-            search_method (str, optional): bandwidth search method: 'golden_selection', 'interval', 'scipy'.
-                                           Defaults to 'golden_section'.
-            criterion (str, optional): bandwidth selection criterion: 'AICc', 'AIC', 'BIC', 'CV'. Defaults to 'AICc'.
-            bw_min (float, optional): minimum value used in bandwidth search. Defaults to None.
-            bw_max (float, optional): maximum value used in bandwidth search. Defaults to None.
-            interval (float, optional): interval increment used in interval search. Defaults to 0.0.
-            tol (float, optional): tolerance used to determine convergence. Defaults to 1.0e-6.
-            max_iter (int, optional): max iterations if no convergence to tol. Defaults to 200.
-            init_multi (float, optional): None (default) to initialize MGWR with a bandwidth
+        Parameters
+        ----------
+        criterion      : string
+                         bw selection criterion: 'AICc', 'AIC', 'BIC', 'CV'
+        search_method  : string
+                         bw search method: 'golden', 'interval'
+        bw_min         : float
+                         min value used in bandwidth search
+        bw_max         : float
+                         max value used in bandwidth search
+        multi_bw_min   : list
+                         min values used for each covariate in mgwr bandwidth search.
+                         Must be either a single value or have one value for
+                         each covariate including the intercept
+        multi_bw_max   : list
+                         max values used for each covariate in mgwr bandwidth
+                         search. Must be either a single value or have one value
+                         for each covariate including the intercept
+        interval       : float
+                         interval increment used in interval search
+        tol            : float
+                         tolerance used to determine convergence
+        max_iter       : integer
+                         max iterations if no convergence to tol
+        init_multi     : float
+                         None (default) to initialize MGWR with a bandwidth
                          derived from GWR. Otherwise this option will choose the
+                         bandwidth to initialize MGWR with.
+        tol_multi      : convergence tolerence for the multiple bandwidth
                          bandwidth to initialize MGWR with.
         tol_multi      : convergence tolerence for the multiple bandwidth
                          backfitting algorithm; a larger tolerance may stop the
@@ -227,7 +276,14 @@ class Sel_BW(object):
         max_iter_multi : max iterations if no convergence to tol for multiple
                          bandwidth backfitting algorithm
         rss_score      : True to use the residual sum of sqaures to evaluate
+                         model
+        max_iter_multi : max iterations if no convergence to tol for multiple
+                         bandwidth backfitting algorithm
+        rss_score      : True to use the residual sum of sqaures to evaluate
                          each iteration of the multiple bandwidth backfitting
+                         routine and False to use a smooth function; default is
+                         False
+        bws_same_times : If bandwidths keep the same between iterations for
                          routine and False to use a smooth function; default is
                          False
         bws_same_times : If bandwidths keep the same between iterations for
@@ -246,6 +302,7 @@ class Sel_BW(object):
                          designs matrix, X
         """
         k = self.X_loc.shape[1]
+        if self.constant:  #k is the number of covariates
         if self.constant:  #k is the number of covariates
             k += 1
         self.search_method = search_method
@@ -294,11 +351,16 @@ class Sel_BW(object):
         self.search_params['tol'] = tol
         self.search_params['max_iter'] = max_iter
         #self._check_min_max()
+        #self._check_min_max()
 
         self.int_score = not self.fixed
 
         if self.multi:
             self._mbw()
+            self.params = self.bw[3]  #params n by k
+            self.sel_hist = self.bw[-2] #bw searching history
+            self.bw_init = self.bw[
+                -1]  #scalar, optimal bw from initial gwr model
             self.params = self.bw[3]  #params n by k
             self.sel_hist = self.bw[-2] #bw searching history
             self.bw_init = self.bw[
@@ -320,6 +382,7 @@ class Sel_BW(object):
         if self.search_method == 'golden_section':
             a, c = self._init_section(self.X_glob, self.X_loc, self.coords,
                                       self.constant)
+            delta = 0.38197  #1 - (np.sqrt(5.0)-1.0)/2.0
             delta = 0.38197  #1 - (np.sqrt(5.0)-1.0)/2.0
             self.bw = golden_section(a, c, delta, gwr_func, self.tol,
                                      self.max_iter, self.bw_max, self.int_score,
@@ -343,11 +406,29 @@ class Sel_BW(object):
 
     def _mbw(self):
         y = self.y
+        y = self.y
         if self.constant:
+            X,keep_x,warn = USER.check_constant(self.X_loc)
             X,keep_x,warn = USER.check_constant(self.X_loc)
         else:
             X = self.X_loc
         n, k = X.shape
+        family = self.family
+        offset = self.offset
+        kernel = self.kernel
+        fixed = self.fixed
+        spherical = self.spherical
+        coords = self.coords
+        search_method = self.search_method
+        criterion = self.criterion
+        bw_min = self.bw_min
+        bw_max = self.bw_max
+        multi_bw_min = self.multi_bw_min
+        multi_bw_max = self.multi_bw_max
+        interval = self.interval
+        tol = self.tol
+        max_iter = self.max_iter
+        bws_same_times = self.bws_same_times
         family = self.family
         offset = self.offset
         kernel = self.kernel
@@ -387,8 +468,24 @@ class Sel_BW(object):
                            self.max_iter_multi, self.rss_score, gwr_func,
                            bw_func, sel_func, multi_bw_min, multi_bw_max,
                            bws_same_times, verbose=self.verbose)
+        self.bw = multi_bw(self.init_multi, y, X, n, k, family, self.tol_multi,
+                           self.max_iter_multi, self.rss_score, gwr_func,
+                           bw_func, sel_func, multi_bw_min, multi_bw_max,
+                           bws_same_times, verbose=self.verbose)
 
     def _init_section(self, X_glob, X_loc, coords, constant):
+        if len(X_glob) > 0:
+            n_glob = X_glob.shape[1]
+        else:
+            n_glob = 0
+        if len(X_loc) > 0:
+            n_loc = X_loc.shape[1]
+        else:
+            n_loc = 0
+        if constant:
+            n_vars = n_glob + n_loc + 1
+        else:
+            n_vars = n_glob + n_loc
         if len(X_glob) > 0:
             n_glob = X_glob.shape[1]
         else:
@@ -410,8 +507,12 @@ class Sel_BW(object):
             min_dist = np.min(np.array([np.min(np.delete(
                 local_cdist(coords[i],coords,spherical=self.spherical),i))
                     for i in range(n)]))
+            min_dist = np.min(np.array([np.min(np.delete(
+                local_cdist(coords[i],coords,spherical=self.spherical),i))
+                    for i in range(n)]))
             max_dist = np.max(np.array([np.max(
-                local_cdist(coords[i], coords, spherical=self.spherical)) for i in range(n)]))
+                local_cdist(coords[i],coords,spherical=self.spherical))
+                    for i in range(n)]))
 
             a = min_dist / 2.0
             c = max_dist * 2.0

@@ -24,10 +24,10 @@ def shift_colormap(cmap, start=0, midpoint=0.5, stop=1.0, name='shiftedcmap'):
     stop : Offset from highets point in the colormap's range.
       Defaults to 1.0 (no upper ofset). Should be between
       `midpoint` and 1.0.
-    
+
     Returns
     -------
-    new_cmap : A new colormap that has been shifted. 
+    new_cmap : A new colormap that has been shifted.
     '''
 
     import matplotlib as mpl
@@ -69,10 +69,10 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
     minval : Minimum value of the original colormap to include in the truncated colormap
     maxval : Maximum value of the original colormap to include in the truncated colormap
     n : Number of intervals between the min and max values for the gradient of the truncated colormap
-          
+
     Returns
     -------
-    new_cmap : A new colormap that has been shifted. 
+    new_cmap : A new colormap that has been shifted.
     '''
 
     import matplotlib as mpl
@@ -127,8 +127,10 @@ def compare_surfaces(data, var1, var2, gwr_t, gwr_bw, mgwr_t, mgwr_bw, name,
                   fontsize=40)
 
     #Set color map
+    #Set color map
     cmap = plt.cm.seismic
 
+    #Find min and max values of the two combined datasets
     #Find min and max values of the two combined datasets
     gwr_min = data[var1].min()
     gwr_max = data[var1].max()
