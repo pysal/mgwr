@@ -215,7 +215,11 @@ class GWR(GLM):
 
     def __init__(self, coords, y, X, bw, family=Gaussian(), offset=None,
                  sigma2_v1=True, kernel='bisquare', fixed=False, constant=True,
+<<<<<<< HEAD
                  spherical=False, hat_matrix=False, name_x=None,n_jobs=1):
+=======
+                 spherical=False, hat_matrix=False, name_x=None,n_jobs=-1):
+>>>>>>> parent of 1c4b732 (Merge branch 'xyluo25_func_refactoring')
         """
         Initialize class
         """
@@ -291,7 +295,11 @@ class GWR(GLM):
             return influ, resid, predy, betas.reshape(-1), w, Si, tr_STS_i, CCT
 
     def fit(self, ini_params=None, tol=1.0e-5, max_iter=20, solve='iwls',
+<<<<<<< HEAD
             lite=False):
+=======
+            lite=False,pool=None):
+>>>>>>> parent of 1c4b732 (Merge branch 'xyluo25_func_refactoring')
         """
         Method that fits a model with a particular estimation routine.
 
@@ -1876,7 +1884,11 @@ class MGWRResults(GWRResults):
 
     """
 
+<<<<<<< HEAD
     def __init__(self, model, params, predy, CCT, ENP_j, w, R, x_name=None):
+=======
+    def __init__(self, model, params, predy, CCT, ENP_j, w, R, name_x=None):
+>>>>>>> parent of 1c4b732 (Merge branch 'xyluo25_func_refactoring')
         """
         Initialize class
         """
