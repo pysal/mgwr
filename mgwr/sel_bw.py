@@ -59,11 +59,7 @@ class Sel_BW(object):
                      True for shperical coordinates (long-lat),
                      False for projected coordinates (defalut).
     n_jobs         : integer
-<<<<<<< HEAD
                      The number of jobs (default 1) to run in parallel. -1 means using all processors.
-=======
-                     The number of jobs (default -1) to run in parallel. -1 means using all processors.
->>>>>>> parent of 1c4b732 (Merge branch 'xyluo25_func_refactoring')
 
     Attributes
     ----------
@@ -180,11 +176,7 @@ class Sel_BW(object):
 
     def __init__(self, coords, y, X_loc, X_glob=None, family=Gaussian(),
                  offset=None, kernel='bisquare', fixed=False, multi=False,
-<<<<<<< HEAD
                  constant=True, spherical=False,n_jobs=1):
-=======
-                 constant=True, spherical=False,n_jobs=-1):
->>>>>>> parent of 1c4b732 (Merge branch 'xyluo25_func_refactoring')
         self.coords = np.array(coords)
         self.y = y
         self.X_loc = X_loc
@@ -211,11 +203,7 @@ class Sel_BW(object):
                max_iter=200, init_multi=None, tol_multi=1.0e-5,
                rss_score=False, max_iter_multi=200, multi_bw_min=[None],
                multi_bw_max=[None
-<<<<<<< HEAD
                              ], bws_same_times=5, verbose=False):
-=======
-                             ], bws_same_times=5, verbose=False,pool=None):
->>>>>>> parent of 1c4b732 (Merge branch 'xyluo25_func_refactoring')
         """
         Method to select one unique bandwidth for a gwr model or a
         bandwidth vector for a mgwr model.
@@ -263,10 +251,6 @@ class Sel_BW(object):
                          current set of bandwidths as final bandwidths.
         verbose        : Boolean
                          If true, bandwidth searching history is printed out; default is False.
-<<<<<<< HEAD
-=======
-        pool          : None, deprecated and not used.
->>>>>>> parent of 1c4b732 (Merge branch 'xyluo25_func_refactoring')
 
         Returns
         -------
@@ -306,13 +290,6 @@ class Sel_BW(object):
                 " a single entry or a list containing an entry for each of k"
                 " covariates including the intercept")
 
-<<<<<<< HEAD
-=======
-        if pool:
-            warnings.warn("The pool parameter is no longer used and will have no effect; parallelization is default and implemented using joblib instead.", RuntimeWarning, stacklevel=2)
-
-        
->>>>>>> parent of 1c4b732 (Merge branch 'xyluo25_func_refactoring')
         self.interval = interval
         self.tol = tol
         self.max_iter = max_iter
