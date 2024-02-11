@@ -9,7 +9,7 @@ sphinx:
 formats: all
 
 python:
-    version: 3.10
+    version: 3.7
     install:
         - requirements: requirements.txt
         - method: pip

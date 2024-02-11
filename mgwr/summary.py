@@ -4,32 +4,27 @@ from spglm.glm import GLM
 from .diagnostics import get_AICc
 
 
-def summaryModel(self) -> str:
-    """Summary of model
-
-    Returns:
-        str: print out the model summary information
-    """
-    summary = f"{'=' * 75} \n"
-    summary += f"{'Model type':<54s} {self.family.__class__.__name__:20s}\n"
-    summary += f"{'Number of observations:':<60s} {self.n:14d}\n"
-    summary += f"{'Number of covariates:':<60s} {self.k:14d}\n\n"
+def summaryModel(self):
+    summary = '=' * 75 + '\n'
+    summary += "%-54s %20s\n" % ('Model type', self.family.__class__.__name__)
+    summary += "%-60s %14d\n" % ('Number of observations:', self.n)
+    summary += "%-60s %14d\n\n" % ('Number of covariates:', self.k)
     return summary
 
 
-def summaryGLM(self) -> str:
-    """Summary of GLM
+def summaryGLM(self):
 
-    Returns:
-        str: print out the GLM summary information
-    """
-
-    XNames = [f"X{i}" for i in range(self.k)]
+    if self.name_x is not None:
+        XNames = list(self.name_x)
+        if len(XNames) < self.k:
+            XNames = ["Intercept"] + XNames
+    else:
+        XNames = ["X" + str(i) for i in range(self.k)]
     glm_rslt = GLM(self.model.y, self.model.X, constant=False,
                    family=self.family).fit()
 
-    summary = "Global Regression Results\n"
-    summary += f"{'-' * 75} \n"
+    summary = "%s\n" % ('Global Regression Results')
+    summary += '-' * 75 + '\n'
 
     if isinstance(self.family, Gaussian):
         summary += "%-62s %12.3f\n" % ('Residual sum of squares:',
@@ -63,14 +58,14 @@ def summaryGLM(self) -> str:
     return summary
 
 
-def summaryGWR(self) -> str:
-    """Summary of GWR
+def summaryGWR(self):
+    if self.name_x is not None:
+        XNames = list(self.name_x)
+        if len(XNames) < self.k:
+            XNames = ["Intercept"] + XNames
 
-    Returns:
-        str: print out the GWR summary information
-    """
-
-    XNames = ["X" + str(i) for i in range(self.k)]
+    else:
+        XNames = ["X" + str(i) for i in range(self.k)]
 
     summary = "%s\n" % ('Geographically Weighted Regression (GWR) Results')
     summary += '-' * 75 + '\n'
@@ -136,12 +131,7 @@ def summaryGWR(self) -> str:
     return summary
 
 
-def summaryMGWR(self) -> str:
-    """Summary of MGWR
-
-    Returns:
-        str: print out the MGWR summary information
-    """
+def summaryMGWR(self):
 
     if self.name_x is not None:
         XNames = list(self.name_x)

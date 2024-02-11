@@ -1,20 +1,12 @@
-# Bandwidth optimization methods
+#Bandwidth optimization methods
 
 __author__ = "Taylor Oshan"
 
 import numpy as np
 from copy import deepcopy
 
-
-def golden_section(a: float,
-                   c: float,
-                   delta: float,
-                   function,
-                   tol: float,
-                   max_iter: int,
-                   bw_max: float,
-                   int_score: bool = False,
-                   verbose: bool = False) -> list:
+def golden_section(a, c, delta, function, tol, max_iter, bw_max, int_score=False,
+                   verbose=False):
     """
     Golden section search routine
 
@@ -23,55 +15,68 @@ def golden_section(a: float,
     :cite:`fotheringham_geographically_2002`: Fotheringham, A. S., Brunsdon, C., & Charlton, M. (2002).
     Geographically weighted regression: the analysis of spatially varying relationships.
 
-    Args:
-        a (float): initial max search section value
-        c (float): initial min search section value
-        delta (float): constant used to determine width of search sections
-        function (function): objective function to be evaluated at different section values
-        int_score (bool): False for float score, True for integer score
-        tol (float): tolerance used to determine convergence
-        max_iter (int): maximum iterations if no convergence to tolerance
-        bw_max (float): maximum bandwidth
+    Parameters
+    ----------
+    a               : float
+                      initial max search section value
+    b               : float
+                      initial min search section value
+    delta           : float
+                      constant used to determine width of search sections
+    function        : function
+                      obejective function to be evaluated at different section
+                      values
+    int_score       : boolean
+                      False for float score, True for integer score
+    tol             : float
+                      tolerance used to determine convergence
+    max_iter        : integer
+                      maximum iterations if no convergence to tolerance
 
-    Returns:
-        opt_val (float): optimal value
-        opt_score (kernel): optimal score
-        output (list of tuples): searching history
+    Returns
+    -------
+    opt_val         : float
+                      optimal value
+    opt_score       : kernel
+                      optimal score
+    output          : list of tuples
+                      searching history
     """
-
     if c == np.inf:
         b = a + delta * np.abs(n - a)
         d = n - delta * np.abs(n - a)
     else:
         b = a + delta * np.abs(c - a)
         d = c - delta * np.abs(c - a)
-
+    
     opt_score = np.inf
     diff = 1.0e9
     iters = 0
     output = []
-    dict_tmp = {}
+    dict = {}
     while np.abs(diff) > tol and iters < max_iter and a != np.inf:
         iters += 1
         if int_score:
             b = np.round(b)
             d = np.round(d)
 
-        if b in dict_tmp:
-            score_b = dict_tmp[b]
+        if b in dict:
+            score_b = dict[b]
         else:
             score_b = function(b)
-            dict_tmp[b] = score_b
+            dict[b] = score_b
             if verbose:
-                print(f"Bandwidth: {np.round(b, 2)}, score: {score_b[0]:.2f}")
+                print("Bandwidth: ", np.round(b, 2), ", score: ",
+                      "{0:.2f}".format(score_b[0]))
 
-        if d in dict_tmp:
-            score_d = dict_tmp[d]
+        if d in dict:
+            score_d = dict[d]
         else:
             score_d = function(d)
-            dict_tmp[d] = score_d
+            dict[d] = score_d
             if verbose:
-                print(f"Bandwidth: {np.round(d, 2)}, score: {score_d[0]:.2f}")
+                print("Bandwidth: ", np.round(d, 2), ", score: ",
+                      "{0:.2f}".format(score_d[0]))
 
         if score_b <= score_d:
             opt_val = b
@@ -79,6 +84,7 @@ def golden_section(a: float,
             c = d
             d = b
             b = a + delta * np.abs(c - a)
+
         else:
             opt_val = d
             opt_score = score_d
@@ -87,51 +93,57 @@ def golden_section(a: float,
             d = c - delta * np.abs(c - a)
 
         output.append((opt_val, opt_score))
-
+        
         opt_val = np.round(opt_val, 2)
         if (opt_val, opt_score) not in output:
             output.append((opt_val, opt_score))
-
+        
         diff = score_b - score_d
-        # score = opt_score
-
+        score = opt_score
+        
+    
     if a == np.inf or bw_max == np.inf:
         score_ols = function(np.inf)
         output.append((np.inf, score_ols))
-
+            
         if score_ols <= opt_score:
             opt_score = score_ols
             opt_val = np.inf
-
+        
         if verbose:
-            print(f"Bandwidth: {np.inf}, score: {opt_score[0]:.2f}")
+            print("Bandwidth: ", np.inf, ", score: ",
+                    "{0:.2f}".format(score_ols[0]))
 
-    return [opt_val, opt_score, output]
+    return opt_val, opt_score, output
 
 
-def equal_interval(l_bound: float,
-                   u_bound: float,
-                   interval: float,
-                   function,
-                   int_score: bool = False,
-                   verbose: bool = False) -> list:
+def equal_interval(l_bound, u_bound, interval, function, int_score=False,
+                   verbose=False):
     """
-    Interval search, using interval as step size
+    Interval search, using interval as stepsize
 
-    Args:
-        l_bound (float): initial min search section value
-        u_bound (float): initial max search section value
-        interval (float): constant used to determine width of search sections
-        function (function): objective function to be evaluated at different section values
-        int_score (bool): False for float score, True for integer score
-        verbose (bool): True for printing bandwidth and score at each iteration
+    Parameters
+    ----------
+    l_bound         : float
+                      initial min search section value
+    u_bound         : float
+                      initial max search section value
+    interval        : float
+                      constant used to determine width of search sections
+    function        : function
+                      obejective function to be evaluated at different section
+                      values
+    int_score       : boolean
+                      False for float score, True for integer score
 
-
-    Returns:
-        opt_val (float): optimal value
-        opt_score (kernel): optimal score
-        output (list of tuples): searching history
-
+    Returns
+    -------
+    opt_val         : float
+                      optimal value
+    opt_score       : kernel
+                      optimal score
+    output          : list of tuples
+                      searching history
     """
     a = l_bound
     c = u_bound
@@ -141,20 +153,22 @@ def equal_interval(l_bound: float,
         c = np.round(c, 0)
         b = np.round(b, 0)
 
+    output = []
+
     score_a = function(a)
     if verbose:
         print(score_a)
-        print(f"Bandwidth: {a}, score: {score_a[0]:.2f}")
+        print("Bandwidth:", a, ", score:", "{0:.2f}".format(score_a[0]))
 
-    output = [(a, score_a)]
+    output.append((a, score_a))
+
     opt_val = a
     opt_score = score_a
 
     while b < c:
         score_b = function(b)
         if verbose:
-            print(f"Bandwidth: {b}, score: {score_b[0]:.2f}")
-
+            print("Bandwidth:", b, ", score:", "{0:.2f}".format(score_b[0]))
         output.append((b, score_b))
 
         if score_b < opt_score:
@@ -164,7 +178,7 @@ def equal_interval(l_bound: float,
 
     score_c = function(c)
     if verbose:
-        print(f"Bandwidth: {c}, score: {score_c[0]:.2f}")
+        print("Bandwidth:", c, ", score:", "{0:.2f}".format(score_c[0]))
 
     output.append((c, score_c))
 
@@ -172,60 +186,21 @@ def equal_interval(l_bound: float,
         opt_val = c
         opt_score = score_c
 
-    return [opt_val, opt_score, output]
+    return opt_val, opt_score, output
 
 
-def multi_bw(init: float,
-             y: np.array,
-             X: np.array,
-             n: float | int,
-             k: int,
-             tol: float,
-             max_iter: int,
-             rss_score: bool,
-             gwr_func,
-             bw_func,
-             sel_func,
-             multi_bw_min: list,
-             multi_bw_max: list,
-             bws_same_times: int = 5,
-             verbose=False) -> tuple:
-    """Multiscale GWR bandwidth search procedure using iterative GAM backfitting
-
-    Args:
-        init (float): the initial bandwidth value
-        y (np.array): the dependent variable
-        X (np.array): the independent variables
-        n (float | int): total number of observations
-        k (int): number of independent variables
-        tol (float): tolerance used to determine convergence
-        max_iter (int): maximum iterations if no convergence to tolerance
-        rss_score (float): True for RSS score, False for SOC score
-        gwr_func (_type_): the GWR function
-        bw_func (_type_): the bandwidth function
-        sel_func (_type_): the bandwidth selection function
-        multi_bw_min (list): multi-scale bandwidth minimum values
-        multi_bw_max (list): multi-scale bandwidth maximum values
-        bws_same_times (int, optional): all bandwidth will change in this iteration while back-fitting. Defaults to 5.
-        verbose (bool, optional): True for printing bandwidth and score at each iteration. Defaults to False.
-
-    Returns:
-        tuple: (optimal bandwidth,
-                bandwidths history,
-                scores history,
-                parameters,
-                residuals,
-                bandwidth selection history,
-                bandwidth from GWR)
+def multi_bw(init, y, X, n, k, family, tol, max_iter, rss_score, gwr_func,
+             bw_func, sel_func, multi_bw_min, multi_bw_max, bws_same_times,
+             verbose=False):
     """
-
+    Multiscale GWR bandwidth search procedure using iterative GAM backfitting
+    """
     if init is None:
         bw = sel_func(bw_func(y, X))
         optim_model = gwr_func(y, X, bw)
     else:
         bw = init
         optim_model = gwr_func(y, X, init)
-
     bw_gwr = bw
     err = optim_model.resid_response.reshape((-1, 1))
     param = optim_model.params
@@ -242,11 +217,10 @@ def multi_bw(init: float,
     gwr_sel_hist = []
 
     try:
-        # if user have it, let users have a progress bar
-        from tqdm.auto import tqdm
+        from tqdm.auto import tqdm  #if they have it, let users have a progress bar
     except ImportError:
-        # otherwise, just passthrough the range
-        def tqdm(x, desc=''):
+
+        def tqdm(x, desc=''):  #otherwise, just passthrough the range
             return x
 
     for iters in tqdm(range(1, max_iter + 1), desc='Backfitting'):
@@ -259,9 +233,8 @@ def multi_bw(init: float,
             temp_X = X[:, j].reshape((-1, 1))
             bw_class = bw_func(temp_y, temp_X)
 
-            # If in backfitting,
-            # all bws not changing in bws_same_times (default 5) iterations
             if bw_stable_counter >= bws_same_times:
+                #If in backfitting, all bws not changing in bws_same_times (default 5) iterations
                 bw = bws[j]
             else:
                 bw = sel_func(bw_class, multi_bw_min[j], multi_bw_max[j])
@@ -273,13 +246,13 @@ def multi_bw(init: float,
             new_XB[:, j] = optim_model.predy.reshape(-1)
             params[:, j] = param
             bws[j] = bw
-
-        # If bws remain the same as from previous iteration
+    
+        #If bws remain the same as from previous iteration
         if (iters > 1) and np.all(BWs[-1] == bws):
             bw_stable_counter += 1
         else:
             bw_stable_counter = 0
-
+    
         num = np.sum((new_XB - XB)**2) / n
         den = np.sum(np.sum(new_XB, axis=1)**2)
         score = (num / den)**0.5
@@ -295,8 +268,8 @@ def multi_bw(init: float,
         BWs.append(deepcopy(bws))
 
         if verbose:
-            print(f"Current iteration: {iters}, SOC: {np.round(score, 7)}")
-            print(f"Bandwidths: {', '.join([str(bw) for bw in bws])}")
+            print("Current iteration:", iters, ",SOC:", np.round(score, 7))
+            print("Bandwidths:", ', '.join([str(bw) for bw in bws]))
 
         if delta < tol:
             break
