@@ -4,7 +4,7 @@ from spglm.glm import GLM
 from .diagnostics import get_AICc
 
 
-def summaryModel(self):
+def summaryModel(self) -> str:
     summary = '=' * 75 + '\n'
     summary += "%-54s %20s\n" % ('Model type', self.family.__class__.__name__)
     summary += "%-60s %14d\n" % ('Number of observations:', self.n)
@@ -12,8 +12,9 @@ def summaryModel(self):
     return summary
 
 
-def summaryGLM(self):
+def summaryGLM(self) -> str:
 
+    # if name_x is not None, use the names in name_x, otherwise use X0, X1, ...
     if self.name_x is not None:
         XNames = list(self.name_x)
         if len(XNames) < self.k:
@@ -58,7 +59,9 @@ def summaryGLM(self):
     return summary
 
 
-def summaryGWR(self):
+def summaryGWR(self) -> str:
+
+    # if name_x is not None, use the names in name_x, otherwise use X0, X1, ...
     if self.name_x is not None:
         XNames = list(self.name_x)
         if len(XNames) < self.k:
@@ -131,8 +134,9 @@ def summaryGWR(self):
     return summary
 
 
-def summaryMGWR(self):
+def summaryMGWR(self) -> str:
 
+    # if name_x is not None, use the names in name_x, otherwise use X0, X1, ...
     if self.name_x is not None:
         XNames = list(self.name_x)
         if len(XNames) < self.k:
