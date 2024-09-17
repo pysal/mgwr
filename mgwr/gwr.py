@@ -2066,7 +2066,7 @@ class MGWRResults(GWRResults):
         local condition number (n, 1)
         local variance-decomposition proportions (n, p)
 
-        Returns four arrays with the order and dimensions listed above where n
+        Returns two arrays with the order and dimensions listed above where n
         is the number of locations used as calibrations points and p is the
         nubmer of explanatory variables
 
