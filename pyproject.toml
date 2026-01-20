@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mgwr"
+dynamic = ["version"]
+description = "Multiscale Geographically Weighted Regression"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "BSD-3-Clause" }
+authors = [
+    { name = "Ziqi Li", email = "liziqi1992@gmail.com" },
+    { name = "A. Stewart Fotheringham", email = "Stewart.Fotheringham@asu.edu" }
+]
+maintainers = [
+    { name = "PySAL Developers", email = "pysal-dev@googlegroups.com" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: GIS"
+]
+dependencies = [
+    "libpysal>=4.0.0",
+    "spglm>=1.0.7",
+    "scipy>=0.11",
+    "numpy>=1.15",
+    "pandas>=0.14"
+]
+
+[project.urls]
+Homepage = "https://github.com/pysal/mgwr"
+
+[tool.setuptools_scm]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["mgwr*"]
