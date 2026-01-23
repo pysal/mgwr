@@ -16,7 +16,7 @@
      strategy:
        matrix:
          os: ['ubuntu-latest']
-         environment-file: [.ci/39.yaml, .ci/310.yaml, .ci/311.yaml, .ci/311-DEV.yaml]
+         environment-file: [.ci/39.yaml, .ci/311.yaml, .ci/311-DEV.yaml]
          include:
            - environment-file: .ci/311.yaml
              os: macos-latest

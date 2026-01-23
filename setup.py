@@ -37,7 +37,7 @@ def setup_package():
         url='https://github.com/pysal/mgwr',  #github repo
         maintainer='Taylor M. Oshan',
         maintainer_email='tayoshan@gmail.com',
-        python_requires='>3.5',
+        python_requires='>=3.11',
         test_suite='nose.collector',
         tests_require=['nose'],
         keywords='spatial statistics',
