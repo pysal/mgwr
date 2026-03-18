@@ -36,7 +36,7 @@ def summaryGLM(self):
         summary += "%-62s %12.3f\n" % ('R2:', glm_rslt.D2)
         summary += "%-62s %12.3f\n\n" % ('Adj. R2:', glm_rslt.adj_D2)
     else:
-        summary += "%-62s %12.3f\n" % ('Deviance:', glm_rslt.deviance)
+        summary += f"%-62s {glm_rslt.deviance:12.3f}\n"
         summary += "%-62s %12.3f\n" % ('Log-likelihood:', glm_rslt.llf)
         summary += "%-62s %12.3f\n" % ('AIC:', glm_rslt.aic)
         summary += "%-62s %12.3f\n" % ('AICc:', get_AICc(glm_rslt))
