@@ -1,9 +1,14 @@
 import numpy as np
 from libpysal.common import requires
+import matplotlib as mpl
 
 
 @requires('matplotlib')
-def shift_colormap(cmap, start=0, midpoint=0.5, stop=1.0, name='shiftedcmap'):
+def shift_colormap(cmap,
+                   start: float = 0,
+                   midpoint: float = 0.5,
+                   stop: float = 1.0,
+                   name: str = 'shiftedcmap') -> mpl.colors.LinearSegmentedColormap:
     '''
     Function to offset the "center" of a colormap. Useful for
     data with a negative min and positive max and you want the
@@ -24,13 +29,12 @@ def shift_colormap(cmap, start=0, midpoint=0.5, stop=1.0, name='shiftedcmap'):
     stop : Offset from highets point in the colormap's range.
       Defaults to 1.0 (no upper ofset). Should be between
       `midpoint` and 1.0.
-    
+
     Returns
     -------
-    new_cmap : A new colormap that has been shifted. 
+    new_cmap : A new colormap that has been shifted.
     '''
 
-    import matplotlib as mpl
     import matplotlib.pyplot as plt
 
     cdict = {'red': [], 'green': [], 'blue': [], 'alpha': []}
@@ -59,7 +63,10 @@ def shift_colormap(cmap, start=0, midpoint=0.5, stop=1.0, name='shiftedcmap'):
 
 
 @requires('matplotlib')
-def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
+def truncate_colormap(cmap,
+                      minval: float = 0.0,
+                      maxval: float = 1.0,
+                      n: int = 100) -> mpl.colors.LinearSegmentedColormap:
     '''
     Function to truncate a colormap by selecting a subset of the original colormap's values
 
@@ -69,13 +76,11 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
     minval : Minimum value of the original colormap to include in the truncated colormap
     maxval : Maximum value of the original colormap to include in the truncated colormap
     n : Number of intervals between the min and max values for the gradient of the truncated colormap
-          
+
     Returns
     -------
-    new_cmap : A new colormap that has been shifted. 
+    new_cmap : A new colormap that has been shifted.
     '''
-
-    import matplotlib as mpl
 
     new_cmap = mpl.colors.LinearSegmentedColormap.from_list(
         'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
@@ -85,8 +90,17 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
 
 @requires('matplotlib')
 @requires('geopandas')
-def compare_surfaces(data, var1, var2, gwr_t, gwr_bw, mgwr_t, mgwr_bw, name,
-                     kwargs1, kwargs2, savefig=None):
+def compare_surfaces(data,
+                     var1: str,
+                     var2: str,
+                     gwr_t: str,
+                     gwr_bw: float,
+                     mgwr_t: str,
+                     mgwr_bw: float,
+                     name: str,
+                     kwargs1,
+                     kwargs2,
+                     savefig: str = None) -> None:
     '''
     Function that creates comparative visualization of GWR and MGWR surfaces.
 
@@ -126,10 +140,10 @@ def compare_surfaces(data, var1, var2, gwr_t, gwr_bw, mgwr_t, mgwr_bw, name,
     ax1.set_title('MGWR ' + name + ' Surface (BW: ' + str(mgwr_bw) + ')',
                   fontsize=40)
 
-    #Set color map
+    # Set color map
     cmap = plt.cm.seismic
 
-    #Find min and max values of the two combined datasets
+    # Find min and max values of the two combined datasets
     gwr_min = data[var1].min()
     gwr_max = data[var1].max()
     mgwr_min = data[var2].min()
@@ -137,32 +151,32 @@ def compare_surfaces(data, var1, var2, gwr_t, gwr_bw, mgwr_t, mgwr_bw, name,
     vmin = np.min([gwr_min, mgwr_min])
     vmax = np.max([gwr_max, mgwr_max])
 
-    #If all values are negative use the negative half of the colormap
+    # If all values are negative use the negative half of the colormap
     if (vmin < 0) & (vmax < 0):
         cmap = truncate_colormap(cmap, 0.0, 0.5)
-    #If all values are positive use the positive half of the colormap
+    # If all values are positive use the positive half of the colormap
     elif (vmin > 0) & (vmax > 0):
         cmap = truncate_colormap(cmap, 0.5, 1.0)
-    #Otherwise, there are positive and negative values so the colormap so zero is the midpoint
+    # Otherwise, there are positive and negative values so the colormap so zero is the midpoint
     else:
         cmap = shift_colormap(cmap, start=0.0,
                               midpoint=1 - vmax / (vmax + abs(vmin)), stop=1.)
 
-    #Create scalar mappable for colorbar and stretch colormap across range of data values
+    # Create scalar mappable for colorbar and stretch colormap across range of data values
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(
         vmin=vmin, vmax=vmax))
 
-    #Plot GWR parameters
+    # Plot GWR parameters
     data.plot(var1, cmap=sm.cmap, ax=ax0, vmin=vmin, vmax=vmax, **kwargs1)
     if (gwr_t == 0).any():
         data[gwr_t == 0].plot(color='lightgrey', ax=ax0, **kwargs2)
 
-    #Plot MGWR parameters
+    # Plot MGWR parameters
     data.plot(var2, cmap=sm.cmap, ax=ax1, vmin=vmin, vmax=vmax, **kwargs1)
     if (mgwr_t == 0).any():
         data[mgwr_t == 0].plot(color='lightgrey', ax=ax1, **kwargs2)
 
-    #Set figure options and plot
+    # Set figure options and plot
     fig.tight_layout()
     fig.subplots_adjust(right=0.9)
     cax = fig.add_axes([0.92, 0.14, 0.03, 0.75])
