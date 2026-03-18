@@ -1,0 +1,21 @@
+name: test
+channels:
+  - conda-forge
+dependencies:
+  - python=3.14
+  - codecov
+  - coverage
+  - pytest
+  - pytest-cov
+  - pytest-timeout
+  - pip
+  - pip:
+    - --pre \
+      --index-url https://pypi.anaconda.org/scientific-python-nightly-wheels/simple \
+      --extra-index-url https://pypi.org/simple
+    - numpy
+    - pandas
+    - scikit-learn
+    - scipy
+    - git+https://github.com/pysal/libpysal.git
+    - git+https://github.com/pysal/spglm.git
