@@ -1,0 +1,18 @@
+name: py311_mgwr-oldest
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy=2.0
+  - pandas=2.3
+  - scikit-learn=1.5
+  - scipy=1.13
+  - libpysal=4.12
+  - spglm=1.1.0
+  - spreg=1.8
+  # testing
+  - codecov
+  - coverage
+  - pytest
+  - pytest-cov
+  - pytest-timeout

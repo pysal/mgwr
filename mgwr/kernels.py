@@ -37,7 +37,7 @@ def local_cdist(coords_i, coords, spherical):
 class Kernel(object):
     """
     GWR kernel function specifications.
-    
+
     """
 
     def __init__(self, i, data, bw=None, fixed=True, function='triangular',
@@ -49,6 +49,7 @@ class Kernel(object):
             self.dvec = local_cdist(points[i], data, spherical).reshape(-1)
 
         self.function = function.lower()
+        bw = np.asarray(bw).reshape(-1)[0]
 
         if fixed:
             self.bandwidth = float(bw)

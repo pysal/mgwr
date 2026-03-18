@@ -1,52 +1,65 @@
- on:
-   push:
-     branches:
-     - '*'
-   pull_request:
-     branches:
-     - '*'
-   schedule:
-     - cron: '59 23 * * *'
+name: Tests
 
- jobs:
-   unittests:
-     name: ${{ matrix.os }}, ${{ matrix.environment-file }}
-     runs-on: ${{ matrix.os }}
-     timeout-minutes: 90
-     strategy:
-       matrix:
-         os: ['ubuntu-latest']
-         environment-file: [.ci/39.yaml, .ci/310.yaml, .ci/311.yaml, .ci/311-DEV.yaml]
-         include:
-           - environment-file: .ci/311.yaml
-             os: macos-latest
-           - environment-file: .ci/311.yaml
-             os: windows-latest
-       fail-fast: false
-     defaults:
-       run:
-         shell: bash -l {0}
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches:
+      - "*"
+  schedule:
+    - cron: "0 0 * * 1,4"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Manual Unittest Run
+        default: test
+        required: false
 
-     steps:
-       - name: checkout repo
-         uses: actions/checkout@v4
+jobs:
+  Test:
+    name: ${{ matrix.os }}, ${{ matrix.environment-file }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        environment-file:
+          - ci/311-oldest.yaml
+          - ci/311-latest.yaml
+          - ci/312-latest.yaml
+          - ci/313-latest.yaml
+          - ci/314-latest.yaml
+          - ci/314-dev.yaml
+        include:
+          - environment-file: ci/314-latest.yaml
+            os: macos-15-intel
+          - environment-file: ci/314-latest.yaml
+            os: macos-latest
+          - environment-file: ci/314-latest.yaml
+            os: windows-latest
+    defaults:
+      run:
+        shell: bash -l {0}
 
-       - name: setup micromamba
-         uses: mamba-org/setup-micromamba@v1
-         with:
-           environment-file: ${{ matrix.environment-file }}
-           micromamba-version: 'latest'
-       - name: install spglm via pip
-         run: pip install --upgrade --no-deps git+https://github.com/pysal/spglm.git@main
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-       - name: install spreg via pip
-         run: pip install spreg
+      - name: Setup micromamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: ${{ matrix.environment-file }}
+          micromamba-version: "latest"
 
-       - name: install bleeding edge libpysal (only Ubuntu / Python 3.9)
-         run: pip install git+https://github.com/pysal/libpysal.git@main
-         if: matrix.os == 'ubuntu-latest' && contains(matrix.environment-file, 'DEV')
+      - name: Install mgwr
+        run: |
+          pip install .
 
-       - name: run tests - bash
-         run: pytest -v mgwr --cov=mgwr --cov-report=xml --timeout=300
+      - name: Test mgwr
+        run: |
+          pytest -v --color yes --cov mgwr --cov-append --cov-report term-missing --cov-report xml --timeout=300 mgwr
 
-       - uses: codecov/codecov-action@v3
+      - name: Codecov
+        uses: codecov/codecov-action@v5
