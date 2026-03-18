@@ -28,7 +28,6 @@ jobs:
           - ci/311-latest.yaml
           - ci/312-latest.yaml
           - ci/313-latest.yaml
-          - ci/314-min.yaml
           - ci/314-latest.yaml
           - ci/314-dev.yaml
         include:
