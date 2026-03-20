@@ -25,6 +25,7 @@ def get_AICc(gwr):
             n - k - 2.0)  #equivalent to below but
         #can't control denominator of sigma without altering GLM familt code
         #aicc = n*np.log(sigma2) + n*np.log(2.0*np.pi) + n*(n+k)/(n-k-2.0)
+        #see https://github.com/pysal/mgwr/issues/117 for detail
     elif isinstance(gwr.family, (Poisson, Binomial)):
         aicc = get_AIC(gwr) + 2.0 * k * (k + 1.0) / (n - k - 1.0)
     return aicc
