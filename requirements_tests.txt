@@ -1,6 +1,0 @@
-codecov
-coverage
-pandas>=2.3
-pytest
-pytest-cov
-pytest-timeout

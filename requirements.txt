@@ -1,5 +1,0 @@
-numpy>=2.0
-scipy>=1.13
-libpysal>=4.12
-spglm>=1.1.0
-spreg>=1.8
