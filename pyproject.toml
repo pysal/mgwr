@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+
+[project]
+name = "mgwr"
+dynamic = ["version"]
+authors = [
+    { name = "Taylor M. Oshan", email = "tayoshan@gmail.com" },
+]
+maintainers = [{ name = "PySAL Developers" }]
+license = { text = "BSD 3-Clause" }
+description = "Multiscale Geographically Weighted Regression"
+keywords = ["spatial statistics"]
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: GIS",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "libpysal>=4.12",
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "spglm>=1.1",
+    "spreg>=1.8",
+]
+
+[project.urls]
+Home = "https://github.com/pysal/mgwr/"
+Repository = "https://github.com/mgwr/spint"
+
+[project.optional-dependencies]
+dev_tests = [
+    "pre-commit",
+    "ruff",
+    "watermark",
+    "codecov",
+    "coverage",
+    "pandas>=2.3",
+    "pytest",
+    "pytest-cov",
+    "pytest-timeout",
+]
+docs = [
+    "myst-parser",
+    "nbsphinx",
+    "numpydoc",
+    "pandoc",
+    "sphinx",
+    "sphinxcontrib-bibtex",
+    "sphinxcontrib-napoleon",
+    "sphinx-bootstrap-theme",
+    "sphinx-gallery"
+]
+
+[tool.setuptools.packages.find]
+include = ["mgwr", "mgwr.*"]
+
+
+########################################################################
+#
+# Add [coverage, linting, formatting, testing] stuff in subsequent pass
+#
+########################################################################
