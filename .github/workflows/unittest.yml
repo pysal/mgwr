@@ -1,4 +1,5 @@
-name: Tests
+---
+name: Continuous Integration
 
 on:
   push:
@@ -24,8 +25,7 @@ jobs:
       matrix:
         os: ["ubuntu-latest"]
         environment-file:
-          - ci/311-oldest.yaml
-          - ci/311-latest.yaml
+          - ci/312-oldest.yaml
           - ci/312-latest.yaml
           - ci/313-latest.yaml
           - ci/314-latest.yaml
@@ -48,7 +48,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup micromamba
-        uses: mamba-org/setup-micromamba@v2
+        uses: mamba-org/setup-micromamba@v3
         with:
           environment-file: ${{ matrix.environment-file }}
           micromamba-version: "latest"
@@ -59,7 +59,14 @@ jobs:
 
       - name: Test mgwr
         run: |
-          pytest -v --color yes --cov mgwr --cov-append --cov-report term-missing --cov-report xml --timeout=300 mgwr
+          pytest mgwr \
+          -v \
+          --color yes \
+          --cov mgwr \
+          --cov-append \
+          --cov-report term-missing \
+          --cov-report xml \
+          --timeout=300
 
       - name: Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
