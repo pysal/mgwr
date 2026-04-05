@@ -3,11 +3,11 @@ channels:
   - conda-forge
 dependencies:
   - python=3.14
+  - libpysal
   - numpy
   - pandas
   - scikit-learn
   - scipy
-  - libpysal
   - spglm
   - spreg
   # testing

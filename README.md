@@ -1,6 +1,6 @@
 # **M**ultiscale **G**eographically **W**eighted **R**egression (MGWR)
 
-[![Build Status](https://travis-ci.org/pysal/mgwr.svg?branch=master)](https://travis-ci.org/pysal/mgwr)
+[![unittests](https://github.com/pysal/mgwr/actions/workflows/unittest.yml/badge.svg)](https://github.com/pysal/mgwr/actions/workflows/unittest.yml)
 [![Documentation Status](https://readthedocs.org/projects/mgwr/badge/?version=latest)](https://mgwr.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/mgwr.svg)](https://badge.fury.io/py/mgwr)
 
