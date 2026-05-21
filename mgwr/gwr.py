@@ -19,6 +19,13 @@ from joblib import Parallel, delayed
 from .diagnostics import get_AIC, get_AICc, get_BIC, corr
 from .kernels import *
 from .summary import *
+from ._numba import (
+    HAS_NUMBA,
+    euclidean_dist_matrix,
+    compute_all_kernel_weights,
+    gwr_fit_lite,
+    gwr_fit_full,
+)
 
 
 class GWR(GLM):
@@ -345,6 +352,60 @@ class GWR(GLM):
             else:
                 m = self.points.shape[0]
 
+            # ------------------------------------------------------------------
+            # Fast path: Gaussian family, no prediction points, Numba available.
+            # Replaces per-location joblib dispatch with a single prange kernel.
+            # Falls back to the joblib path for non-Gaussian families or when
+            # Numba is not installed.
+            # ------------------------------------------------------------------
+            _use_numba = (
+                HAS_NUMBA
+                and isinstance(self.family, Gaussian)
+                and self.points is None
+            )
+
+            if _use_numba:
+                coords = np.array(self.coords, dtype=np.float64)
+                if self.spherical:
+                    from scipy.spatial.distance import cdist
+                    D = cdist(coords, coords, metric='haversine') * 6371.0
+                else:
+                    D = euclidean_dist_matrix(coords)
+
+                W, _ = compute_all_kernel_weights(
+                    D, self.bw, fixed=self.fixed, kernel=self.kernel
+                )
+
+                if lite:
+                    params, influ, predy, resid = gwr_fit_lite(self.X, self.y, W)
+                    return GWRResultsLite(
+                        self,
+                        resid.reshape(-1, 1),
+                        influ.reshape(-1, 1),
+                        params,
+                    )
+                else:
+                    params, influ, predy, resid, tr_STS_arr, CCT = gwr_fit_full(
+                        self.X, self.y, W
+                    )
+                    w = np.ones((m, 1), dtype=np.float64)
+                    S = None  # hat matrix rows not stored by default
+                    tr_STS = float(np.sum(tr_STS_arr))
+                    return GWRResults(
+                        self,
+                        params,
+                        predy.reshape(-1, 1),
+                        S,
+                        CCT,
+                        influ.reshape(-1, 1),
+                        tr_STS,
+                        w,
+                        self.name_x,
+                    )
+
+            # ------------------------------------------------------------------
+            # Original joblib path (non-Gaussian, prediction mode, or no Numba)
+            # ------------------------------------------------------------------
             rslt = Parallel(n_jobs=self.n_jobs)(delayed(self._local_fit)(i) for i in range(m))
 
             rslt_list = list(zip(*rslt))
