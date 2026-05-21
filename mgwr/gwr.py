@@ -22,6 +22,7 @@ from .summary import *
 from ._numba import (
     HAS_NUMBA,
     euclidean_dist_matrix,
+    haversine_dist_matrix_numpy,
     compute_all_kernel_weights,
     gwr_fit_lite,
     gwr_fit_full,
@@ -367,8 +368,7 @@ class GWR(GLM):
             if _use_numba:
                 coords = np.array(self.coords, dtype=np.float64)
                 if self.spherical:
-                    from scipy.spatial.distance import cdist
-                    D = cdist(coords, coords, metric='haversine') * 6371.0
+                    D = haversine_dist_matrix_numpy(coords)
                 else:
                     D = euclidean_dist_matrix(coords)
 

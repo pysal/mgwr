@@ -66,6 +66,30 @@ def euclidean_dist_matrix(coords):
 
 
 # ---------------------------------------------------------------------------
+# Haversine distance (numpy fallback — scipy.cdist dropped this metric)
+# ---------------------------------------------------------------------------
+
+def haversine_dist_matrix_numpy(coords):
+    """Haversine (great-circle) distance matrix in kilometres.
+
+    Parameters
+    ----------
+    coords : (n, 2) float64  — columns are (longitude, latitude) in degrees.
+
+    Returns
+    -------
+    D : (n, n) float64
+    """
+    R = 6371.0
+    lon = np.radians(coords[:, 0])
+    lat = np.radians(coords[:, 1])
+    dlon = lon[:, None] - lon[None, :]
+    dlat = lat[:, None] - lat[None, :]
+    a = np.sin(dlat / 2) ** 2 + np.cos(lat[:, None]) * np.cos(lat[None, :]) * np.sin(dlon / 2) ** 2
+    return 2 * R * np.arcsin(np.sqrt(np.clip(a, 0, 1)))
+
+
+# ---------------------------------------------------------------------------
 # Kernel weight matrix
 # ---------------------------------------------------------------------------
 
@@ -92,8 +116,11 @@ def compute_all_kernel_weights(D, bw, fixed=False, kernel='bisquare'):
     """
     n = D.shape[0]
 
+    # bw may arrive as a 0-d or 1-element array from scipy optimizers
+    bw = float(np.asarray(bw).flat[0])
+
     if fixed:
-        bandwidths = np.full(n, float(bw))
+        bandwidths = np.full(n, bw)
     else:
         k = int(bw)
         # k-th nearest-neighbour distance (row-wise partial sort, O(n) per row)
