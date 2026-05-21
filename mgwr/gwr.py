@@ -358,11 +358,17 @@ class GWR(GLM):
             # Replaces per-location joblib dispatch with a single prange kernel.
             # Falls back to the joblib path for non-Gaussian families or when
             # Numba is not installed.
+            #
+            # hat_matrix=True is excluded: the full n×n hat matrix requires
+            # returning one (n,) row per location, which gwr_fit_full does not
+            # compute.  hat_matrix is only used by MGWR.exact_fit() (already
+            # O(n³)) and a handful of tests, so the joblib path is fine there.
             # ------------------------------------------------------------------
             _use_numba = (
                 HAS_NUMBA
                 and isinstance(self.family, Gaussian)
                 and self.points is None
+                and not self.hat_matrix
             )
 
             if _use_numba:
