@@ -81,7 +81,7 @@ class Sel_BW(object):
     criterion      : string
                      bw selection criterion: 'AICc', 'AIC', 'BIC', 'CV'
     search_method  : string
-                     bw search method: 'golden', 'interval'
+                     bw search method: 'golden_section', 'interval', 'scipy'
     bw_min         : float
                      min value used in bandwidth search
     bw_max         : float
@@ -214,7 +214,7 @@ class Sel_BW(object):
         criterion      : string
                          bw selection criterion: 'AICc', 'AIC', 'BIC', 'CV'
         search_method  : string
-                         bw search method: 'golden', 'interval'
+                         bw search method: 'golden_section', 'interval', 'scipy'
         bw_min         : float
                          min value used in bandwidth search
         bw_max         : float
