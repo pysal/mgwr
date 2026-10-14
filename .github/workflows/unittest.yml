@@ -34,14 +34,10 @@ jobs:
         include:
           # without numba
           - environment-file: ci/314-latest.yaml
-            os: macos-15-intel
-          - environment-file: ci/314-latest.yaml
             os: macos-latest
           - environment-file: ci/314-latest.yaml
             os: windows-latest
           # with numba
-          - environment-file: ci/314-numba-latest.yaml
-            os: macos-15-intel
           - environment-file: ci/314-numba-latest.yaml
             os: macos-latest
           - environment-file: ci/314-numba-latest.yaml
@@ -52,7 +48,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -78,4 +74,4 @@ jobs:
           --timeout=300
 
       - name: Codecov
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
