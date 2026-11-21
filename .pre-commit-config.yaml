@@ -1,0 +1,12 @@
+---
+files: "mgwr\/|docs\/"
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: "v0.17.3"
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+
+ci:
+  autofix_prs: false
+  autoupdate_schedule: quarterly
