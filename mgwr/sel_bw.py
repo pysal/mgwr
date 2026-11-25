@@ -551,7 +551,7 @@ class Sel_BW(object):
 
         if self.bw_min is not None:
             a = self.bw_min
-        if self.bw_max is not None and self.bw_max is not np.inf:
+        if self.bw_max is not None and not np.isinf(self.bw_max):
             c = self.bw_max
 
         return a, c

@@ -116,6 +116,16 @@ class TestSelBWGaussian(unittest.TestCase):
         ).search(criterion="CV")
         assert_allclose(bw1, bw2)
 
+    def test_golden_fixed_AICc_inf_bw_max(self):
+        # bw_max=float("inf") must behave like np.inf, not raise NameError
+        bw_np = Sel_BW(self.coords, self.y, self.X, kernel="bisquare", fixed=True).search(
+            criterion="AICc", bw_max=np.inf
+        )
+        bw_float = Sel_BW(
+            self.coords, self.y, self.X, kernel="bisquare", fixed=True
+        ).search(criterion="AICc", bw_max=float("inf"))
+        assert_allclose(bw_np, bw_float)
+
     def test_interval_fixed_AICc(self):
         bw1 = 211025.0
         bw2 = Sel_BW(self.coords, self.y, self.X, kernel="bisquare", fixed=True).search(
