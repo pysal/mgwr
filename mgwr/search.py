@@ -44,12 +44,8 @@ def golden_section(
     output          : list of tuples
                       searching history
     """
-    if c == np.inf:
-        b = a + delta * np.abs(n - a)
-        d = n - delta * np.abs(n - a)
-    else:
-        b = a + delta * np.abs(c - a)
-        d = c - delta * np.abs(c - a)
+    b = a + delta * np.abs(c - a)
+    d = c - delta * np.abs(c - a)
 
     opt_score = np.inf
     diff = 1.0e9
