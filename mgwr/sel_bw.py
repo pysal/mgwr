@@ -340,6 +340,14 @@ class Sel_BW(object):
         self.search_params["interval"] = interval
         self.search_params["tol"] = tol
         self.search_params["max_iter"] = max_iter
+        # GH179: keep the MGWR options so a replayed search reuses them
+        self.search_params["init_multi"] = init_multi
+        self.search_params["tol_multi"] = tol_multi
+        self.search_params["rss_score"] = rss_score
+        self.search_params["max_iter_multi"] = max_iter_multi
+        self.search_params["multi_bw_min"] = multi_bw_min
+        self.search_params["multi_bw_max"] = multi_bw_max
+        self.search_params["bws_same_times"] = bws_same_times
         # self._check_min_max()
 
         self.int_score = not self.fixed

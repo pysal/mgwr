@@ -1,6 +1,10 @@
 
 # Changes
 
+## Unreleased
+
+  - `Sel_BW.search` now records the MGWR options in `search_params`, so `MGWRResults.spatial_variability` replays searches with the user's settings instead of the defaults (#179)
+
 Version 2.1.2 (2020-09-08)
 
 We closed a total of 18 issues (enhancements and bug fixes) through 8 pull requests, since our last release on 2019-07-17.

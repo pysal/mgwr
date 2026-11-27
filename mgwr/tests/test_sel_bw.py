@@ -230,6 +230,31 @@ class TestSelBWGaussian(unittest.TestCase):
         bw2 = selector.search()
         assert_allclose(bw1, bw2)
 
+    def test_MGWR_search_params_records_multi_options(self):
+        # GH179: replaying a search must reuse the MGWR options it was given
+        options = {
+            "tol_multi": 1e-4,
+            "rss_score": True,
+            "max_iter_multi": 50,
+            "multi_bw_min": [60],
+            "multi_bw_max": [150],
+            "bws_same_times": 3,
+        }
+        std_y = (self.y - self.y.mean()) / self.y.std()
+        std_X = (self.mgwr_X - self.mgwr_X.mean(axis=0)) / self.mgwr_X.std(axis=0)
+        selector = Sel_BW(self.coords, std_y, std_X, multi=True, constant=True)
+        bw1 = selector.search(**options)
+
+        for name, value in options.items():
+            self.assertIn(name, selector.search_params)
+            self.assertEqual(selector.search_params[name], value)
+        self.assertIn("init_multi", selector.search_params)
+        self.assertNotIn("pool", selector.search_params)
+        self.assertNotIn("verbose", selector.search_params)
+
+        bw2 = selector.search(**selector.search_params)
+        assert_allclose(bw1, bw2)
+
 
 class TestGWRSelBWPoisson(unittest.TestCase):
     def setUp(self):
